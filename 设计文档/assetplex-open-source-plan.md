@@ -174,10 +174,17 @@
 
 ---
 
-## 9. 下一步（立即可执行）
+## 9. 进度
 
-- [ ] 重构仓库：agent-hub 提升到根 + 全新 git 历史（本计划配套执行）
-- [ ] 配 GitHub Actions 三个 workflow
-- [ ] 写英文 README + 隐私文档 + 数据迁移提示
-- [ ] `npm publish` 验证安装全流程
-- [ ] 建 GitHub 公开仓库 + Gitee 镜像
+### ✅ 已完成
+- [x] 重构仓库：agent-hub 内容提升到根目录，全新 git 历史（root commit `a13f791`）
+- [x] 设计文档（assetplex-*.md）纳入仓库；README/AGENTS.md 与文档内部链接适配新结构
+- [x] 根 .gitignore 排除 .trae/、node_modules、dist 及旧目录残留
+
+### ⏳ 待办（可交给 AI 代理逐项执行）
+- [ ] 配 GitHub Actions 三个 workflow（ci / release / codeql）+ Dependabot
+- [ ] 写英文 README + 隐私模型文档 + 旧 `~/.agent-hub` 数据迁移提示
+- [ ] `npm publish` 并验证 `npm install -g assetplex` 全流程
+- [ ] 建 GitHub 公开仓库 `assetplex` + Gitee 镜像
+- [ ] 用 AI 代理统一批量修正设计文档中的历史品牌名（AgentHub→AssetPlex、agenthub→assetplex）
+- [ ] 本地 `web/` 目录重新执行 `pnpm install`（node_modules 未随重构迁移）
