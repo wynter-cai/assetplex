@@ -1,0 +1,65 @@
+{
+  "name": "assetplex",
+  "version": "0.1.0",
+  "description": "One identity, every AI agent — built for the China stack and beyond. A central hub to share your profile, skills, and preferences across Claude Code, Codex, TRAE CN, WorkBuddy, and Qoder.",
+  "type": "module",
+  "license": "MIT",
+  "author": "caiwe",
+  "keywords": [
+    "ai",
+    "agent",
+    "claude-code",
+    "codex",
+    "trae",
+    "workbuddy",
+    "qoder",
+    "skills",
+    "mcp",
+    "sync",
+    "hub",
+    "assetplex",
+    "agents-md",
+    "claude-md"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "bin": {
+    "assetplex": "dist/index.js",
+    "ap": "dist/index.js"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build && npm run test"
+  },
+  "dependencies": {
+    "@iarna/toml": "^2.2.5",
+    "chalk": "^5.3.0",
+    "chokidar": "^3.6.0",
+    "commander": "^12.1.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.5.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.0.0",
+    "tsup": "^8.3.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  },
+  "files": [
+    "dist",
+    "templates",
+    "README.md",
+    "LICENSE"
+  ]
+}
