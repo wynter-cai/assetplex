@@ -219,7 +219,7 @@ npx assetplex init
 
 ```bash
 # 克隆仓库
-git clone https://github.com/nicecai/assetplex.git
+git clone https://github.com/wynter-cai/assetplex.git
 cd assetplex
 
 # 安装依赖
@@ -311,7 +311,7 @@ interface ToolAdapter {
 
 ## 开源协议
 
-MIT © [caiwe](https://github.com/nicecai)
+MIT © [caiwe](https://github.com/wynter-cai)
 
 ---
 

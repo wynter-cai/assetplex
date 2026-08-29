@@ -135,7 +135,7 @@ export const ENV_TEMPLATE = `# Environment
 
 export const HUB_README_TEMPLATE = `# AssetPlex — 个人 AI 工具配置中心
 
-此目录由 [AssetPlex](https://github.com/nicecai/assetplex) 管理。
+此目录由 [AssetPlex](https://github.com/wynter-cai/assetplex) 管理。
 修改任意文件后，运行 \`assetplex sync\` 同步到所有启用的工具。
 
 ## 目录结构

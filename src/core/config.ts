@@ -144,7 +144,7 @@ export function saveHubConfig(config: HubConfig, configPath?: string): void {
 /** 生成默认配置的 TOML 字符串（用于 assetplex init） */
 export function generateDefaultConfigToml(): string {
   return `# AssetPlex Configuration
-# See: https://github.com/nicecai/assetplex
+# See: https://github.com/wynter-cai/assetplex
 
 [hub]
 version = "1.0"

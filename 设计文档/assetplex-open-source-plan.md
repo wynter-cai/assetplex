@@ -35,7 +35,7 @@
 ### 2.1 仓库结构
 - 把 `agent-hub/` 内容提升到仓库根目录，`设计文档/` 保留在仓库内。
 - 全新干净 git 历史（删除旧 `.git` 重新 init）。
-- GitHub 远端仓库名：`assetplex`（`github.com/nicecai/assetplex`）。
+- GitHub 远端仓库名：`assetplex`（`github.com/wynter-cai/assetplex`）。
 
 ### 2.2 CI/CD（GitHub Actions，一次性配置，永久自动）
 | Workflow | 触发 | 作用 |
@@ -113,7 +113,7 @@
   `Sync your identity, skills, rules & MCP servers across Claude Code, Codex, TRAE, WorkBuddy and Qoder. One hub, every AI agent.`
 - **Topics**（6-15 个，复用社区规范标签）：`ai` `ai-agent` `claude-code` `codex` `mcp` `trae` `workbuddy` `qoder` `agents` `skills` `sync` `cli` `typescript` `developer-tools` `windows`
 - **Homepage URL** → docs 站
-- **Profile README**（`nicecai/nicecai`）
+- **Profile README**（`wynter-cai/wynter-cai`）
 - **Gitee 镜像**（国内访问）
 
 ### 5.2 关键词（写进 README/docs/文章）
