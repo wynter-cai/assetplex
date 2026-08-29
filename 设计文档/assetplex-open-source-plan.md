@@ -187,4 +187,4 @@
 - [ ] `npm publish` 并验证 `npm install -g assetplex` 全流程
 - [ ] 建 GitHub 公开仓库 `assetplex` + Gitee 镜像
 - [ ] 用 AI 代理统一批量修正设计文档中的历史品牌名（AgentHub→AssetPlex、agenthub→assetplex）
-- [ ] 本地 `web/` 目录重新执行 `pnpm install`（node_modules 未随重构迁移）
+- [x] 本地 `web/` 依赖安装：已用 `npm ci` 完成，web 构建 + 12 测试全绿（node_modules 未随重构迁移）
