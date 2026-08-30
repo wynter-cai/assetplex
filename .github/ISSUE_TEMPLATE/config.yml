@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Discussions
+    url: https://github.com/wynter-cai/assetplex/discussions
+    about: Ask questions, share ideas and get help here.
+  - name: Documentation
+    url: https://wynter-cai.github.io/assetplex/
+    about: Read the official docs, privacy policy and FAQ.
