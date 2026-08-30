@@ -5,6 +5,14 @@
   "type": "module",
   "license": "MIT",
   "author": "Wynter-Cai",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wynter-cai/assetplex.git"
+  },
+  "bugs": {
+    "url": "https://github.com/wynter-cai/assetplex/issues"
+  },
+  "homepage": "https://wynter-cai.github.io/assetplex/",
   "keywords": [
     "ai",
     "agent",
