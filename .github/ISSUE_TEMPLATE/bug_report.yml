@@ -1,0 +1,67 @@
+name: Bug report
+description: Report a problem with AssetPlex
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report an issue! Please fill in the details below.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Where does the problem occur?
+      options:
+        - CLI (init / doctor / sync)
+        - Web UI
+        - Adapter (TRAE / Claude Code / Codex / WorkBuddy / Qoder)
+        - Sync / symlink / format conversion
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Run `assetplex --version`
+      placeholder: e.g. 0.1.0
+  - type: input
+    id: os
+    attributes:
+      label: OS
+      description: Operating system and version
+      placeholder: e.g. Windows 11 / macOS 15 / Ubuntu 24.04
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: What did you do?
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Paste any error output below.
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check
+      description: This is a local-first tool — please do not paste any API keys, tokens or sensitive configuration content.
+      options:
+        - label: I have not included any secrets (API keys, tokens) in this report
+          required: true

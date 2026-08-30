@@ -10,7 +10,7 @@
 AssetPlex 是用户的**AI资产保险箱+分发中心**。用户的身份（Identity）、技能（Skills）、规则（Rules）、MCP服务器（Servers）是核心资产，AI工具（TRAE、WorkBuddy、Claude Code、Codex等）只是资产的消费端。核心价值：用户掌控自己的AI资产，换工具不丢东西。
 
 技术栈：
-- 后端：TypeScript + Node.js + Fastify（server）+ tsup 构建
+- 后端：TypeScript + Node.js + Hono（server）+ tsup 构建
 - 前端：React 18 + TypeScript + Vite + TailwindCSS + shadcn/ui + TanStack Query
 - 测试：Vitest（已配置80%覆盖率阈值）
 - 包管理：pnpm
@@ -48,7 +48,7 @@ AssetPlex 是用户的**AI资产保险箱+分发中心**。用户的身份（Ide
 ```
 
 - 测试放在 `tests/` 目录，与 src/ 目录结构对应
-- 运行测试：`pnpm test`
+- 运行测试：`npm test`
 - 覆盖率门槛：行 80% / 函数 80% / 分支 75%（vitest 已配置，不达标构建会失败）
 - 前端核心组件/页面也要写测试（React Testing Library + Vitest）
 
@@ -86,14 +86,14 @@ server/─┘
 
 ```bash
 # 后端
-pnpm test              # 运行所有测试（带覆盖率）
-pnpm test -- --run     # 非watch模式跑一次
-pnpm build             # tsup 构建
+npm test              # 运行所有测试
+npm run typecheck     # TypeScript 类型检查
+npm run build         # tsup 构建
 node dist/index.js ui  # 启动 Web UI 服务（端口17521）
 
 # 前端（web目录下）
 cd web
-pnpm test              # 前端测试
+npx vitest run        # 前端测试
 node node_modules/typescript/bin/tsc -b  # 类型检查
 node node_modules/vite/bin/vite.js build  # 构建前端（产物被后端托管）
 ```
