@@ -52,3 +52,6 @@ web/.playwright/
 
 # 旧目录残留（web 被占用暂未删净，确认无用时手动删除）
 agent-hub/
+
+# 本机双击启动器（含本机 node 路径，不入库）
+AssetPlex.cmd
