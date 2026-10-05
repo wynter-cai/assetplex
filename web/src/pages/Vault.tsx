@@ -85,6 +85,17 @@ export default function Vault(): JSX.Element {
     navigate(`/vault/${code}`);
   };
 
+  /** 点击卡片切换详情：再点同一张卡片收起右侧面板 */
+  const handleView = (asset: Asset): void => {
+    if (selectedAsset?.id === asset.id && viewMode !== 'list') {
+      setViewMode('list');
+      setSelectedAsset(null);
+    } else {
+      setSelectedAsset(asset);
+      setViewMode('view');
+    }
+  };
+
   const handleSearchChange = (value: string): void => {
     setSearch(value);
     if (value) {
@@ -218,7 +229,7 @@ export default function Vault(): JSX.Element {
 
         {/* 加载中 */}
         {isLoading && (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(270px,100%),1fr))]">
             {Array.from({ length: 6 }).map((_, i) => (
               <Skeleton key={i} className="h-36 rounded-md" />
             ))}
@@ -232,15 +243,13 @@ export default function Vault(): JSX.Element {
         {!isLoading && data && data.total > 0 && (
           <>
             <p className="text-xs text-muted-foreground mb-2">共 {data.total} 项资产</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+            <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(270px,100%),1fr))]">
               {data.items.map((asset) => (
                 <AssetCard
                   key={asset.id}
                   asset={asset}
-                  onView={(a) => {
-                    setSelectedAsset(a);
-                    setViewMode('view');
-                  }}
+                  active={selectedAsset?.id === asset.id && viewMode !== 'list'}
+                  onView={handleView}
                   onEdit={(a) => {
                     setSelectedAsset(a);
                     setViewMode('edit');
