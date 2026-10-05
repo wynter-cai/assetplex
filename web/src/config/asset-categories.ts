@@ -33,7 +33,7 @@ export interface AssetCategoryConfig {
  */
 export const ASSET_CATEGORIES: AssetCategoryConfig[] = [
   { code: 'identity', label: '身份', icon: User, order: 10 },
-  { code: 'skill', label: '技能', icon: Sparkles, order: 20 },
+  { code: 'skill', label: '技能', icon: Sparkles, order: 20, external: true },
   { code: 'rule', label: '规则', icon: BookOpen, order: 30 },
   { code: 'mcp', label: 'MCP', icon: Server, order: 40 },
   { code: 'agent', label: '智能体', icon: Bot, order: 50, external: true },

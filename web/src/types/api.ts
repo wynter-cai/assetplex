@@ -251,6 +251,41 @@ export interface AgentDetailResult {
   rawContent: string;
 }
 
+// ========== 技能分类全貌类型 ==========
+
+export type SkillFunction =
+  | 'coding'
+  | 'writing'
+  | 'browser'
+  | 'data'
+  | 'devops'
+  | 'ai-integration'
+  | 'design'
+  | 'workflow'
+  | 'other';
+
+export type SkillOrigin = 'builtin' | 'plugin' | 'personal' | 'marketplace';
+
+export interface SkillInfo {
+  id: string;
+  name: string;
+  description: string;
+  functionCategory: SkillFunction;
+  origin: SkillOrigin;
+  tool: string;
+  sourcePath: string;
+  version: string;
+  functionOverridden: boolean;
+  variants: string[];
+}
+
+export interface SkillListResult {
+  items: SkillInfo[];
+  total: number;
+  countByFunction: Record<SkillFunction, number>;
+  countByOrigin: Record<SkillOrigin, number>;
+}
+
 // ========== 连接详情类型 ==========
 
 export interface ConnectionDetail {

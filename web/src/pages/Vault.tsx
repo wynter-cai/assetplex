@@ -12,6 +12,7 @@ import { AssetCard } from '@/components/vault/AssetCard';
 import { AssetEditor } from '@/components/vault/AssetEditor';
 import { DistributionDialog } from '@/components/vault/DistributionDialog';
 import { AgentsView } from '@/components/agents/AgentsView';
+import { SkillsView } from '@/components/skills/SkillsView';
 import { getCategoryConfig } from '@/config/asset-categories';
 import type { Asset, FrontendCategory } from '@/types/api';
 
@@ -175,6 +176,7 @@ export default function Vault(): JSX.Element {
       {isExternalCategory ? (
         <div className="flex min-w-0 flex-1 pl-4">
           {selectedCategory === 'agent' && <AgentsView />}
+          {selectedCategory === 'skill' && <SkillsView />}
         </div>
       ) : (
       <div className="flex min-w-0 flex-1 gap-4 pl-4">

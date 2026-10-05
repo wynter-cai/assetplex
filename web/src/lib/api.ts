@@ -23,6 +23,10 @@ import type {
   AgentDetailResult,
   AgentKind,
   AgentTool,
+  SkillListResult,
+  SkillInfo,
+  SkillFunction,
+  SkillOrigin,
 } from '@/types/api';
 
 const BASE = '/api';
@@ -145,6 +149,23 @@ export const api = {
   },
   getAgent: (id: string) =>
     request<AgentDetailResult>(`/agents/${encodeURIComponent(id)}`),
+
+  // Skills（分类全貌，只读 + 职能覆盖）
+  listSkills: (params?: { function?: SkillFunction; origin?: SkillOrigin; search?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.function) qs.set('function', params.function);
+    if (params?.origin) qs.set('origin', params.origin);
+    if (params?.search) qs.set('search', params.search);
+    const q = qs.toString();
+    return request<SkillListResult>(`/skills${q ? `?${q}` : ''}`);
+  },
+  overrideSkillFunction: (id: string, functionCategory: SkillFunction) =>
+    request<{ skill: SkillInfo }>(`/skills/${encodeURIComponent(id)}/function`, {
+      method: 'PUT',
+      body: JSON.stringify({ functionCategory }),
+    }),
+  getSkill: (id: string) =>
+    request<{ skill: SkillInfo; rawContent: string }>(`/skills/${encodeURIComponent(id)}`),
 
   // Tool detail (connection detail)
   getToolDetail: (toolName: string) =>
