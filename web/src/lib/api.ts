@@ -19,6 +19,10 @@ import type {
   AssetDetail,
   AssetListResult,
   FrontendCategory,
+  AgentListResult,
+  AgentDetailResult,
+  AgentKind,
+  AgentTool,
 } from '@/types/api';
 
 const BASE = '/api';
@@ -129,6 +133,18 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify({ content }),
     }),
+
+  // Agents（只读盘点）
+  listAgents: (params?: { tool?: AgentTool; kind?: AgentKind; search?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.tool) qs.set('tool', params.tool);
+    if (params?.kind) qs.set('kind', params.kind);
+    if (params?.search) qs.set('search', params.search);
+    const q = qs.toString();
+    return request<AgentListResult>(`/agents${q ? `?${q}` : ''}`);
+  },
+  getAgent: (id: string) =>
+    request<AgentDetailResult>(`/agents/${encodeURIComponent(id)}`),
 
   // Tool detail (connection detail)
   getToolDetail: (toolName: string) =>

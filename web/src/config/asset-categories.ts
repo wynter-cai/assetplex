@@ -7,7 +7,7 @@
  * 参考: 设计文档/assetplex-asset-taxonomy.md
  */
 
-import { User, Sparkles, BookOpen, Server, type LucideIcon } from 'lucide-react';
+import { User, Sparkles, BookOpen, Server, Bot, type LucideIcon } from 'lucide-react';
 
 export interface AssetCategoryConfig {
   /** 类别代码，用于 URL 和后端通信 */
@@ -18,20 +18,25 @@ export interface AssetCategoryConfig {
   icon: LucideIcon;
   /** 在资产库列表中的排序权重，数字越小越靠前 */
   order: number;
+  /**
+   * 是否为外部数据类别。
+   * true 表示数据不走 /api/assets，而由专用接口提供（如智能体走 /api/agents）。
+   */
+  external?: boolean;
 }
 
 /**
- * 当前支持的资产类别（第一梯队）
+ * 当前支持的资产类别。
  *
- * Phase B 扩展时只需在此数组追加即可：
- *   { code: 'command', label: '命令', icon: Zap, order: 50 }
- * 无需修改 Sidebar 或其他组件代码。
+ * 新增类别只需在此数组追加，Sidebar 与 Vault 左侧导航自动生效。
+ * 外部数据类别设置 external: true，由 Vault 渲染专用视图。
  */
 export const ASSET_CATEGORIES: AssetCategoryConfig[] = [
   { code: 'identity', label: '身份', icon: User, order: 10 },
   { code: 'skill', label: '技能', icon: Sparkles, order: 20 },
   { code: 'rule', label: '规则', icon: BookOpen, order: 30 },
   { code: 'mcp', label: 'MCP', icon: Server, order: 40 },
+  { code: 'agent', label: '智能体', icon: Bot, order: 50, external: true },
 ];
 
 /** 根据 code 获取类别配置 */

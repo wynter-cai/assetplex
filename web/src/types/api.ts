@@ -218,6 +218,39 @@ export interface AssetListResult {
   total: number;
 }
 
+// ========== 智能体只读盘点类型 ==========
+
+export type AgentTool = 'trae' | 'codebuddy' | 'claude' | 'codex';
+export type AgentKind =
+  | 'custom-subagent'
+  | 'expert'
+  | 'builtin-persona'
+  | 'plugin-agent';
+
+export interface AgentInfo {
+  id: string;
+  name: string;
+  description: string;
+  tool: AgentTool;
+  kind: AgentKind;
+  sourcePath: string;
+  lastModifiedAt: string | null;
+  userCreated: boolean;
+  extra?: Record<string, string>;
+}
+
+export interface AgentListResult {
+  items: AgentInfo[];
+  total: number;
+  countByKind: Record<AgentKind, number>;
+  countByTool: Record<AgentTool, number>;
+}
+
+export interface AgentDetailResult {
+  agent: AgentInfo;
+  rawContent: string;
+}
+
 // ========== 连接详情类型 ==========
 
 export interface ConnectionDetail {

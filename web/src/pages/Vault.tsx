@@ -11,6 +11,8 @@ import { api } from '@/lib/api';
 import { AssetCard } from '@/components/vault/AssetCard';
 import { AssetEditor } from '@/components/vault/AssetEditor';
 import { DistributionDialog } from '@/components/vault/DistributionDialog';
+import { AgentsView } from '@/components/agents/AgentsView';
+import { getCategoryConfig } from '@/config/asset-categories';
 import type { Asset, FrontendCategory } from '@/types/api';
 
 type ViewMode = 'list' | 'view' | 'edit' | 'create';
@@ -21,16 +23,22 @@ export default function Vault(): JSX.Element {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const selectedCategory = (params.category as FrontendCategory) ?? null;
+  const selectedCategory = params.category ?? null;
+  const isExternalCategory = getCategoryConfig(selectedCategory ?? '')?.external === true;
   const [search, setSearch] = useState(searchParams.get('q') ?? '');
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [distributeAsset, setDistributeAsset] = useState<Asset | null>(null);
 
-  // 获取资产列表
+  // 获取资产列表（外部类别由专用视图自行取数）
   const { data, isLoading, error } = useQuery({
     queryKey: ['assets', selectedCategory, search],
-    queryFn: () => api.listAssets({ category: selectedCategory ?? undefined, search: search || undefined }),
+    enabled: !isExternalCategory,
+    queryFn: () =>
+      api.listAssets({
+        category: (selectedCategory as FrontendCategory | null) ?? undefined,
+        search: search || undefined,
+      }),
   });
 
   // 获取资产详情
@@ -164,6 +172,11 @@ export default function Vault(): JSX.Element {
       </div>
 
       {/* 右侧内容区 */}
+      {isExternalCategory ? (
+        <div className="flex min-w-0 flex-1 pl-4">
+          {selectedCategory === 'agent' && <AgentsView />}
+        </div>
+      ) : (
       <div className="flex min-w-0 flex-1 gap-4 pl-4">
         <div className={`flex min-w-0 flex-1 flex-col ${showDetail ? 'hidden lg:flex' : 'flex'}`}>
         <div className="min-h-0 flex-1 overflow-y-auto pr-1">
@@ -256,6 +269,7 @@ export default function Vault(): JSX.Element {
           </div>
         )}
       </div>
+      )}
 
       {/* 分发管理对话框 */}
       <DistributionDialog
