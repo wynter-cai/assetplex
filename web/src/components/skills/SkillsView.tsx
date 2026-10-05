@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { api } from '@/lib/api';
 import { useEscapeKey } from '@/lib/use-escape-key';
+import { Markdown, stripFrontmatter } from '@/components/common/Markdown';
 import { cn } from '@/lib/utils';
 import type { SkillInfo, SkillFunction, SkillOrigin } from '@/types/api';
 
@@ -181,14 +182,18 @@ function SkillDetail({ skill, onClose }: { skill: SkillInfo; onClose: () => void
         <div className="flex flex-col flex-1 min-h-48">
           <h3 className="text-xs font-medium text-muted-foreground mb-1 flex items-center gap-1 shrink-0">
             <FileText className="h-3 w-3" />
-            SKILL.md 原文
+            SKILL.md 文档
           </h3>
           {isLoading ? (
             <Skeleton className="h-40 w-full" />
           ) : (
-            <pre className="text-[13px] leading-relaxed bg-muted rounded p-3 overflow-auto flex-1 whitespace-pre-wrap break-words">
-              {data?.rawContent || '（无内容）'}
-            </pre>
+            <div className="flex-1 min-h-0 overflow-auto rounded border bg-muted/30 p-3">
+              {data?.rawContent ? (
+                <Markdown content={stripFrontmatter(data.rawContent)} />
+              ) : (
+                <p className="text-xs text-muted-foreground">（无内容）</p>
+              )}
+            </div>
           )}
         </div>
       </div>

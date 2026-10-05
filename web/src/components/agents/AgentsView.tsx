@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { api } from '@/lib/api';
+import { Markdown, stripFrontmatter } from '@/components/common/Markdown';
 import { cn } from '@/lib/utils';
 import type { AgentInfo, AgentKind, AgentTool } from '@/types/api';
 
@@ -122,13 +123,17 @@ function AgentDetail({ agent, onClose }: { agent: AgentInfo; onClose: () => void
         )}
 
         <div>
-          <h3 className="text-xs font-medium text-muted-foreground mb-1">原始定义</h3>
+          <h3 className="text-xs font-medium text-muted-foreground mb-1">定义文件内容</h3>
           {isLoading ? (
             <Skeleton className="h-40 w-full" />
           ) : (
-            <pre className="text-xs bg-muted rounded p-2 overflow-auto max-h-72 whitespace-pre-wrap break-words">
-              {data?.rawContent || '（无内容）'}
-            </pre>
+            <div className="rounded border bg-muted/30 p-2.5 overflow-auto max-h-80">
+              {data?.rawContent ? (
+                <Markdown content={stripFrontmatter(data.rawContent)} />
+              ) : (
+                <p className="text-xs text-muted-foreground">（无内容）</p>
+              )}
+            </div>
           )}
         </div>
 

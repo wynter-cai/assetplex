@@ -80,7 +80,7 @@ describe('SkillsView 技能分类全貌', () => {
     });
   });
 
-  it('点击技能名打开详情，显示副本位置与 SKILL.md 原文，可关闭', async () => {
+  it('点击技能名打开详情，显示副本位置与 Markdown 渲染的 SKILL.md 内容，可关闭', async () => {
     renderView();
     const link = await screen.findByRole('button', { name: '查看 pdf 详情' });
     fireEvent.click(link);
@@ -91,11 +91,13 @@ describe('SkillsView 技能分类全貌', () => {
     expect(screen.getByText('/x/pdf/SKILL.md')).toBeInTheDocument();
     expect(screen.getByText('/a/pdf/SKILL.md')).toBeInTheDocument();
     expect(screen.getByText('/b/pdf/SKILL.md')).toBeInTheDocument();
-    expect(await screen.findByText(/# mycode/)).toBeInTheDocument();
+    // `# mycode` 应渲染为一级标题而非字面文本
+    expect(await screen.findByRole('heading', { name: 'mycode' })).toBeInTheDocument();
+    expect(screen.getByText('原始内容')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: '关闭' }));
     await waitFor(() => {
-      expect(screen.queryByText('SKILL.md 原文')).not.toBeInTheDocument();
+      expect(screen.queryByText('SKILL.md 文档')).not.toBeInTheDocument();
     });
   });
 });
