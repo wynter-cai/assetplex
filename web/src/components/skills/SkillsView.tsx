@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { api } from '@/lib/api';
+import { useEscapeKey } from '@/lib/use-escape-key';
 import { cn } from '@/lib/utils';
 import type { SkillInfo, SkillFunction, SkillOrigin } from '@/types/api';
 
@@ -128,8 +129,9 @@ function SkillCard({ skill, active, onSelect }: { skill: SkillInfo; active: bool
   );
 }
 
-/** 技能详情面板：元信息 + 所有副本位置 + SKILL.md 原文 */
+/** 技能详情面板（Esc 可关闭）：元信息 + 所有副本位置 + SKILL.md 原文 */
 function SkillDetail({ skill, onClose }: { skill: SkillInfo; onClose: () => void }): JSX.Element {
+  useEscapeKey(true, onClose);
   const { data, isLoading } = useQuery({
     queryKey: ['skill', skill.id],
     queryFn: () => api.getSkill(skill.id),

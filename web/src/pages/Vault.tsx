@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ASSET_CATEGORIES } from '@/config/asset-categories';
 import { api } from '@/lib/api';
+import { useEscapeKey } from '@/lib/use-escape-key';
 import { AssetCard } from '@/components/vault/AssetCard';
 import { AssetEditor } from '@/components/vault/AssetEditor';
 import { DistributionDialog } from '@/components/vault/DistributionDialog';
@@ -142,6 +143,12 @@ export default function Vault(): JSX.Element {
   }, [isLoading, data, search, selectedCategory, navigate]);
 
   const showDetail = viewMode !== 'list';
+
+  // Esc 关闭详情/编辑面板（输入框内不触发，见 use-escape-key）
+  useEscapeKey(showDetail, () => {
+    setViewMode('list');
+    setSelectedAsset(null);
+  });
 
   return (
     <div className="flex h-full">

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Search, Bot, User as UserIcon } from 'lucide-react';
+import { useEscapeKey } from '@/lib/use-escape-key';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -66,8 +67,9 @@ function AgentCard({ agent, active, onSelect }: { agent: AgentInfo; active: bool
   );
 }
 
-/** 只读详情面板 */
+/** 详情面板（Esc 可关闭） */
 function AgentDetail({ agent, onClose }: { agent: AgentInfo; onClose: () => void }): JSX.Element {
+  useEscapeKey(true, onClose);
   const { data, isLoading } = useQuery({
     queryKey: ['agent', agent.id],
     queryFn: () => api.getAgent(agent.id),

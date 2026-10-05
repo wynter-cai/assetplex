@@ -90,4 +90,23 @@ describe('AgentsView 智能体只读视图', () => {
     expect(screen.queryByRole('button', { name: '保存' })).not.toBeInTheDocument();
     expect(screen.queryByText('编辑')).not.toBeInTheDocument();
   });
+
+  it('详情打开时按 Esc 关闭面板', async () => {
+    renderView();
+    fireEvent.click(await screen.findByText('reviewer'));
+    expect(await screen.findByText('定义位置')).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: 'Escape' });
+    await waitFor(() => {
+      expect(screen.queryByText('定义位置')).not.toBeInTheDocument();
+    });
+  });
+
+  it('输入框内按 Esc 不关闭详情面板', async () => {
+    renderView();
+    fireEvent.click(await screen.findByText('reviewer'));
+    expect(await screen.findByText('定义位置')).toBeInTheDocument();
+    const searchBox = screen.getByPlaceholderText('搜索智能体名称或描述...');
+    fireEvent.keyDown(searchBox, { key: 'Escape' });
+    expect(screen.getByText('定义位置')).toBeInTheDocument();
+  });
 });
