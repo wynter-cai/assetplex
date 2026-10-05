@@ -286,6 +286,45 @@ export interface SkillListResult {
   countByOrigin: Record<SkillOrigin, number>;
 }
 
+// ========== AI-Coding 项目类型 ==========
+
+export interface ProjectToolMarker {
+  tool: string;
+  marker: string;
+  path: string;
+}
+
+export interface ProjectAssetStats {
+  rules: number;
+  skills: number;
+  docs: number;
+}
+
+export interface ProjectGitInfo {
+  isGitRepo: boolean;
+  branch: string | null;
+  hasUncommittedChanges: boolean;
+}
+
+export interface ProjectInfo {
+  id: string;
+  name: string;
+  path: string;
+  lastAccessedAt: string | null;
+  exists: boolean;
+  tools: ProjectToolMarker[];
+  assetStats: ProjectAssetStats;
+  git: ProjectGitInfo;
+}
+
+export interface ProjectListResult {
+  items: ProjectInfo[];
+  total: number;
+  existingCount: number;
+}
+
+export type ProjectOpenTarget = 'explorer' | 'terminal' | 'ide';
+
 // ========== 连接详情类型 ==========
 
 export interface ConnectionDetail {

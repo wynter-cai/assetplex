@@ -19,14 +19,18 @@ function renderSidebar(initialPath = '/'): ReturnType<typeof render> {
 }
 
 describe('Sidebar', () => {
-  it('渲染 5 个主导航项', () => {
+  it('渲染 6 个主导航项（含项目，位于资产库与连接之间）', () => {
     renderSidebar();
 
     expect(screen.getByText('首页')).toBeInTheDocument();
     expect(screen.getByText('资产库')).toBeInTheDocument();
+    expect(screen.getByText('项目')).toBeInTheDocument();
     expect(screen.getByText('连接')).toBeInTheDocument();
     expect(screen.getByText('活动')).toBeInTheDocument();
     expect(screen.getByText('设置')).toBeInTheDocument();
+
+    const projectLink = screen.getByText('项目').closest('a');
+    expect(projectLink).toHaveAttribute('href', '/projects');
   });
 
   it('渲染 4 个资产子类别（从配置读取）', () => {

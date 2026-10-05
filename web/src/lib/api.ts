@@ -27,6 +27,8 @@ import type {
   SkillInfo,
   SkillFunction,
   SkillOrigin,
+  ProjectListResult,
+  ProjectOpenTarget,
 } from '@/types/api';
 
 const BASE = '/api';
@@ -166,6 +168,20 @@ export const api = {
     }),
   getSkill: (id: string) =>
     request<{ skill: SkillInfo; rawContent: string }>(`/skills/${encodeURIComponent(id)}`),
+
+  // Projects（AI-Coding 项目可视化）
+  listProjects: (params?: { existingOnly?: boolean; search?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.existingOnly) qs.set('existingOnly', 'true');
+    if (params?.search) qs.set('search', params.search);
+    const q = qs.toString();
+    return request<ProjectListResult>(`/projects${q ? `?${q}` : ''}`);
+  },
+  openProject: (id: string, target: ProjectOpenTarget) =>
+    request<{ ok: boolean }>(`/projects/${encodeURIComponent(id)}/open`, {
+      method: 'POST',
+      body: JSON.stringify({ target }),
+    }),
 
   // Tool detail (connection detail)
   getToolDetail: (toolName: string) =>

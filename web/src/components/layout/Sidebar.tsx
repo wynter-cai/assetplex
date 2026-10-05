@@ -9,6 +9,7 @@ import {
   Settings,
   Boxes,
   ChevronDown,
+  FolderGit2,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -25,6 +26,7 @@ interface MainNavItem {
 const MAIN_NAV: MainNavItem[] = [
   { to: '/', label: '首页', icon: Home },
   { to: '/vault', label: '资产库', icon: Package, hasChildren: true },
+  { to: '/projects', label: '项目', icon: FolderGit2 },
   { to: '/connections', label: '连接', icon: Plug },
   { to: '/sync', label: '同步', icon: RefreshCw },
   { to: '/activities', label: '活动', icon: ActivityIcon },

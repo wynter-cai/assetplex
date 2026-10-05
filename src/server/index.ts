@@ -18,6 +18,7 @@ import { filesRoutes } from './routes/files.js';
 import { assetsRoutes } from './routes/assets.js';
 import { agentsRoutes } from './routes/agents.js';
 import { skillsRoutes } from './routes/skills.js';
+import { projectsRoutes } from './routes/projects.js';
 import { errorHandler } from './middleware/error.js';
 
 export interface ServerOptions {
@@ -56,6 +57,7 @@ export async function startServer(options: ServerOptions = {}): Promise<void> {
   app.route('/api/assets', assetsRoutes);
   app.route('/api/agents', agentsRoutes);
   app.route('/api/skills', skillsRoutes);
+  app.route('/api/projects', projectsRoutes);
 
   // 静态文件服务（前端构建产物）
   // 开发模式下前端跑在 5173 端口，这里只服务 API；

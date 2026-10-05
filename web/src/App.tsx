@@ -13,6 +13,7 @@ import Skills from './pages/Skills';
 import Rules from './pages/Rules';
 import Mcp from './pages/Mcp';
 import Settings from './pages/Settings';
+import Projects from './pages/Projects';
 
 export default function App(): JSX.Element {
   return (
@@ -21,6 +22,7 @@ export default function App(): JSX.Element {
         <Route path="/" element={<Home />} />
         <Route path="/vault" element={<Vault />} />
         <Route path="/vault/:category" element={<Vault />} />
+        <Route path="/projects" element={<Projects />} />
         <Route path="/connections" element={<Connections />} />
         <Route
           path="/activities"
