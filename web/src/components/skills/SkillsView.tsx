@@ -1,40 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Search, Sparkles, Layers, Factory, FileText } from 'lucide-react';
+import { Search, Sparkles, Layers, Factory } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { api } from '@/lib/api';
-import { useEscapeKey } from '@/lib/use-escape-key';
-import { Markdown, stripFrontmatter } from '@/components/common/Markdown';
 import { cn } from '@/lib/utils';
+import { SkillDetail } from './SkillDetail';
+import { SkillCreateDialog } from './SkillCreateDialog';
+import { FUNCTION_LABELS, ORIGIN_LABELS, FUNCTION_ORDER, ORIGIN_ORDER } from './skill-labels';
 import type { SkillInfo, SkillFunction, SkillOrigin } from '@/types/api';
-
-const FUNCTION_LABELS: Record<SkillFunction, string> = {
-  coding: '编码开发',
-  writing: '文档写作',
-  browser: '浏览器自动化',
-  data: '数据处理',
-  devops: 'DevOps/部署',
-  'ai-integration': 'AI 集成',
-  design: '设计创意',
-  workflow: '工作流自动化',
-  other: '其他',
-};
-
-const ORIGIN_LABELS: Record<SkillOrigin, string> = {
-  builtin: '官方内置',
-  plugin: '插件自带',
-  personal: '个人自建',
-  marketplace: '市场安装',
-};
-
-const FUNCTION_ORDER: SkillFunction[] = [
-  'coding', 'writing', 'browser', 'data', 'devops', 'ai-integration', 'design', 'workflow', 'other',
-];
-const ORIGIN_ORDER: SkillOrigin[] = ['personal', 'plugin', 'marketplace', 'builtin'];
 
 type Dimension = 'function' | 'origin';
 
@@ -151,76 +128,7 @@ function SkillCard({
   );
 }
 
-/** 技能详情面板（Esc 可关闭）：元信息 + 所有副本位置 + SKILL.md 原文 */
-function SkillDetail({ skill, onClose }: { skill: SkillInfo; onClose: () => void }): JSX.Element {
-  useEscapeKey(true, onClose);
-  const { data, isLoading } = useQuery({
-    queryKey: ['skill', skill.id],
-    queryFn: () => api.getSkill(skill.id),
-  });
-
-  return (
-    <div className="flex min-w-0 flex-1 flex-col rounded-lg border bg-card lg:max-w-xl">
-      <div className="flex items-center justify-between px-4 py-3 border-b">
-        <div className="flex items-center gap-2 min-w-0">
-          <Sparkles className="h-4 w-4 text-muted-foreground shrink-0" />
-          <h2 className="text-sm font-semibold truncate">{skill.name}</h2>
-        </div>
-        <Button variant="ghost" size="sm" onClick={onClose}>关闭</Button>
-      </div>
-
-      <div className="p-4 space-y-4 overflow-y-auto min-h-0 flex-1 flex flex-col">
-        <div className="flex flex-wrap gap-1.5">
-          <Badge variant="outline">{FUNCTION_LABELS[skill.functionCategory]}</Badge>
-          <Badge variant="outline">{ORIGIN_LABELS[skill.origin]}</Badge>
-          {skill.version && <Badge variant="secondary">v{skill.version}</Badge>}
-          {skill.functionOverridden && <Badge variant="secondary">已手动分类</Badge>}
-        </div>
-
-        {skill.description && (
-          <div>
-            <h3 className="text-xs font-medium text-muted-foreground mb-1">描述</h3>
-            <p className="text-sm">{skill.description}</p>
-          </div>
-        )}
-
-        <div>
-          <h3 className="text-xs font-medium text-muted-foreground mb-1">
-            文件位置（共 {skill.variants.length + 1} 个副本）
-          </h3>
-          <ul className="space-y-1">
-            <li>
-              <code className="block text-xs bg-muted rounded p-2 break-all">{skill.sourcePath}</code>
-            </li>
-            {skill.variants.map((v) => (
-              <li key={v}>
-                <code className="block text-xs bg-muted rounded p-2 break-all">{v}</code>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div className="flex flex-col flex-1 min-h-48">
-          <h3 className="text-xs font-medium text-muted-foreground mb-1 flex items-center gap-1 shrink-0">
-            <FileText className="h-3 w-3" />
-            SKILL.md 文档
-          </h3>
-          {isLoading ? (
-            <Skeleton className="h-40 w-full" />
-          ) : (
-            <div className="flex-1 min-h-0 overflow-auto rounded border bg-muted/30 p-3">
-              {data?.rawContent ? (
-                <Markdown content={stripFrontmatter(data.rawContent)} />
-              ) : (
-                <p className="text-xs text-muted-foreground">（无内容）</p>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
+/** 技能详情面板改为独立组件（SkillDetail.tsx）：保险箱技能支持编辑/删除/同步分发 */
 
 function CountChip({ active, label, count, onClick }: { active: boolean; label: string; count: number; onClick: () => void }): JSX.Element {
   return (
@@ -245,9 +153,13 @@ export function SkillsView(): JSX.Element {
   const [originFilter, setOriginFilter] = useState<SkillOrigin | null>(null);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<SkillInfo | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [batchFunction, setBatchFunction] = useState<SkillFunction>('other');
   const [applying, setApplying] = useState(false);
+
+  /** 新建成功后打开新技能详情 */
+  const handleCreated = (skill: SkillInfo): void => setSelected(skill);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['skills', functionFilter, originFilter, search],
@@ -395,6 +307,11 @@ export function SkillsView(): JSX.Element {
             清除筛选
           </button>
         )}
+        <div className="flex-1" />
+        <Button size="sm" className="h-9 px-3 text-xs" onClick={() => setCreateOpen(true)}>
+          <Sparkles className="h-3.5 w-3.5 mr-1" />
+          新建技能
+        </Button>
       </div>
 
       {/* 批量操作条（有勾选时出现） */}
@@ -494,6 +411,12 @@ export function SkillsView(): JSX.Element {
       </div>
 
       {selected && <SkillDetail skill={selected} onClose={() => setSelected(null)} />}
+
+      <SkillCreateDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onCreated={handleCreated}
+      />
     </div>
   );
 }

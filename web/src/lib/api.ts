@@ -21,6 +21,7 @@ import type {
   FrontendCategory,
   AgentListResult,
   AgentDetailResult,
+  AgentInfo,
   AgentKind,
   AgentTool,
   SkillListResult,
@@ -151,6 +152,18 @@ export const api = {
   },
   getAgent: (id: string) =>
     request<AgentDetailResult>(`/agents/${encodeURIComponent(id)}`),
+  createAgent: (body: { name: string; description?: string; content: string }) =>
+    request<{ agent: AgentInfo }>('/agents', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  updateAgent: (id: string, content: string) =>
+    request<{ agent: AgentInfo }>(`/agents/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      body: JSON.stringify({ content }),
+    }),
+  deleteAgent: (id: string) =>
+    request<{ success: boolean }>(`/agents/${encodeURIComponent(id)}`, { method: 'DELETE' }),
 
   // Skills（分类全貌，只读 + 职能覆盖）
   listSkills: (params?: { function?: SkillFunction; origin?: SkillOrigin; search?: string }) => {
@@ -168,6 +181,18 @@ export const api = {
     }),
   getSkill: (id: string) =>
     request<{ skill: SkillInfo; rawContent: string }>(`/skills/${encodeURIComponent(id)}`),
+  createSkill: (body: { name: string; description?: string; content: string }) =>
+    request<{ skill: SkillInfo }>('/skills', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  updateSkill: (id: string, content: string) =>
+    request<{ skill: SkillInfo }>(`/skills/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      body: JSON.stringify({ content }),
+    }),
+  deleteSkill: (id: string) =>
+    request<{ success: boolean }>(`/skills/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   batchSetSkillFunction: (ids: string[], functionCategory: SkillFunction) =>
     request<{ updated: SkillInfo[]; missing: string[] }>('/skills/function-batch', {
       method: 'POST',

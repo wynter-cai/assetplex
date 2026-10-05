@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SkillsView } from './SkillsView';
 import { api } from '@/lib/api';
-import type { SkillInfo, SkillListResult } from '@/types/api';
+import type { SkillInfo, SkillListResult, ToolStatus, SyncResult } from '@/types/api';
 
 function skill(partial: Partial<SkillInfo> & { id: string; name: string; functionCategory: SkillInfo['functionCategory']; origin: SkillInfo['origin'] }): SkillInfo {
   return {
@@ -27,7 +27,7 @@ const result: SkillListResult = {
     coding: 1, writing: 1, browser: 0, data: 0, devops: 0,
     'ai-integration': 0, design: 0, workflow: 0, other: 0,
   },
-  countByOrigin: { builtin: 1, plugin: 0, personal: 1, marketplace: 0 },
+  countByOrigin: { builtin: 1, plugin: 0, personal: 1, marketplace: 0, vault: 0 },
 };
 
 function renderView(): ReturnType<typeof render> {
@@ -156,6 +156,156 @@ describe('SkillsView 批量调整职能', () => {
     fireEvent.click(screen.getByRole('button', { name: /文档写作 1/ }));
     await waitFor(() => {
       expect(screen.queryByText(/已选/)).not.toBeInTheDocument();
+    });
+  });
+});
+
+describe('SkillsView 保险箱写管理', () => {
+  const vaultSkill = skill({
+    id: '周报助手',
+    name: '周报助手',
+    description: '生成中文周报',
+    functionCategory: 'writing',
+    origin: 'vault',
+    tool: 'hub',
+  });
+
+  const writeResult: SkillListResult = {
+    total: 2,
+    items: [vaultSkill, result.items[1]],
+    countByFunction: {
+      coding: 0, writing: 2, browser: 0, data: 0, devops: 0,
+      'ai-integration': 0, design: 0, workflow: 0, other: 0,
+    },
+    countByOrigin: { builtin: 1, plugin: 0, personal: 0, marketplace: 0, vault: 1 },
+  };
+
+  const twoTools: ToolStatus[] = [
+    { name: 'trae', installed: true, configDirExists: true, configDir: '/u/.trae-cn' },
+    { name: 'codex', installed: true, configDirExists: true, configDir: '/u/.codex' },
+  ];
+
+  function mockWriteApis(): void {
+    vi.spyOn(api, 'listSkills').mockResolvedValue(writeResult);
+    vi.spyOn(api, 'getSkill').mockResolvedValue({
+      skill: vaultSkill,
+      rawContent: '---\nname: 周报助手\n---\n# 周报正文',
+    });
+    vi.spyOn(api, 'createSkill').mockResolvedValue({ skill: vaultSkill });
+    vi.spyOn(api, 'updateSkill').mockResolvedValue({ skill: vaultSkill });
+    vi.spyOn(api, 'deleteSkill').mockResolvedValue({ success: true });
+    vi.spyOn(api, 'runSync').mockResolvedValue({ results: [] });
+    vi.spyOn(api, 'getTools').mockResolvedValue({ tools: twoTools });
+  }
+
+  beforeEach(() => {
+    mockWriteApis();
+  });
+
+  it('工具栏新建技能：填写名称/描述/正文提交后调用创建接口并关闭表单', async () => {
+    renderView();
+    fireEvent.click(await screen.findByRole('button', { name: '新建技能' }));
+    fireEvent.change(screen.getByLabelText('技能名称'), { target: { value: '周报助手' } });
+    fireEvent.change(screen.getByLabelText('技能描述'), { target: { value: '生成中文周报' } });
+    fireEvent.change(screen.getByLabelText('技能正文'), { target: { value: '# 周报' } });
+    fireEvent.click(screen.getByRole('button', { name: '创建' }));
+    await waitFor(() => {
+      expect(api.createSkill).toHaveBeenCalledWith({
+        name: '周报助手',
+        description: '生成中文周报',
+        content: '# 周报',
+      });
+    });
+    await waitFor(() => {
+      expect(screen.queryByLabelText('技能名称')).not.toBeInTheDocument();
+    });
+  });
+
+  it('创建重名技能时提示后端错误信息', async () => {
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+    vi.spyOn(api, 'createSkill').mockRejectedValue(new Error('同名技能已存在：pdf（来源：builtin）'));
+    renderView();
+    fireEvent.click(await screen.findByRole('button', { name: '新建技能' }));
+    fireEvent.change(screen.getByLabelText('技能名称'), { target: { value: 'PDF' } });
+    fireEvent.click(screen.getByRole('button', { name: '创建' }));
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith('同名技能已存在：pdf（来源：builtin）');
+    });
+  });
+
+  it('保险箱技能详情提供编辑/删除/同步分发', async () => {
+    renderView();
+    fireEvent.click(await screen.findByRole('button', { name: '查看 周报助手 详情' }));
+    expect(await screen.findByRole('button', { name: '编辑' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '删除' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '同步分发' })).toBeInTheDocument();
+  });
+
+  it('非保险箱技能详情只读，仅提供同步分发', async () => {
+    renderView();
+    fireEvent.click(await screen.findByRole('button', { name: '查看 pdf 详情' }));
+    expect(await screen.findByRole('button', { name: '同步分发' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '编辑' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '删除' })).not.toBeInTheDocument();
+  });
+
+  it('编辑保存调用更新接口并传入修改后的全文', async () => {
+    renderView();
+    fireEvent.click(await screen.findByRole('button', { name: '查看 周报助手 详情' }));
+    fireEvent.click(await screen.findByRole('button', { name: '编辑' }));
+    const textarea = screen.getByLabelText('编辑 SKILL.md 内容') as HTMLTextAreaElement;
+    expect(textarea.value).toContain('# 周报正文');
+    fireEvent.change(textarea, { target: { value: '# 周报正文 v2' } });
+    fireEvent.click(screen.getByRole('button', { name: '保存' }));
+    await waitFor(() => {
+      expect(api.updateSkill).toHaveBeenCalledWith('周报助手', '# 周报正文 v2');
+    });
+  });
+
+  it('保存时技能不存在则提示错误并刷新列表', async () => {
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+    vi.spyOn(api, 'updateSkill').mockRejectedValue(new Error('技能不存在：周报助手'));
+    renderView();
+    fireEvent.click(await screen.findByRole('button', { name: '查看 周报助手 详情' }));
+    fireEvent.click(await screen.findByRole('button', { name: '编辑' }));
+    fireEvent.click(screen.getByRole('button', { name: '保存' }));
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith('技能不存在：周报助手');
+    });
+    await waitFor(() => {
+      expect(api.listSkills).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it('删除时确认对话框警示影响范围，确认后调用删除接口', async () => {
+    renderView();
+    fireEvent.click(await screen.findByRole('button', { name: '查看 周报助手 详情' }));
+    fireEvent.click(await screen.findByRole('button', { name: '删除' }));
+    expect(await screen.findByText(/将从保险箱及所有已分发工具中删除/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '确认删除' }));
+    await waitFor(() => {
+      expect(api.deleteSkill).toHaveBeenCalledWith('周报助手');
+    });
+  });
+
+  it('同步分发：选择目标工具执行后展示各工具成功/失败结果', async () => {
+    const results: SyncResult[] = [
+      { tool: 'trae', success: true, itemCount: 1, skippedCount: 0, errors: [], warnings: [], durationMs: 5 },
+      { tool: 'codex', success: false, itemCount: 0, skippedCount: 0, errors: ['写入失败'], warnings: [], durationMs: 3 },
+    ];
+    vi.spyOn(api, 'runSync').mockResolvedValue({ results });
+    renderView();
+    fireEvent.click(await screen.findByRole('button', { name: '查看 周报助手 详情' }));
+    fireEvent.click(await screen.findByRole('button', { name: '同步分发' }));
+    fireEvent.click(await screen.findByLabelText('选择同步目标 trae'));
+    fireEvent.click(screen.getByLabelText('选择同步目标 codex'));
+    fireEvent.click(screen.getByRole('button', { name: '开始同步' }));
+    expect(await screen.findByText('同步结果')).toBeInTheDocument();
+    expect(screen.getByText('TRAE 成功')).toBeInTheDocument();
+    expect(screen.getByText('OpenAI Codex 失败')).toBeInTheDocument();
+    expect(screen.getByText('写入失败')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(api.runSync).toHaveBeenCalledWith(['trae', 'codex'], false);
     });
   });
 });

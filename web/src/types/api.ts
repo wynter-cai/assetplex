@@ -220,7 +220,7 @@ export interface AssetListResult {
 
 // ========== 智能体只读盘点类型 ==========
 
-export type AgentTool = 'trae' | 'codebuddy' | 'claude' | 'codex';
+export type AgentTool = 'trae' | 'codebuddy' | 'claude' | 'codex' | 'hub';
 export type AgentKind =
   | 'custom-subagent'
   | 'expert'
@@ -264,7 +264,7 @@ export type SkillFunction =
   | 'workflow'
   | 'other';
 
-export type SkillOrigin = 'builtin' | 'plugin' | 'personal' | 'marketplace';
+export type SkillOrigin = 'builtin' | 'plugin' | 'personal' | 'marketplace' | 'vault';
 
 export interface SkillInfo {
   id: string;

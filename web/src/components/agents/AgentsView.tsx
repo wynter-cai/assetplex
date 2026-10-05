@@ -1,40 +1,17 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Search, Bot, User as UserIcon } from 'lucide-react';
-import { useEscapeKey } from '@/lib/use-escape-key';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { api } from '@/lib/api';
-import { Markdown, stripFrontmatter } from '@/components/common/Markdown';
 import { cn } from '@/lib/utils';
+import { AgentDetail } from './AgentDetail';
+import { AgentCreateDialog } from './AgentCreateDialog';
+import { KIND_LABELS, TOOL_LABELS, ALL_KINDS, ALL_TOOLS } from './agent-labels';
 import type { AgentInfo, AgentKind, AgentTool } from '@/types/api';
-
-const KIND_LABELS: Record<AgentKind, string> = {
-  'custom-subagent': '自建子代理',
-  expert: 'CodeBuddy 专家',
-  'builtin-persona': '内置 Persona',
-  'plugin-agent': '插件智能体',
-};
-
-const TOOL_LABELS: Record<AgentTool, string> = {
-  trae: 'TRAE',
-  codebuddy: 'CodeBuddy',
-  claude: 'Claude Code',
-  codex: 'Codex',
-};
-
-const ALL_KINDS: AgentKind[] = ['custom-subagent', 'expert', 'builtin-persona', 'plugin-agent'];
-const ALL_TOOLS: AgentTool[] = ['trae', 'codebuddy', 'claude', 'codex'];
-
-function formatTime(iso: string | null): string {
-  if (!iso) return '时间未知';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '时间未知';
-  return d.toLocaleString('zh-CN', { dateStyle: 'medium', timeStyle: 'short' });
-}
 
 /** 单张智能体卡片（只读） */
 function AgentCard({ agent, active, onSelect }: { agent: AgentInfo; active: boolean; onSelect: (a: AgentInfo) => void }): JSX.Element {
@@ -68,87 +45,18 @@ function AgentCard({ agent, active, onSelect }: { agent: AgentInfo; active: bool
   );
 }
 
-/** 详情面板（Esc 可关闭） */
-function AgentDetail({ agent, onClose }: { agent: AgentInfo; onClose: () => void }): JSX.Element {
-  useEscapeKey(true, onClose);
-  const { data, isLoading } = useQuery({
-    queryKey: ['agent', agent.id],
-    queryFn: () => api.getAgent(agent.id),
-  });
+/** 详情面板改为独立组件（AgentDetail.tsx）：保险箱智能体支持编辑/删除/同步分发 */
 
-  return (
-    <div className="flex min-w-0 flex-1 flex-col rounded-lg border bg-card lg:max-w-xl">
-      <div className="flex items-center justify-between px-4 py-3 border-b">
-        <div className="flex items-center gap-2 min-w-0">
-          <Bot className="h-4 w-4 text-muted-foreground shrink-0" />
-          <h2 className="text-sm font-semibold truncate">{agent.name}</h2>
-        </div>
-        <Button variant="ghost" size="sm" onClick={onClose}>关闭</Button>
-      </div>
-
-      <div className="p-4 space-y-4 overflow-y-auto min-h-0 flex-1">
-        <div className="flex flex-wrap gap-1.5">
-          <Badge variant="outline">{KIND_LABELS[agent.kind]}</Badge>
-          <Badge variant="outline">{TOOL_LABELS[agent.tool]}</Badge>
-          <Badge variant={agent.userCreated ? 'secondary' : 'outline'}>
-            {agent.userCreated ? '用户自建' : '工具内置'}
-          </Badge>
-        </div>
-
-        {agent.description && (
-          <div>
-            <h3 className="text-xs font-medium text-muted-foreground mb-1">描述</h3>
-            <p className="text-sm">{agent.description}</p>
-          </div>
-        )}
-
-        <div>
-          <h3 className="text-xs font-medium text-muted-foreground mb-1">定义位置</h3>
-          <code className="block text-xs bg-muted rounded p-2 break-all">{agent.sourcePath}</code>
-          <p className="text-xs text-muted-foreground mt-1">最后修改：{formatTime(agent.lastModifiedAt)}</p>
-        </div>
-
-        {agent.extra && Object.keys(agent.extra).length > 0 && (
-          <div>
-            <h3 className="text-xs font-medium text-muted-foreground mb-1">工具专属字段</h3>
-            <dl className="text-xs space-y-1">
-              {Object.entries(agent.extra).map(([k, v]) => (
-                <div key={k} className="flex gap-2">
-                  <dt className="text-muted-foreground shrink-0">{k}:</dt>
-                  <dd className="break-all">{v}</dd>
-                </div>
-              ))}
-            </dl>
-          </div>
-        )}
-
-        <div>
-          <h3 className="text-xs font-medium text-muted-foreground mb-1">定义文件内容</h3>
-          {isLoading ? (
-            <Skeleton className="h-40 w-full" />
-          ) : (
-            <div className="rounded border bg-muted/30 p-2.5 overflow-auto max-h-80">
-              {data?.rawContent ? (
-                <Markdown content={stripFrontmatter(data.rawContent)} />
-              ) : (
-                <p className="text-xs text-muted-foreground">（无内容）</p>
-              )}
-            </div>
-          )}
-        </div>
-
-        <p className="text-xs text-muted-foreground">智能体为只读盘点，暂不支持编辑或分发。</p>
-      </div>
-    </div>
-  );
-}
-
-/** 智能体只读盘点主视图（在资产库 /vault/agent 下渲染） */
+/** 智能体盘点主视图（在资产库 /vault/agent 下渲染） */
 export function AgentsView(): JSX.Element {
   const [kindFilter, setKindFilter] = useState<AgentKind | null>(null);
   const [toolFilter, setToolFilter] = useState<AgentTool | null>(null);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<AgentInfo | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+
+  /** 新建成功后打开新智能体详情 */
+  const handleCreated = (agent: AgentInfo): void => setSelected(agent);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['agents', kindFilter, toolFilter, search],
@@ -194,14 +102,21 @@ export function AgentsView(): JSX.Element {
         </div>
 
         {/* 搜索 */}
-        <div className="relative mb-4 max-w-sm">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="搜索智能体名称或描述..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-8 h-9"
-          />
+        <div className="flex items-center gap-2 mb-4">
+          <div className="relative max-w-sm flex-1">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="搜索智能体名称或描述..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-8 h-9"
+            />
+          </div>
+          <div className="flex-1" />
+          <Button size="sm" className="h-9 px-3 text-xs" onClick={() => setCreateOpen(true)}>
+            <Bot className="h-3.5 w-3.5 mr-1" />
+            新建智能体
+          </Button>
         </div>
 
         {error && (
@@ -244,6 +159,12 @@ export function AgentsView(): JSX.Element {
       </div>
 
       {selected && <AgentDetail agent={selected} onClose={() => setSelected(null)} />}
+
+      <AgentCreateDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onCreated={handleCreated}
+      />
     </div>
   );
 }
