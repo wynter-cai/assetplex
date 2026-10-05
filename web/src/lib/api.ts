@@ -168,6 +168,11 @@ export const api = {
     }),
   getSkill: (id: string) =>
     request<{ skill: SkillInfo; rawContent: string }>(`/skills/${encodeURIComponent(id)}`),
+  batchSetSkillFunction: (ids: string[], functionCategory: SkillFunction) =>
+    request<{ updated: SkillInfo[]; missing: string[] }>('/skills/function-batch', {
+      method: 'POST',
+      body: JSON.stringify({ ids, functionCategory }),
+    }),
 
   // Projects（AI-Coding 项目可视化）
   listProjects: (params?: { existingOnly?: boolean; search?: string }) => {

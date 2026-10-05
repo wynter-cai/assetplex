@@ -13,6 +13,7 @@ import {
   listSkills,
   getSkillRawContent,
   overrideSkillFunction,
+  overrideSkillFunctionsBatch,
   SKILL_FUNCTIONS,
   type SkillFs,
   type SkillSources,
@@ -264,5 +265,66 @@ describe('getSkillRawContent 单个技能原文', () => {
     const fs = makeFs({ [`${SOURCES.userSkillsDir}/my-s/SKILL.md`]: SKILL('my-s', '我的技能') });
     const result = getSkillRawContent('nope', { fs, sources: SOURCES, store: new MemoryOverrideStore() });
     expect(result).toBeNull();
+  });
+});
+
+describe('overrideSkillFunctionsBatch 批量覆盖', () => {
+  function setup(files: Record<string, string>): { fs: SkillFs; store: MemoryOverrideStore } {
+    return { fs: makeFs(files), store: new MemoryOverrideStore() };
+  }
+
+  it('一次调用批量更新多个技能，只保存一次', () => {
+    const { fs, store } = setup({
+      [`${SOURCES.userSkillsDir}/a/SKILL.md`]: SKILL('a', '奇怪用途一'),
+      [`${SOURCES.userSkillsDir}/b/SKILL.md`]: SKILL('b', '奇怪用途二'),
+      [`${SOURCES.userSkillsDir}/c/SKILL.md`]: SKILL('c', '奇怪用途三'),
+    });
+
+    const result = overrideSkillFunctionsBatch(['a', 'B', 'c'], 'data', { fs, sources: SOURCES, store });
+
+    expect(result.updated).toHaveLength(3);
+    expect(result.missing).toEqual([]);
+    // id 大小写不敏感
+    const b = result.updated.find((s) => s.id === 'b');
+    expect(b?.functionCategory).toBe('data');
+    expect(b?.functionOverridden).toBe(true);
+    // 只持久化一次
+    expect(store.saves).toBe(1);
+    // 重新扫描后覆盖保持
+    const after = listSkills({ fs, sources: SOURCES, store });
+    expect(after.items.every((s) => s.functionCategory === 'data')).toBe(true);
+  });
+
+  it('部分 id 不存在时更新其余并报告 missing', () => {
+    const { fs, store } = setup({
+      [`${SOURCES.userSkillsDir}/a/SKILL.md`]: SKILL('a', '用途一'),
+      [`${SOURCES.userSkillsDir}/b/SKILL.md`]: SKILL('b', '用途二'),
+    });
+
+    const result = overrideSkillFunctionsBatch(['a', 'ghost'], 'writing', { fs, sources: SOURCES, store });
+
+    expect(result.updated.map((s) => s.id)).toEqual(['a']);
+    expect(result.missing).toEqual(['ghost']);
+    expect(store.saves).toBe(1);
+  });
+
+  it('非法职能抛错且不写存储', () => {
+    const { fs, store } = setup({
+      [`${SOURCES.userSkillsDir}/a/SKILL.md`]: SKILL('a', '用途'),
+    });
+    expect(() =>
+      overrideSkillFunctionsBatch(['a'], 'nope' as SkillFunction, { fs, sources: SOURCES, store }),
+    ).toThrow();
+    expect(store.saves).toBe(0);
+  });
+
+  it('空 ids 返回空结果且不写存储', () => {
+    const { fs, store } = setup({
+      [`${SOURCES.userSkillsDir}/a/SKILL.md`]: SKILL('a', '用途'),
+    });
+    const result = overrideSkillFunctionsBatch([], 'data', { fs, sources: SOURCES, store });
+    expect(result.updated).toEqual([]);
+    expect(result.missing).toEqual([]);
+    expect(store.saves).toBe(0);
   });
 });

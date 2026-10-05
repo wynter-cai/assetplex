@@ -101,3 +101,61 @@ describe('SkillsView 技能分类全貌', () => {
     });
   });
 });
+
+describe('SkillsView 批量调整职能', () => {
+  beforeEach(() => {
+    vi.spyOn(api, 'listSkills').mockResolvedValue(result);
+    vi.spyOn(api, 'overrideSkillFunction').mockResolvedValue({ skill: { ...result.items[0], functionCategory: 'data', functionOverridden: true } });
+    vi.spyOn(api, 'getSkill').mockResolvedValue({ skill: result.items[0], rawContent: '# mycode\n原始内容' });
+    vi.spyOn(api, 'batchSetSkillFunction').mockResolvedValue({ updated: [], missing: [] });
+  });
+
+  it('勾选卡片出现批量条，取消后消失', async () => {
+    renderView();
+    const box = await screen.findByLabelText('选择技能 mycode');
+    expect(screen.queryByText(/已选/)).not.toBeInTheDocument();
+    fireEvent.click(box);
+    expect(screen.getByText('已选 1 个技能')).toBeInTheDocument();
+    fireEvent.click(box);
+    expect(screen.queryByText(/已选/)).not.toBeInTheDocument();
+  });
+
+  it('全选当前筛选结果并批量应用，成功后清空并刷新', async () => {
+    renderView();
+    await screen.findByText(/去重后共 2 个技能/);
+    // 批量条在勾选后才出现：先勾一张，再全选补齐
+    fireEvent.click(await screen.findByLabelText('选择技能 mycode'));
+    fireEvent.click(screen.getByRole('button', { name: '全选当前筛选结果' }));
+    expect(screen.getByText('已选 2 个技能')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('批量设置职能分类'), { target: { value: 'data' } });
+    fireEvent.click(screen.getByRole('button', { name: '应用' }));
+    await waitFor(() => {
+      expect(api.batchSetSkillFunction).toHaveBeenCalledWith(['mycode', 'pdf'], 'data');
+    });
+    await waitFor(() => {
+      expect(screen.queryByText(/已选/)).not.toBeInTheDocument();
+    });
+  });
+
+  it('部分 id 缺失时提示未找到的技能', async () => {
+    vi.spyOn(api, 'batchSetSkillFunction').mockResolvedValue({ updated: [], missing: ['ghost'] });
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+    renderView();
+    fireEvent.click(await screen.findByLabelText('选择技能 mycode'));
+    fireEvent.click(screen.getByRole('button', { name: '应用' }));
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('ghost'));
+    });
+  });
+
+  it('切换筛选时清空勾选', async () => {
+    renderView();
+    fireEvent.click(await screen.findByLabelText('选择技能 mycode'));
+    expect(screen.getByText('已选 1 个技能')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /文档写作 1/ }));
+    await waitFor(() => {
+      expect(screen.queryByText(/已选/)).not.toBeInTheDocument();
+    });
+  });
+});

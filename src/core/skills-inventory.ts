@@ -434,6 +434,50 @@ export function overrideSkillFunction(
   return { ...target, functionCategory, functionOverridden: true };
 }
 
+/** 批量覆盖结果：updated 为更新后的条目，missing 为磁盘上已不存在的 id（原样返回） */
+export interface BatchOverrideResult {
+  updated: SkillInfo[];
+  missing: string[];
+}
+
+/**
+ * 批量覆盖多个技能的职能分类并一次性持久化。
+ * id 大小写不敏感；已不存在的 id 计入 missing，不影响其余；
+ * 全部 missing（或空列表）时不写存储。
+ * @throws functionCategory 非法时抛错（不写存储）
+ */
+export function overrideSkillFunctionsBatch(
+  ids: string[],
+  functionCategory: SkillFunction,
+  input: { fs: SkillFs; sources: SkillSources; store: SkillOverrideStore },
+): BatchOverrideResult {
+  if (!SKILL_FUNCTIONS.includes(functionCategory)) {
+    throw new Error(`无效职能：${functionCategory}，支持：${SKILL_FUNCTIONS.join(', ')}`);
+  }
+  const { fs, sources, store } = input;
+  const all = buildAll(fs, sources, store);
+  const byId = new Map(all.map((s) => [s.id, s]));
+
+  const targets: SkillInfo[] = [];
+  const missing: string[] = [];
+  for (const rawId of ids) {
+    const skill = byId.get(rawId.toLowerCase());
+    if (skill) targets.push(skill);
+    else missing.push(rawId);
+  }
+
+  if (targets.length > 0) {
+    const overrides = store.load();
+    for (const t of targets) overrides[t.id] = functionCategory;
+    store.save(overrides);
+  }
+
+  return {
+    updated: targets.map((t) => ({ ...t, functionCategory, functionOverridden: true })),
+    missing,
+  };
+}
+
 // ============ 单个技能原文 ============
 
 /**

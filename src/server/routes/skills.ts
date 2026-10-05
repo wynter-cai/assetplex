@@ -14,6 +14,7 @@ import {
   listSkills,
   getSkillRawContent,
   overrideSkillFunction,
+  overrideSkillFunctionsBatch,
   SKILL_FUNCTIONS,
   type SkillFs,
   type SkillFunction,
@@ -92,6 +93,34 @@ export function skillsRouteFactory(
         return c.json({ error: `技能不存在：${id}` }, 404);
       }
       return c.json({ skill });
+    } catch (err) {
+      return c.json({ error: err instanceof Error ? err.message : String(err) }, 400);
+    }
+  });
+
+  /** 批量覆盖职能分类（ids 中磁盘已不存在的计入 missing，不影响其余） */
+  routes.post('/function-batch', async (c) => {
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: '请求体必须是 JSON' }, 400);
+    }
+    const parsed = body as { ids?: unknown; functionCategory?: unknown } | null;
+    if (!Array.isArray(parsed?.ids) || parsed.ids.some((id) => typeof id !== 'string')) {
+      return c.json({ error: 'ids 必须是字符串数组' }, 400);
+    }
+    const ids = parsed.ids as string[];
+    if (ids.length === 0) {
+      return c.json({ error: 'ids 不能为空' }, 400);
+    }
+    const functionCategory = parsed.functionCategory;
+    if (typeof functionCategory !== 'string' || !(SKILL_FUNCTIONS as string[]).includes(functionCategory)) {
+      return c.json({ error: `无效职能，支持：${SKILL_FUNCTIONS.join(', ')}` }, 400);
+    }
+    try {
+      const result = overrideSkillFunctionsBatch(ids, functionCategory as SkillFunction, { fs, sources, store });
+      return c.json(result);
     } catch (err) {
       return c.json({ error: err instanceof Error ? err.message : String(err) }, 400);
     }

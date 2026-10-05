@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Search, Sparkles, Layers, Factory, FileText } from 'lucide-react';
 import { Card } from '@/components/ui/card';
@@ -38,8 +38,20 @@ const ORIGIN_ORDER: SkillOrigin[] = ['personal', 'plugin', 'marketplace', 'built
 
 type Dimension = 'function' | 'origin';
 
-/** 技能卡：职能/来源/版本/副本数 + 职能覆盖下拉 + 查看详情按钮 */
-function SkillCard({ skill, active, onSelect }: { skill: SkillInfo; active: boolean; onSelect: (s: SkillInfo) => void }): JSX.Element {
+/** 技能卡：复选框 + 职能/来源/版本/副本数 + 职能覆盖下拉 + 查看详情按钮 */
+function SkillCard({
+  skill,
+  active,
+  checked,
+  onSelect,
+  onCheckChange,
+}: {
+  skill: SkillInfo;
+  active: boolean;
+  checked: boolean;
+  onSelect: (s: SkillInfo) => void;
+  onCheckChange: (id: string, checked: boolean) => void;
+}): JSX.Element {
   const queryClient = useQueryClient();
 
   const handleChange = (next: SkillFunction): void => {
@@ -71,9 +83,18 @@ function SkillCard({ skill, active, onSelect }: { skill: SkillInfo; active: bool
       className={cn(
         'p-3 cursor-pointer hover:border-primary/40 transition-colors text-left',
         active && 'border-primary bg-accent/30',
+        checked && !active && 'border-primary/50 bg-primary/5',
       )}
     >
       <div className="flex items-center gap-2 mb-1">
+        <input
+          type="checkbox"
+          aria-label={`选择技能 ${skill.name}`}
+          checked={checked}
+          onChange={(e) => onCheckChange(skill.id, e.target.checked)}
+          onClick={(e) => e.stopPropagation()}
+          className="h-3.5 w-3.5 shrink-0 accent-primary cursor-pointer"
+        />
         <Sparkles className="h-4 w-4 text-muted-foreground shrink-0" />
         <span className="text-sm font-medium truncate">{skill.name}</span>
         {skill.version && (
@@ -218,11 +239,15 @@ function CountChip({ active, label, count, onClick }: { active: boolean; label: 
 
 /** 技能分类全貌主视图（资产库 /vault/skill 下渲染） */
 export function SkillsView(): JSX.Element {
+  const queryClient = useQueryClient();
   const [dimension, setDimension] = useState<Dimension>('function');
   const [functionFilter, setFunctionFilter] = useState<SkillFunction | null>(null);
   const [originFilter, setOriginFilter] = useState<SkillOrigin | null>(null);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<SkillInfo | null>(null);
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
+  const [batchFunction, setBatchFunction] = useState<SkillFunction>('other');
+  const [applying, setApplying] = useState(false);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['skills', functionFilter, originFilter, search],
@@ -234,11 +259,41 @@ export function SkillsView(): JSX.Element {
       }),
   });
 
+  // 筛选/维度/搜索变化时清空勾选（勾选集合只对当前结果有意义）
+  useEffect(() => {
+    setCheckedIds(new Set());
+  }, [dimension, functionFilter, originFilter, search]);
+
   const switchDimension = (next: Dimension): void => {
     setDimension(next);
     // 切换维度时清空筛选状态
     setFunctionFilter(null);
     setOriginFilter(null);
+  };
+
+  const checkAll = (): void => {
+    if (!data) return;
+    setCheckedIds(new Set(data.items.map((s) => s.id)));
+  };
+  const clearChecked = (): void => setCheckedIds(new Set());
+
+  const applyBatch = (): void => {
+    if (checkedIds.size === 0 || applying) return;
+    setApplying(true);
+    const ids = Array.from(checkedIds);
+    api
+      .batchSetSkillFunction(ids, batchFunction)
+      .then((result) => {
+        if (result.missing.length > 0) {
+          alert(`以下技能未找到（可能已被删除）：${result.missing.join('、')}`);
+        }
+        setCheckedIds(new Set());
+        void queryClient.invalidateQueries({ queryKey: ['skills'] });
+      })
+      .catch((err: unknown) => {
+        alert(err instanceof Error ? err.message : '批量修改失败');
+      })
+      .finally(() => setApplying(false));
   };
 
   const activeKey: SkillFunction | SkillOrigin | null =
@@ -342,6 +397,43 @@ export function SkillsView(): JSX.Element {
         )}
       </div>
 
+      {/* 批量操作条（有勾选时出现） */}
+      {checkedIds.size > 0 && (
+        <div className="flex flex-wrap items-center gap-2 mb-4 rounded-lg border border-primary/40 bg-primary/5 px-3 py-2">
+          <span className="text-xs font-medium">已选 {checkedIds.size} 个技能</span>
+          <button
+            type="button"
+            onClick={checkAll}
+            className="text-xs text-muted-foreground underline"
+            aria-label="全选当前筛选结果"
+          >
+            全选
+          </button>
+          <button
+            type="button"
+            onClick={clearChecked}
+            className="text-xs text-muted-foreground underline"
+            aria-label="清空勾选"
+          >
+            清空
+          </button>
+          <div className="flex-1" />
+          <select
+            aria-label="批量设置职能分类"
+            value={batchFunction}
+            onChange={(e) => setBatchFunction(e.target.value as SkillFunction)}
+            className="h-8 rounded-md border bg-background px-2 text-xs cursor-pointer"
+          >
+            {FUNCTION_ORDER.map((f) => (
+              <option key={f} value={f}>{FUNCTION_LABELS[f]}</option>
+            ))}
+          </select>
+          <Button size="sm" className="h-8 px-3 text-xs" onClick={applyBatch} disabled={applying}>
+            {applying ? '应用中…' : '应用'}
+          </Button>
+        </div>
+      )}
+
       <p className="text-xs text-muted-foreground mb-3">
         去重后共 {data?.total ?? 0} 个技能（同名副本已合并）
       </p>
@@ -381,7 +473,16 @@ export function SkillsView(): JSX.Element {
                       key={skill.id}
                       skill={skill}
                       active={selected?.id === skill.id}
+                      checked={checkedIds.has(skill.id)}
                       onSelect={(s) => setSelected((prev) => (prev?.id === s.id ? null : s))}
+                      onCheckChange={(id, checked) =>
+                        setCheckedIds((prev) => {
+                          const next = new Set(prev);
+                          if (checked) next.add(id);
+                          else next.delete(id);
+                          return next;
+                        })
+                      }
                     />
                   ))}
                 </div>

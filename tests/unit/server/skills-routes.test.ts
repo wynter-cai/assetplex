@@ -116,6 +116,66 @@ describe('PUT /api/skills/:id/function', () => {
   });
 });
 
+describe('POST /api/skills/function-batch', () => {
+  const files = (): Record<string, string> => ({
+    [`${sources.userSkillsDir}/a/SKILL.md`]: '---\nname: a\ndescription: 用途一\n---',
+    [`${sources.userSkillsDir}/b/SKILL.md`]: '---\nname: b\ndescription: 用途二\n---',
+  });
+
+  it('批量更新成功并持久化', async () => {
+    const store = new MemoryStore();
+    const res = await buildApp(makeFs(files()), store).request('/api/skills/function-batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: ['a', 'b'], functionCategory: 'data' }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.updated).toHaveLength(2);
+    expect(body.missing).toEqual([]);
+    expect(body.updated.every((s: { functionOverridden: boolean }) => s.functionOverridden)).toBe(true);
+    expect(store.data.a).toBe('data');
+    expect(store.data.b).toBe('data');
+  });
+
+  it('部分 id 已不存在时返回 updated 与 missing', async () => {
+    const res = await buildApp(makeFs(files())).request('/api/skills/function-batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: ['a', 'ghost'], functionCategory: 'writing' }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.updated.map((s: { id: string }) => s.id)).toEqual(['a']);
+    expect(body.missing).toEqual(['ghost']);
+  });
+
+  it('非法 functionCategory 返回 400', async () => {
+    const res = await buildApp(makeFs(files())).request('/api/skills/function-batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: ['a'], functionCategory: 'bogus' }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('ids 缺失或非数组返回 400', async () => {
+    const res = await buildApp(makeFs(files())).request('/api/skills/function-batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: 'a', functionCategory: 'data' }),
+    });
+    expect(res.status).toBe(400);
+
+    const empty = await buildApp(makeFs(files())).request('/api/skills/function-batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: [], functionCategory: 'data' }),
+    });
+    expect(empty.status).toBe(400);
+  });
+});
+
 describe('GET /api/skills/:id', () => {
   it('200 返回技能元信息与 SKILL.md 原文', async () => {
     const raw = '---\nname: pdf\ndescription: pdf 文档处理\n---\n# pdf\n正文';
