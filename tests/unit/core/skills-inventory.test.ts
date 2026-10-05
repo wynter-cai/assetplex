@@ -70,6 +70,7 @@ class MemoryOverrideStore implements SkillOverrideStore {
 }
 
 const SOURCES: SkillSources = {
+  vaultSkillsDir: '/hub/skills',
   userSkillsDir: '/home/u/.trae-cn/skills',
   builtinRoot: '/home/u/.trae-cn/builtin',
   builtinSkillsDir: '/home/u/.trae-cn/builtin_skills',
@@ -326,5 +327,60 @@ describe('overrideSkillFunctionsBatch 批量覆盖', () => {
     expect(result.updated).toEqual([]);
     expect(result.missing).toEqual([]);
     expect(store.saves).toBe(0);
+  });
+});
+
+describe('保险箱（vault）技能纳入盘点', () => {
+  it('vault 目录下技能被发现：origin=vault、tool=hub', () => {
+    const fs = makeFs({
+      [`${SOURCES.vaultSkillsDir}/周报助手/SKILL.md`]: SKILL('周报助手', '生成中文周报'),
+    });
+    const found = discoverSkillFiles(fs, SOURCES);
+    expect(found).toHaveLength(1);
+    expect(found[0].origin).toBe('vault');
+    expect(found[0].tool).toBe('hub');
+    expect(found[0].sourcePath).toBe(`${SOURCES.vaultSkillsDir}/周报助手/SKILL.md`);
+  });
+
+  it('listSkills 计数包含 vault 来源', () => {
+    const fs = makeFs({
+      [`${SOURCES.vaultSkillsDir}/a/SKILL.md`]: SKILL('a', '用途'),
+      [`${SOURCES.userSkillsDir}/b/SKILL.md`]: SKILL('b', '用途'),
+    });
+    const all = listSkills({ fs, sources: SOURCES, store: new MemoryOverrideStore() });
+    expect(all.total).toBe(2);
+    expect(all.countByOrigin.vault).toBe(1);
+  });
+
+  it('同名去重：vault 主本优先于 personal，其余副本进 variants', () => {
+    const fs = makeFs({
+      [`${SOURCES.vaultSkillsDir}/pdf/SKILL.md`]: SKILL('pdf', '保险箱版 pdf'),
+      [`${SOURCES.userSkillsDir}/pdf/SKILL.md`]: SKILL('pdf', '用户版 pdf'),
+    });
+    const skills = dedupeSkills(discoverSkillFiles(fs, SOURCES), {});
+    expect(skills).toHaveLength(1);
+    expect(skills[0].origin).toBe('vault');
+    expect(skills[0].description).toBe('保险箱版 pdf');
+    expect(skills[0].variants).toEqual([`${SOURCES.userSkillsDir}/pdf/SKILL.md`]);
+  });
+
+  it('符号链接场景：同一真实路径只保留一条且保留 vault 来源', () => {
+    const vaultPath = `${SOURCES.vaultSkillsDir}/pdf/SKILL.md`;
+    const personalPath = `${SOURCES.userSkillsDir}/pdf/SKILL.md`;
+    const base = makeFs({
+      [vaultPath]: SKILL('pdf', '保险箱版'),
+      [personalPath]: SKILL('pdf', '用户版'),
+    });
+    // 模拟两个路径指向同一物理文件
+    const fs: SkillFs = { ...base, realpath: () => '/real/pdf/SKILL.md' };
+
+    const found = discoverSkillFiles(fs, SOURCES);
+    expect(found).toHaveLength(1);
+    expect(found[0].origin).toBe('vault');
+    expect(found[0].sourcePath).toBe(vaultPath);
+  });
+
+  it('classifyOrigin 识别 vault 前缀', () => {
+    expect(classifyOrigin(`${SOURCES.vaultSkillsDir}/x/SKILL.md`, SOURCES)).toBe('vault');
   });
 });

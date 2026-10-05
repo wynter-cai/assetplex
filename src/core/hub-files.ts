@@ -14,7 +14,7 @@ import {
 } from 'node:fs';
 import { join, resolve, dirname, relative } from 'node:path';
 import { getHubRoot } from '../utils/paths.js';
-import { ensureDir } from '../utils/fs.js';
+import { ensureDir, safeRemove } from '../utils/fs.js';
 
 /** Hub 文件类别 */
 export type HubFileCategory =
@@ -158,6 +158,42 @@ export function deleteHubFile(relativePath: string): void {
   }
 
   unlinkSync(fullPath);
+}
+
+/**
+ * 删除 Hub 技能目录（仅 skills/<name>/ 一层，递归删除）
+ *
+ * 守卫：路径必须位于 Hub 内；仅允许 skills 类别下的一层技能子目录；
+ * skills 根目录、多层子路径、路径穿越、普通文件一律抛错。
+ * 目录不存在时静默返回（幂等）。删除走 safeRemove，兼容 Windows 与符号链接场景。
+ */
+export function deleteHubDirectory(relativePath: string): void {
+  const hubRoot = getHubRoot();
+  const fullPath = resolve(hubRoot, relativePath);
+
+  if (!fullPath.startsWith(hubRoot)) {
+    throw new Error(`路径越界：${relativePath}`);
+  }
+
+  const skillsRoot = resolve(hubRoot, 'skills');
+  if (fullPath === skillsRoot) {
+    throw new Error(`不允许删除技能根目录：${relativePath}`);
+  }
+
+  const rel = relative(skillsRoot, fullPath);
+  if (rel === '' || rel.startsWith('..') || rel.includes('/') || rel.includes('\\')) {
+    throw new Error(`仅允许删除 skills/<name> 一层技能目录：${relativePath}`);
+  }
+
+  if (!existsSync(fullPath)) {
+    return;
+  }
+
+  if (!statSync(fullPath).isDirectory()) {
+    throw new Error(`不是目录：${relativePath}`);
+  }
+
+  safeRemove(fullPath);
 }
 
 /**

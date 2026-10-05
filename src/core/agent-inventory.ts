@@ -11,7 +11,7 @@ import * as TOML from '@iarna/toml';
 
 // ============ 类型 ============
 
-export type AgentTool = 'trae' | 'codebuddy' | 'claude' | 'codex';
+export type AgentTool = 'trae' | 'codebuddy' | 'claude' | 'codex' | 'hub';
 
 export type AgentKind =
   | 'custom-subagent'
@@ -39,6 +39,8 @@ export interface AgentFs {
   listDir(absolutePath: string): string[];
   /** 目录修改时间；不可得返回 null */
   dirMtime(absolutePath: string): string | null;
+  /** 解析真实路径（符号链接归一化）；实现可省略，省略时不做符号链接去重 */
+  realpath?(absolutePath: string): string;
 }
 
 export interface ListAgentsParams {
@@ -61,6 +63,8 @@ export interface AgentSources {
   codebuddy: { codebuddyDir: string };
   codex: { codexDir: string };
   pluginsRoot: string;
+  /** 保险箱智能体目录（Hub agents/<name>.md） */
+  hub: { agentsDir: string };
 }
 
 // ============ frontmatter 解析 ============
@@ -335,10 +339,44 @@ export function parsePluginAgents(input: { pluginsRoot: string; fs: AgentFs }): 
   return agents;
 }
 
+/** 解析保险箱智能体（Hub agents/*.md，Claude Code 子代理格式） */
+export function parseHubAgents(input: { agentsDir: string; fs: AgentFs }): AgentInfo[] {
+  const { agentsDir, fs } = input;
+  const agents: AgentInfo[] = [];
+
+  for (const entry of fs.listDir(agentsDir)) {
+    if (!entry.endsWith('.md')) continue;
+    const fullPath = `${agentsDir}/${entry}`;
+    const content = fs.read(fullPath);
+    if (content === null) continue;
+
+    const { data } = parseFrontmatter(content);
+    const fallbackName = entry.replace(/\.md$/, '');
+    const extra: Record<string, string> = {};
+    for (const [k, v] of Object.entries(data)) {
+      if (k !== 'name' && k !== 'description') extra[k] = v;
+    }
+
+    agents.push({
+      id: makeAgentId('hub', 'custom-subagent', data.name ?? fallbackName),
+      name: data.name ?? fallbackName,
+      description: data.description ?? '',
+      tool: 'hub',
+      kind: 'custom-subagent',
+      sourcePath: fullPath,
+      lastModifiedAt: fs.dirMtime(fullPath),
+      userCreated: true,
+      ...(Object.keys(extra).length > 0 ? { extra } : {}),
+    });
+  }
+
+  return agents;
+}
+
 // ============ 聚合 ============
 
 const ALL_KINDS: AgentKind[] = ['custom-subagent', 'expert', 'builtin-persona', 'plugin-agent'];
-const ALL_TOOLS: AgentTool[] = ['trae', 'codebuddy', 'claude', 'codex'];
+const ALL_TOOLS: AgentTool[] = ['trae', 'codebuddy', 'claude', 'codex', 'hub'];
 
 function collectAll(fs: AgentFs, sources: AgentSources): AgentInfo[] {
   return [
@@ -346,7 +384,37 @@ function collectAll(fs: AgentFs, sources: AgentSources): AgentInfo[] {
     ...parseCustomAgentFiles({ claudeDir: sources.claude.claudeDir, codexDir: sources.codex.codexDir, fs }),
     ...parseCodeBuddyExperts({ codebuddyDir: sources.codebuddy.codebuddyDir, fs }),
     ...parsePluginAgents({ pluginsRoot: sources.pluginsRoot, fs }),
+    ...parseHubAgents({ agentsDir: sources.hub.agentsDir, fs }),
   ];
+}
+
+/**
+ * 符号链接去重：~/.claude/agents 等目录是 hub/agents 的链接时，
+ * 同一物理文件会被扫描两次。同一真实路径只保留一条，hub（保险箱）来源优先。
+ * fs 未实现 realpath 时原样返回。
+ */
+function dedupeSymlinkedAgents(agents: AgentInfo[], fs: AgentFs): AgentInfo[] {
+  if (typeof fs.realpath !== 'function') return agents;
+
+  const byRealPath = new Map<string, AgentInfo>();
+  const keyOf = new Map<AgentInfo, string>();
+  for (const agent of agents) {
+    if (agent.kind !== 'custom-subagent') continue;
+    let key = agent.sourcePath;
+    try {
+      key = fs.realpath(agent.sourcePath);
+    } catch {
+      // 解析失败按原路径处理
+    }
+    keyOf.set(agent, key);
+    const current = byRealPath.get(key);
+    if (!current || (agent.tool === 'hub' && current.tool !== 'hub')) {
+      byRealPath.set(key, agent);
+    }
+  }
+  return agents.filter(
+    (a) => a.kind !== 'custom-subagent' || byRealPath.get(keyOf.get(a) ?? '') === a,
+  );
 }
 
 export function listAgents(input: {
@@ -360,7 +428,7 @@ export function listAgents(input: {
     throw new Error(`无效 kind：${params.kind}，支持：${ALL_KINDS.join(', ')}`);
   }
 
-  let agents = collectAll(fs, sources);
+  let agents = dedupeSymlinkedAgents(collectAll(fs, sources), fs);
 
   // 去重（id）
   const byId = new Map<string, AgentInfo>();

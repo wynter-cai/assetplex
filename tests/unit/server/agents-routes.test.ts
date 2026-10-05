@@ -8,25 +8,57 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { Hono } from 'hono';
 import { agentsRouteFactory } from '../../../src/server/routes/agents.js';
+import type { AgentWriteFs } from '../../../src/core/agent-write.js';
 import type { AgentFs, AgentSources } from '../../../src/core/agent-inventory.js';
 
-function makeFs(files: Record<string, string>): AgentFs {
-  return {
-    read: (p) => files[p] ?? null,
-    listDir: (p) => {
-      const names = new Set<string>();
-      const base = p.replace(/\\/g, '/');
-      for (const f of Object.keys(files)) {
-        const norm = f.replace(/\\/g, '/');
-        if (norm.startsWith(base + '/')) {
-          const seg = norm.slice(base.length + 1).split('/')[0];
-          if (seg) names.add(seg);
-        }
+/** 内存可写文件系统（AgentFs + 写方法，供写管理路由注入） */
+class MemoryWriteFs implements AgentWriteFs {
+  files: Record<string, string>;
+
+  constructor(files: Record<string, string> = {}) {
+    this.files = files;
+  }
+
+  read(p: string): string | null {
+    return this.files[p] ?? null;
+  }
+
+  listDir(p: string): string[] {
+    const names = new Set<string>();
+    const base = p.replace(/\\/g, '/');
+    for (const f of Object.keys(this.files)) {
+      const norm = f.replace(/\\/g, '/');
+      if (norm.startsWith(base + '/')) {
+        const seg = norm.slice(base.length + 1).split('/')[0];
+        if (seg) names.add(seg);
       }
-      return Array.from(names).sort();
-    },
-    dirMtime: () => null,
-  };
+    }
+    return Array.from(names).sort();
+  }
+
+  dirMtime(): string | null {
+    return null;
+  }
+
+  exists(p: string): boolean {
+    return Object.prototype.hasOwnProperty.call(this.files, p);
+  }
+
+  ensureDir(): void {
+    // 内存实现无需动作
+  }
+
+  writeFile(p: string, content: string): void {
+    this.files[p] = content;
+  }
+
+  removeFile(p: string): void {
+    delete this.files[p];
+  }
+}
+
+function makeFs(files: Record<string, string>): MemoryWriteFs {
+  return new MemoryWriteFs(files);
 }
 
 const sources: AgentSources = {
@@ -35,11 +67,12 @@ const sources: AgentSources = {
   codebuddy: { codebuddyDir: '/root/.codebuddy' },
   codex: { codexDir: '/root/.codex' },
   pluginsRoot: '/root/.trae-cn/plugins',
+  hub: { agentsDir: '/hub/agents' },
 };
 
-function buildApp(fs: AgentFs): Hono {
+function buildApp(fs: MemoryWriteFs): Hono {
   const app = new Hono();
-  app.route('/api/agents', agentsRouteFactory({ fs, sources }));
+  app.route('/api/agents', agentsRouteFactory({ fs, writeFs: fs, sources }));
   return app;
 }
 
@@ -96,5 +129,114 @@ describe('GET /api/agents/:id', () => {
     const fs = makeFs({});
     const res = await buildApp(fs).request('/api/agents/ghost');
     expect(res.status).toBe(404);
+  });
+});
+
+describe('POST /api/agents 新建保险箱智能体', () => {
+  const headers = { 'Content-Type': 'application/json' };
+
+  it('201 创建成功：frontmatter 落盘且列表立即可见', async () => {
+    const fs = makeFs({});
+    const res = await buildApp(fs).request('/api/agents', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ name: '测试专家', description: '生成测试用例', content: '你是测试专家' }),
+    });
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.agent.tool).toBe('hub');
+    expect(body.agent.kind).toBe('custom-subagent');
+    expect(body.agent.id).toBe('hub:custom-subagent:测试专家');
+    expect(fs.files['/hub/agents/测试专家.md']).toContain('description: 生成测试用例');
+
+    const list = await buildApp(fs).request('/api/agents');
+    expect((await list.json()).countByTool.hub).toBe(1);
+  });
+
+  it('重名（大小写不敏感）返回 400', async () => {
+    const fs = makeFs({ '/hub/agents/reviewer.md': '---\nname: reviewer\ndescription: 已存在\n---' });
+    const res = await buildApp(fs).request('/api/agents', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ name: 'REVIEWER', content: '' }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('非法名称返回 400', async () => {
+    const res = await buildApp(makeFs({})).request('/api/agents', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ name: 'a:b', content: '' }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('缺 name 返回 400', async () => {
+    const res = await buildApp(makeFs({})).request('/api/agents', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ content: '' }),
+    });
+    expect(res.status).toBe(400);
+  });
+});
+
+describe('PUT /api/agents/:id 编辑保险箱智能体', () => {
+  const headers = { 'Content-Type': 'application/json' };
+
+  it('200 整文件替换成功', async () => {
+    const fs = makeFs({ '/hub/agents/note.md': '---\nname: note\ndescription: 旧\n---' });
+    const res = await buildApp(fs).request('/api/agents/hub:custom-subagent:note', {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({ content: '---\nname: note\ndescription: 新\n---\n新提示词' }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.agent.description).toBe('新');
+    expect(fs.files['/hub/agents/note.md']).toContain('新提示词');
+  });
+
+  it('404 智能体不存在', async () => {
+    const res = await buildApp(makeFs({})).request('/api/agents/hub:custom-subagent:ghost', {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({ content: 'x' }),
+    });
+    expect(res.status).toBe(404);
+  });
+
+  it('400 非保险箱智能体拒绝编辑', async () => {
+    const fs = makeFs({ '/root/.claude/agents/mine.md': '---\nname: mine\ndescription: claude 自建\n---' });
+    const res = await buildApp(fs).request('/api/agents/claude:custom-subagent:mine', {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({ content: 'x' }),
+    });
+    expect(res.status).toBe(400);
+  });
+});
+
+describe('DELETE /api/agents/:id 删除保险箱智能体', () => {
+  it('200 删除后列表消失', async () => {
+    const fs = makeFs({ '/hub/agents/note.md': '---\nname: note\ndescription: 旧\n---' });
+    const res = await buildApp(fs).request('/api/agents/hub:custom-subagent:note', { method: 'DELETE' });
+    expect(res.status).toBe(200);
+    expect(fs.files['/hub/agents/note.md']).toBeUndefined();
+
+    const list = await buildApp(fs).request('/api/agents');
+    expect((await list.json()).total).toBe(0);
+  });
+
+  it('404 智能体不存在', async () => {
+    const res = await buildApp(makeFs({})).request('/api/agents/hub:custom-subagent:ghost', { method: 'DELETE' });
+    expect(res.status).toBe(404);
+  });
+
+  it('400 非保险箱智能体拒绝删除', async () => {
+    const fs = makeFs({ '/root/.claude/agents/mine.md': '---\nname: mine\ndescription: claude 自建\n---' });
+    const res = await buildApp(fs).request('/api/agents/claude:custom-subagent:mine', { method: 'DELETE' });
+    expect(res.status).toBe(400);
   });
 });

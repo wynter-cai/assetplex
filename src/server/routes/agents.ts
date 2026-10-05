@@ -1,10 +1,13 @@
 /**
- * 智能体只读盘点 API 路由
+ * 智能体盘点 API 路由
  *
  * GET /api/agents         列出（可筛选）
  * GET /api/agents/:id     单个详情 + 原始内容
+ * POST /api/agents        新建保险箱智能体
+ * PUT /api/agents/:id     编辑保险箱智能体（整文件替换）
+ * DELETE /api/agents/:id  删除保险箱智能体
  *
- * spec: agents-inventory.spec.md
+ * spec: agents-inventory.spec.md, add-skill-agent-write-management
  */
 
 import { Hono } from 'hono';
@@ -17,10 +20,20 @@ import {
   type AgentSources,
   type ListAgentsParams,
 } from '../../core/agent-inventory.js';
+import {
+  createVaultAgent,
+  updateVaultAgent,
+  deleteVaultAgent,
+  type AgentWriteFs,
+} from '../../core/agent-write.js';
+import { getHubRoot } from '../../utils/paths.js';
 import { nodeAgentFs } from '../lib/node-agent-fs.js';
+import { nodeAgentWriteFs } from '../lib/node-agent-write-fs.js';
+import { toWriteErrorResponse } from '../lib/write-error.js';
 
 export interface AgentsRouteDeps {
   fs: AgentFs;
+  writeFs: AgentWriteFs;
   sources: AgentSources;
 }
 
@@ -33,13 +46,16 @@ export function defaultSources(): AgentSources {
     codebuddy: { codebuddyDir: join(home, '.codebuddy') },
     codex: { codexDir: join(home, '.codex') },
     pluginsRoot: join(home, '.trae-cn', 'plugins'),
+    hub: { agentsDir: join(getHubRoot(), 'agents') },
   };
 }
 
 /** 创建智能体路由（可注入 fs/sources，便于测试） */
-export function agentsRouteFactory(deps: AgentsRouteDeps = { fs: nodeAgentFs, sources: defaultSources() }): Hono {
+export function agentsRouteFactory(
+  deps: AgentsRouteDeps = { fs: nodeAgentFs, writeFs: nodeAgentWriteFs, sources: defaultSources() },
+): Hono {
   const routes = new Hono();
-  const { fs, sources } = deps;
+  const { fs, writeFs, sources } = deps;
 
   /** 列出智能体 */
   routes.get('/', (c) => {
@@ -56,6 +72,70 @@ export function agentsRouteFactory(deps: AgentsRouteDeps = { fs: nodeAgentFs, so
       return c.json(result);
     } catch (err) {
       return c.json({ error: err instanceof Error ? err.message : String(err) }, 400);
+    }
+  });
+
+  /** 新建保险箱智能体（hub agents/<name>.md） */
+  routes.post('/', async (c) => {
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: '请求体必须是 JSON' }, 400);
+    }
+    const parsed = body as { name?: unknown; description?: unknown; content?: unknown } | null;
+    if (typeof parsed?.name !== 'string') {
+      return c.json({ error: 'name 必须是字符串' }, 400);
+    }
+    if (typeof parsed?.content !== 'string') {
+      return c.json({ error: 'content 必须是字符串' }, 400);
+    }
+    if (parsed.description !== undefined && typeof parsed.description !== 'string') {
+      return c.json({ error: 'description 必须是字符串' }, 400);
+    }
+    try {
+      const agent = createVaultAgent(
+        { name: parsed.name, description: parsed.description, content: parsed.content },
+        { fs: writeFs, sources },
+      );
+      return c.json({ agent }, 201);
+    } catch (err) {
+      const { status, message } = toWriteErrorResponse(err);
+      return c.json({ error: message }, status);
+    }
+  });
+
+  /** 编辑保险箱智能体（整文件替换） */
+  routes.put('/:id{.+}', async (c) => {
+    const id = decodeURIComponent(c.req.param('id'));
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: '请求体必须是 JSON' }, 400);
+    }
+    const content = (body as { content?: unknown } | null)?.content;
+    if (typeof content !== 'string') {
+      return c.json({ error: 'content 必须是字符串' }, 400);
+    }
+    try {
+      const agent = updateVaultAgent(id, content, { fs: writeFs, sources });
+      return c.json({ agent });
+    } catch (err) {
+      const { status, message } = toWriteErrorResponse(err);
+      return c.json({ error: message }, status);
+    }
+  });
+
+  /** 删除保险箱智能体（agents/<name>.md） */
+  routes.delete('/:id{.+}', (c) => {
+    const id = decodeURIComponent(c.req.param('id'));
+    try {
+      deleteVaultAgent(id, { fs: writeFs, sources });
+      return c.json({ success: true });
+    } catch (err) {
+      const { status, message } = toWriteErrorResponse(err);
+      return c.json({ error: message }, status);
     }
   });
 

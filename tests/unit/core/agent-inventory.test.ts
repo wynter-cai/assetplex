@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { parseTraePersonas, parseCustomAgentFiles, parseCodeBuddyExperts, parsePluginAgents, listAgents, getAgentRawContent } from '../../../src/core/agent-inventory.js';
+import { parseTraePersonas, parseCustomAgentFiles, parseCodeBuddyExperts, parsePluginAgents, parseHubAgents, listAgents, getAgentRawContent } from '../../../src/core/agent-inventory.js';
 import type { AgentFs } from '../../../src/core/agent-inventory.js';
 
 /** 构造内存文件系统 */
@@ -215,6 +215,7 @@ describe('listAgents 聚合', () => {
     codebuddy: { codebuddyDir: '/h/.codebuddy' },
     codex: { codexDir: '/h/.codex' },
     pluginsRoot: '/h/.trae-cn/plugins',
+    hub: { agentsDir: '/h/hub/agents' },
   };
 
   it('聚合全部来源并按自建优先、名称排序', () => {
@@ -265,7 +266,7 @@ describe('getAgentRawContent', () => {
     const claudeDir = '/h/.claude';
     const md = '---\nname: aaa\ndescription: a\n---\n正文内容';
     const fs = makeFs({ [`${claudeDir}/agents/aaa.md`]: md });
-    const sources = { trae: { builtinRoot: '/h/.trae-cn/builtin' }, claude: { claudeDir }, codebuddy: { codebuddyDir: '/h/.codebuddy' }, codex: { codexDir: '/h/.codex' }, pluginsRoot: '/h/.trae-cn/plugins' };
+    const sources = { trae: { builtinRoot: '/h/.trae-cn/builtin' }, claude: { claudeDir }, codebuddy: { codebuddyDir: '/h/.codebuddy' }, codex: { codexDir: '/h/.codex' }, pluginsRoot: '/h/.trae-cn/plugins', hub: { agentsDir: '/h/hub/agents' } };
 
     const result = getAgentRawContent('claude:custom-subagent:aaa', { fs, sources });
     expect(result?.agent.name).toBe('aaa');
@@ -274,7 +275,80 @@ describe('getAgentRawContent', () => {
 
   it('id 不存在返回 null', () => {
     const fs = makeFs({});
-    const sources = { trae: { builtinRoot: '/x' }, claude: { claudeDir: '/x' }, codebuddy: { codebuddyDir: '/x' }, codex: { codexDir: '/x' }, pluginsRoot: '/x' };
+    const sources = { trae: { builtinRoot: '/x' }, claude: { claudeDir: '/x' }, codebuddy: { codebuddyDir: '/x' }, codex: { codexDir: '/x' }, pluginsRoot: '/x', hub: { agentsDir: '/x/hub/agents' } };
     expect(getAgentRawContent('nope', { fs, sources })).toBeNull();
+  });
+});
+
+describe('parseHubAgents 保险箱智能体发现', () => {
+  const agentsDir = '/h/hub/agents';
+
+  it('hub agents/*.md 解析为 custom-subagent（tool=hub、userCreated=true）', () => {
+    const fs = makeFs({
+      [`${agentsDir}/审查员.md`]: '---\nname: 审查员\ndescription: 审查代码\n---\n正文',
+    });
+    const agents = parseHubAgents({ agentsDir, fs });
+    expect(agents).toHaveLength(1);
+    expect(agents[0].id).toBe('hub:custom-subagent:审查员');
+    expect(agents[0].tool).toBe('hub');
+    expect(agents[0].kind).toBe('custom-subagent');
+    expect(agents[0].userCreated).toBe(true);
+    expect(agents[0].description).toBe('审查代码');
+  });
+
+  it('无 frontmatter name 时回退为文件名', () => {
+    const fs = makeFs({ [`${agentsDir}/note.md`]: '# 无 frontmatter' });
+    const agents = parseHubAgents({ agentsDir, fs });
+    expect(agents[0].name).toBe('note');
+    expect(agents[0].id).toBe('hub:custom-subagent:note');
+  });
+
+  it('目录缺失返回空数组', () => {
+    const fs = makeFs({});
+    expect(parseHubAgents({ agentsDir, fs })).toEqual([]);
+  });
+});
+
+describe('listAgents 纳入保险箱来源', () => {
+  const hubAgentsDir = '/h/hub/agents';
+
+  it('hub 智能体进入聚合列表并计入 countByTool.hub', () => {
+    const fs = makeFs({
+      [`${hubAgentsDir}/note.md`]: '---\nname: note\ndescription: hub 里的笔记专家\n---',
+    });
+    const sources = {
+      trae: { builtinRoot: '/h/.trae-cn/builtin' },
+      claude: { claudeDir: '/h/.claude' },
+      codebuddy: { codebuddyDir: '/h/.codebuddy' },
+      codex: { codexDir: '/h/.codex' },
+      pluginsRoot: '/h/.trae-cn/plugins',
+      hub: { agentsDir: hubAgentsDir },
+    };
+    const result = listAgents({ fs, sources });
+    expect(result.total).toBe(1);
+    expect(result.countByTool.hub).toBe(1);
+    expect(result.items[0].tool).toBe('hub');
+  });
+
+  it('符号链接场景：hub 与 claude 同真实路径只保留一条且保留 hub', () => {
+    const hubPath = `${hubAgentsDir}/note.md`;
+    const claudePath = '/h/.claude/agents/note.md';
+    const base = makeFs({
+      [hubPath]: '---\nname: note\ndescription: hub 版\n---',
+      [claudePath]: '---\nname: note\ndescription: claude 版\n---',
+    });
+    const fs: AgentFs = { ...base, realpath: () => '/real/agents/note.md' };
+    const sources = {
+      trae: { builtinRoot: '/h/.trae-cn/builtin' },
+      claude: { claudeDir: '/h/.claude' },
+      codebuddy: { codebuddyDir: '/h/.codebuddy' },
+      codex: { codexDir: '/h/.codex' },
+      pluginsRoot: '/h/.trae-cn/plugins',
+      hub: { agentsDir: hubAgentsDir },
+    };
+    const result = listAgents({ fs, sources });
+    expect(result.total).toBe(1);
+    expect(result.items[0].tool).toBe('hub');
+    expect(result.items[0].sourcePath).toBe(hubPath);
   });
 });

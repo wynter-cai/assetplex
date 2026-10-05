@@ -3,8 +3,12 @@
  *
  * GET /api/skills                 列出（可按职能/来源筛选、搜索）
  * PUT /api/skills/:id/function    手动覆盖某技能的职能分类
+ * POST /api/skills/function-batch 批量覆盖职能分类
+ * POST /api/skills                新建保险箱技能
+ * PUT /api/skills/:id             编辑保险箱技能（整文件替换）
+ * DELETE /api/skills/:id          删除保险箱技能
  *
- * spec: skills-taxonomy.spec.md
+ * spec: skills-taxonomy.spec.md, add-skill-agent-write-management
  */
 
 import { Hono } from 'hono';
@@ -22,11 +26,21 @@ import {
   type SkillSources,
   type ListSkillsParams,
 } from '../../core/skills-inventory.js';
+import {
+  createVaultSkill,
+  updateVaultSkill,
+  deleteVaultSkill,
+  type SkillWriteFs,
+} from '../../core/skill-write.js';
+import { getHubRoot } from '../../utils/paths.js';
 import { nodeAgentFs } from '../lib/node-agent-fs.js';
+import { nodeSkillWriteFs } from '../lib/node-skill-write-fs.js';
 import { nodeSkillOverrideStore } from '../lib/node-skill-override-store.js';
+import { toWriteErrorResponse } from '../lib/write-error.js';
 
 export interface SkillsRouteDeps {
   fs: SkillFs;
+  writeFs: SkillWriteFs;
   sources: SkillSources;
   store: SkillOverrideStore;
 }
@@ -40,6 +54,7 @@ export function defaultSkillSources(): SkillSources {
     builtinSkillsDir: join(home, '.trae-cn', 'builtin_skills'),
     pluginsRoot: join(home, '.trae-cn', 'plugins'),
     marketplaceSkillsDir: join(home, '.codebuddy', 'skills-marketplace', 'skills'),
+    vaultSkillsDir: join(getHubRoot(), 'skills'),
   };
 }
 
@@ -47,12 +62,13 @@ export function defaultSkillSources(): SkillSources {
 export function skillsRouteFactory(
   deps: SkillsRouteDeps = {
     fs: nodeAgentFs,
+    writeFs: nodeSkillWriteFs,
     sources: defaultSkillSources(),
     store: nodeSkillOverrideStore,
   },
 ): Hono {
   const routes = new Hono();
-  const { fs, sources, store } = deps;
+  const { fs, writeFs, sources, store } = deps;
 
   /** 列出技能全貌 */
   routes.get('/', (c) => {
@@ -123,6 +139,70 @@ export function skillsRouteFactory(
       return c.json(result);
     } catch (err) {
       return c.json({ error: err instanceof Error ? err.message : String(err) }, 400);
+    }
+  });
+
+  /** 新建保险箱技能（vault skills/<name>/SKILL.md） */
+  routes.post('/', async (c) => {
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: '请求体必须是 JSON' }, 400);
+    }
+    const parsed = body as { name?: unknown; description?: unknown; content?: unknown } | null;
+    if (typeof parsed?.name !== 'string') {
+      return c.json({ error: 'name 必须是字符串' }, 400);
+    }
+    if (typeof parsed?.content !== 'string') {
+      return c.json({ error: 'content 必须是字符串' }, 400);
+    }
+    if (parsed.description !== undefined && typeof parsed.description !== 'string') {
+      return c.json({ error: 'description 必须是字符串' }, 400);
+    }
+    try {
+      const skill = createVaultSkill(
+        { name: parsed.name, description: parsed.description, content: parsed.content },
+        { fs: writeFs, sources, store },
+      );
+      return c.json({ skill }, 201);
+    } catch (err) {
+      const { status, message } = toWriteErrorResponse(err);
+      return c.json({ error: message }, status);
+    }
+  });
+
+  /** 编辑保险箱技能（整文件替换 SKILL.md） */
+  routes.put('/:id', async (c) => {
+    const id = decodeURIComponent(c.req.param('id'));
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: '请求体必须是 JSON' }, 400);
+    }
+    const content = (body as { content?: unknown } | null)?.content;
+    if (typeof content !== 'string') {
+      return c.json({ error: 'content 必须是字符串' }, 400);
+    }
+    try {
+      const skill = updateVaultSkill(id, content, { fs: writeFs, sources, store });
+      return c.json({ skill });
+    } catch (err) {
+      const { status, message } = toWriteErrorResponse(err);
+      return c.json({ error: message }, status);
+    }
+  });
+
+  /** 删除保险箱技能（整个 skills/<name>/ 目录） */
+  routes.delete('/:id', (c) => {
+    const id = decodeURIComponent(c.req.param('id'));
+    try {
+      deleteVaultSkill(id, { fs: writeFs, sources, store });
+      return c.json({ success: true });
+    } catch (err) {
+      const { status, message } = toWriteErrorResponse(err);
+      return c.json({ error: message }, status);
     }
   });
 

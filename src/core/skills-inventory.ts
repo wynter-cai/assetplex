@@ -23,7 +23,7 @@ export type SkillFunction =
   | 'workflow'
   | 'other';
 
-export type SkillOrigin = 'builtin' | 'plugin' | 'personal' | 'marketplace';
+export type SkillOrigin = 'builtin' | 'plugin' | 'personal' | 'marketplace' | 'vault';
 
 export interface SkillInfo {
   /** 稳定 ID：技能名小写形式（跨重扫稳定，用作覆盖键） */
@@ -47,6 +47,8 @@ export interface SkillFs {
   read(absolutePath: string): string | null;
   listDir(absolutePath: string): string[];
   dirMtime(absolutePath: string): string | null;
+  /** 解析真实路径（符号链接归一化）；实现可省略，省略时不做符号链接去重 */
+  realpath?(absolutePath: string): string;
 }
 
 /** 手动覆盖存储抽象 */
@@ -66,6 +68,8 @@ export interface SkillSources {
   pluginsRoot: string;
   /** ~/.codebuddy/skills-marketplace/skills */
   marketplaceSkillsDir: string;
+  /** 保险箱技能根目录（Hub skills/<name>/SKILL.md） */
+  vaultSkillsDir: string;
 }
 
 export interface ListSkillsParams {
@@ -107,7 +111,7 @@ export const SKILL_FUNCTIONS: SkillFunction[] = [
   'other',
 ];
 
-export const SKILL_ORIGINS: SkillOrigin[] = ['builtin', 'plugin', 'personal', 'marketplace'];
+export const SKILL_ORIGINS: SkillOrigin[] = ['builtin', 'plugin', 'personal', 'marketplace', 'vault'];
 
 /**
  * 职能关键词规则表：按数组顺序匹配，首个命中的类别胜出。
@@ -184,6 +188,7 @@ function parseFrontmatter(content: string): ParsedFrontmatter {
  * personal / marketplace / plugin 优先于 builtin 判断，未匹配路径保守归为 builtin。
  */
 export function classifyOrigin(absolutePath: string, sources: SkillSources): SkillOrigin {
+  if (absolutePath.startsWith(sources.vaultSkillsDir)) return 'vault';
   if (absolutePath.startsWith(sources.userSkillsDir)) return 'personal';
   if (absolutePath.startsWith(sources.marketplaceSkillsDir)) return 'marketplace';
   if (absolutePath.startsWith(sources.pluginsRoot)) return 'plugin';
@@ -250,6 +255,9 @@ function scanSkillDir(
 export function discoverSkillFiles(fs: SkillFs, sources: SkillSources): RawSkill[] {
   const out: RawSkill[] = [];
 
+  // 保险箱（Hub skills/<name>/SKILL.md）
+  out.push(...scanSkillDir(fs, sources.vaultSkillsDir, 'vault', 'hub'));
+
   // 个人自建（~/.trae-cn/skills）
   out.push(...scanSkillDir(fs, sources.userSkillsDir, 'personal', 'trae'));
 
@@ -281,20 +289,50 @@ export function discoverSkillFiles(fs: SkillFs, sources: SkillSources): RawSkill
   // 市场安装（CodeBuddy skills-marketplace/skills）
   out.push(...scanSkillDir(fs, sources.marketplaceSkillsDir, 'marketplace', 'codebuddy'));
 
+  // 符号链接场景：同一物理文件只保留一条（优先保留 vault/保险箱来源）
+  const deduped = dedupeByRealPath(out, fs);
+
   // 依据真实路径再校验一次来源（防御性，保持与路径一致）
-  for (const skill of out) {
+  for (const skill of deduped) {
     skill.origin = classifyOrigin(skill.sourcePath, sources);
   }
-  return out;
+  return deduped;
+}
+
+/**
+ * 按真实路径去重（符号链接场景：hub/skills 与 ~/.trae-cn/skills 互为链接时，
+ * 同一 SKILL.md 会被扫描两次）。同真实路径只保留一条，vault 来源优先。
+ * fs 未实现 realpath 时原样返回。
+ */
+function dedupeByRealPath(raws: RawSkill[], fs: SkillFs): RawSkill[] {
+  if (typeof fs.realpath !== 'function') return raws;
+
+  const byRealPath = new Map<string, RawSkill>();
+  const keyOf = new Map<RawSkill, string>();
+  for (const raw of raws) {
+    let key = raw.sourcePath;
+    try {
+      key = fs.realpath(raw.sourcePath);
+    } catch {
+      // 解析失败按原路径处理
+    }
+    keyOf.set(raw, key);
+    const current = byRealPath.get(key);
+    if (!current || ORIGIN_PRIORITY[raw.origin] < ORIGIN_PRIORITY[current.origin]) {
+      byRealPath.set(key, raw);
+    }
+  }
+  return raws.filter((raw) => byRealPath.get(keyOf.get(raw) ?? '') === raw);
 }
 
 // ============ 同名去重 ============
 
 const ORIGIN_PRIORITY: Record<SkillOrigin, number> = {
-  personal: 0,
-  plugin: 1,
-  marketplace: 2,
-  builtin: 3,
+  vault: 0,
+  personal: 1,
+  plugin: 2,
+  marketplace: 3,
+  builtin: 4,
 };
 
 /** 正文兜底分类时只取开头部分，降低长文档里偶然提及关键词的噪声 */
@@ -302,7 +340,7 @@ const BODY_FALLBACK_LIMIT = 400;
 
 /**
  * 同名技能（小写比较）合并为一个主条目。
- * 主副本来源按 personal > plugin > marketplace > builtin 选取，同优先级取路径靠前。
+ * 主副本来源按 vault > personal > plugin > marketplace > builtin 选取，同优先级取路径靠前。
  * 其余副本绝对路径计入 variants。
  */
 export function dedupeSkills(raws: RawSkill[], overrides: Record<string, SkillFunction>): SkillInfo[] {
