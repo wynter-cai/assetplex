@@ -58,6 +58,7 @@ import { nodeSkillWriteFs } from '../lib/node-skill-write-fs.js';
 import { nodeSkillOverrideStore } from '../lib/node-skill-override-store.js';
 import { nodeAiConfigStore, nodeAiCacheStore } from '../lib/node-ai-classify-store.js';
 import { createOpenAiLlmClient } from '../lib/openai-llm-client.js';
+import { buildWorkspacesOverview } from '../lib/node-workspaces.js';
 import { toWriteErrorResponse } from '../lib/write-error.js';
 
 export interface SkillsRouteDeps {
@@ -71,6 +72,8 @@ export interface SkillsRouteDeps {
   aiCacheStore?: AiClassifyCacheStore;
   /** LLM 客户端（可选；缺省按配置现场构造 OpenAI 兼容客户端，测试注入 mock） */
   llmClient?: LlmClient;
+  /** 动态解析工作区目录（设置变更即时生效）；缺省用静态 sources.workspaceDirs */
+  resolveWorkspaceDirs?: () => string[];
 }
 
 /** 解析本机各技能来源根目录 */
@@ -82,7 +85,7 @@ export function defaultSkillSources(): SkillSources {
     builtinSkillsDir: join(home, '.trae-cn', 'builtin_skills'),
     pluginsRoot: join(home, '.trae-cn', 'plugins'),
     marketplaceSkillsDir: join(home, '.codebuddy', 'skills-marketplace', 'skills'),
-    // T4 将替换为工作区服务动态解析；T2 阶段先保证类型完整（空数组=行为与旧盘点一致）
+    // 工作区目录由 resolveWorkspaceDirs 每请求动态解析；此处空数组仅作无 resolver 时的回退
     workspaceDirs: [],
     vaultSkillsDir: join(getHubRoot(), 'skills'),
   };
@@ -97,10 +100,17 @@ export function skillsRouteFactory(
     store: nodeSkillOverrideStore,
     aiConfigStore: nodeAiConfigStore,
     aiCacheStore: nodeAiCacheStore,
+    resolveWorkspaceDirs: () => buildWorkspacesOverview().workspaceDirs,
   },
 ): Hono {
   const routes = new Hono();
   const { fs, writeFs, sources, store } = deps;
+
+  /** 每请求动态解析工作区目录（设置变更无需重启）；未注入时回退静态 sources */
+  const currentSources = (): SkillSources =>
+    deps.resolveWorkspaceDirs
+      ? { ...sources, workspaceDirs: deps.resolveWorkspaceDirs() }
+      : sources;
 
   /** AI 缓存查询（缓存未注入时为 undefined，盘点回退关键词兜底） */
   const aiLookup = deps.aiCacheStore ? createAiLookup(deps.aiCacheStore) : undefined;
@@ -110,7 +120,7 @@ export function skillsRouteFactory(
     try {
       const result = listSkills({
         fs,
-        sources,
+        sources: currentSources(),
         store,
         aiLookup,
         params: {
@@ -140,7 +150,7 @@ export function skillsRouteFactory(
     }
 
     try {
-      const skill = overrideSkillFunction(id, functionCategory as SkillFunction, { fs, sources, store, aiLookup });
+      const skill = overrideSkillFunction(id, functionCategory as SkillFunction, { fs, sources: currentSources(), store, aiLookup });
       if (!skill) {
         return c.json({ error: `技能不存在：${id}` }, 404);
       }
@@ -171,7 +181,7 @@ export function skillsRouteFactory(
       return c.json({ error: `无效职能，支持：${SKILL_FUNCTIONS.join(', ')}` }, 400);
     }
     try {
-      const result = overrideSkillFunctionsBatch(ids, functionCategory as SkillFunction, { fs, sources, store, aiLookup });
+      const result = overrideSkillFunctionsBatch(ids, functionCategory as SkillFunction, { fs, sources: currentSources(), store, aiLookup });
       return c.json(result);
     } catch (err) {
       return c.json({ error: err instanceof Error ? err.message : String(err) }, 400);
@@ -196,7 +206,7 @@ export function skillsRouteFactory(
     try {
       const skill = curateVaultSkill(
         { id: parsed.id, name: parsed.name as string | undefined },
-        { fs: writeFs, sources, store },
+        { fs: writeFs, sources: currentSources(), store },
       );
       return c.json({ skill }, 201);
     } catch (err) {
@@ -222,7 +232,7 @@ export function skillsRouteFactory(
       return c.json({ error: 'ids 不能为空' }, 400);
     }
     try {
-      const result = curateVaultSkills({ ids }, { fs: writeFs, sources, store });
+      const result = curateVaultSkills({ ids }, { fs: writeFs, sources: currentSources(), store });
       return c.json(result);
     } catch (err) {
       const { status, message } = toWriteErrorResponse(err);
@@ -285,7 +295,7 @@ export function skillsRouteFactory(
     try {
       const result = await classifySkillsWithAi(
         { ids },
-        { fs, sources, store, cache: aiCacheStore, llm, config },
+        { fs, sources: currentSources(), store, cache: aiCacheStore, llm, config },
       );
       return c.json(result);
     } catch (err) {
@@ -317,7 +327,7 @@ export function skillsRouteFactory(
     try {
       const skill = createVaultSkill(
         { name: parsed.name, description: parsed.description, content: parsed.content },
-        { fs: writeFs, sources, store },
+        { fs: writeFs, sources: currentSources(), store },
       );
       return c.json({ skill }, 201);
     } catch (err) {
@@ -340,7 +350,7 @@ export function skillsRouteFactory(
       return c.json({ error: 'content 必须是字符串' }, 400);
     }
     try {
-      const skill = updateVaultSkill(id, content, { fs: writeFs, sources, store });
+      const skill = updateVaultSkill(id, content, { fs: writeFs, sources: currentSources(), store });
       return c.json({ skill });
     } catch (err) {
       const { status, message } = toWriteErrorResponse(err);
@@ -352,7 +362,7 @@ export function skillsRouteFactory(
   routes.delete('/:id', (c) => {
     const id = decodeURIComponent(c.req.param('id'));
     try {
-      deleteVaultSkill(id, { fs: writeFs, sources, store });
+      deleteVaultSkill(id, { fs: writeFs, sources: currentSources(), store });
       return c.json({ success: true });
     } catch (err) {
       const { status, message } = toWriteErrorResponse(err);
@@ -363,7 +373,7 @@ export function skillsRouteFactory(
   /** 单个技能详情（元信息 + SKILL.md 原文） */
   routes.get('/:id', (c) => {
     const id = decodeURIComponent(c.req.param('id'));
-    const result = getSkillRawContent(id, { fs, sources, store, aiLookup });
+    const result = getSkillRawContent(id, { fs, sources: currentSources(), store, aiLookup });
     if (!result) {
       return c.json({ error: `技能不存在：${id}` }, 404);
     }
