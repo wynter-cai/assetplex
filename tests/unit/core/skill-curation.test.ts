@@ -197,6 +197,59 @@ describe('curateVaultSkill 单条沉淀', () => {
   });
 });
 
+describe('项目技能（project）沉淀回归', () => {
+  const PROJECT_SOURCES: SkillSources = { ...SOURCES, workspaceDirs: ['d:/trae/ws1'] };
+  const projectSkillPath = 'd:/trae/ws1/.trae/skills/douyin-x/SKILL.md';
+
+  it('项目技能沉淀：frontmatter source 记录 project:绝对路径，携带工作区名', () => {
+    const fs = new MemoryWriteFs();
+    addSkill(fs, 'd:/trae/ws1/.trae/skills', 'douyin-x', '抖音知识提取', '# 项目技能正文');
+
+    const before = listSkills({ fs, sources: PROJECT_SOURCES, store: new MemoryStore() });
+    const project = before.items.find((s) => s.id === 'douyin-x');
+    expect(project?.origin).toBe('project');
+    expect(project?.workspaceName).toBe('ws1');
+    expect(before.countByOrigin.project).toBe(1);
+
+    const skill = curateVaultSkill(
+      { id: 'douyin-x' },
+      { fs, sources: PROJECT_SOURCES, store: new MemoryStore() },
+    );
+
+    expect(skill.origin).toBe('vault');
+    expect(skill.source).toBe(`project:${projectSkillPath}`);
+    const raw = fs.files.get('/hub/skills/douyin-x/SKILL.md') ?? '';
+    expect(raw).toContain(`source: project:${projectSkillPath}`);
+    expect(raw).toContain('# 项目技能正文');
+    // 源项目技能不被移动或删除
+    expect(fs.files.get(projectSkillPath)).toContain('项目技能正文');
+
+    const after = listSkills({ fs, sources: PROJECT_SOURCES, store: new MemoryStore() });
+    // 翻转守恒：同名卡片主本变 vault，项目副本保留在 variants
+    expect(after.total).toBe(1);
+    expect(after.countByOrigin).toMatchObject({ project: 0, vault: 1 });
+    const card = after.items[0];
+    expect(card.origin).toBe('vault');
+    expect(card.variants).toContain(projectSkillPath);
+  });
+
+  it('保险箱已存在同名时项目技能沉淀被拒（400），源文件不动', () => {
+    const fs = new MemoryWriteFs();
+    addSkill(fs, 'd:/trae/ws1/.trae/skills', 'douyin-x', '项目版', '正文');
+    addSkill(fs, SOURCES.vaultSkillsDir, 'douyin-x', '保险箱版', '正文');
+
+    expectCurateError(
+      () =>
+        curateVaultSkill(
+          { id: 'douyin-x' },
+          { fs, sources: PROJECT_SOURCES, store: new MemoryStore() },
+        ),
+      400,
+    );
+    expect(fs.files.get(projectSkillPath)).toContain('正文');
+  });
+});
+
 describe('curateVaultSkills 批量沉淀', () => {
   it('混合勾选：第三方创建成功，保险箱技能跳过并报告', () => {
     const fs = new MemoryWriteFs();
