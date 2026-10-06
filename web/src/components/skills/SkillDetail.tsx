@@ -196,7 +196,11 @@ export function SkillDetail({ skill, onClose, onCurated }: SkillDetailProps): JS
       <div className="p-4 space-y-4 overflow-y-auto min-h-0 flex-1 flex flex-col">
         <div className="flex flex-wrap gap-1.5">
           <Badge variant="outline">{FUNCTION_LABELS[skill.functionCategory]}</Badge>
-          <Badge variant="outline">{ORIGIN_LABELS[skill.origin]}</Badge>
+          <Badge variant="outline">
+            {skill.origin === 'project' && skill.workspaceName
+              ? `项目 · ${skill.workspaceName}`
+              : ORIGIN_LABELS[skill.origin]}
+          </Badge>
           <Badge variant="secondary">{FUNCTION_SOURCE_LABELS[skill.functionSource]}</Badge>
           {isVault && sourceInfo && (
             <Badge variant="secondary">沉淀自 {ORIGIN_LABELS[sourceInfo.origin]}</Badge>
@@ -245,6 +249,14 @@ export function SkillDetail({ skill, onClose, onCurated }: SkillDetailProps): JS
               </Button>
             )}
             <SyncDistribute onSynced={refresh} />
+          </div>
+        )}
+
+        {skill.origin === 'project' && skill.workspacePath && (
+          <div>
+            <h3 className="text-xs font-medium text-muted-foreground mb-1">所属工作区</h3>
+            <p className="text-sm mb-1">{skill.workspaceName ?? skill.workspacePath}</p>
+            <code className="block text-xs bg-muted rounded p-2 break-all">{skill.workspacePath}</code>
           </div>
         )}
 

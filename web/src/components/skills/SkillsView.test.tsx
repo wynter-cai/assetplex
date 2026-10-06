@@ -517,3 +517,46 @@ describe('SkillsView AI 智能分类', () => {
     });
   });
 });
+
+describe('SkillsView 项目技能', () => {
+  const projectSkill = skill({
+    id: 'douyin-x',
+    name: 'douyin-x',
+    description: '抖音知识提取',
+    functionCategory: 'workflow',
+    origin: 'project',
+    sourcePath: '~/projects/Zhihu/.trae/skills/douyin-x/SKILL.md',
+    workspaceName: 'Zhihu',
+    workspacePath: '~/projects/Zhihu',
+  });
+  const projectResult: SkillListResult = {
+    total: 1,
+    items: [projectSkill],
+    countByFunction: {
+      coding: 0, writing: 0, browser: 0, data: 0, devops: 0,
+      'ai-integration': 0, design: 0, workflow: 1, other: 0,
+    },
+    countByOrigin: { builtin: 0, plugin: 0, personal: 0, project: 1, marketplace: 0, vault: 0 },
+  };
+
+  beforeEach(() => {
+    vi.spyOn(api, 'listSkills').mockResolvedValue(projectResult);
+    vi.spyOn(api, 'getSkill').mockResolvedValue({ skill: projectSkill, rawContent: '# douyin-x' });
+  });
+
+  it('卡片徽章显示「项目 · 工作区名」，来源维度下归入项目技能分组', async () => {
+    renderView();
+    expect(await screen.findByText('项目 · Zhihu')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /按来源/ }));
+    expect(screen.getByRole('heading', { name: '项目技能 1' })).toBeInTheDocument();
+  });
+
+  it('详情展示所属工作区路径，且提供沉淀到保险箱入口', async () => {
+    renderView();
+    fireEvent.click(await screen.findByRole('button', { name: '查看 douyin-x 详情' }));
+    expect(await screen.findByText('所属工作区')).toBeInTheDocument();
+    expect(screen.getByText('Zhihu')).toBeInTheDocument();
+    expect(screen.getByText('~/projects/Zhihu')).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /沉淀到保险箱/ })).toBeInTheDocument();
+  });
+});

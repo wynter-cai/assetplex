@@ -90,7 +90,11 @@ function SkillCard({
       )}
       <div className="flex flex-wrap items-center gap-1 mb-3">
         <Badge variant="outline" className="text-[10px] h-4 px-1">{FUNCTION_LABELS[skill.functionCategory]}</Badge>
-        <Badge variant="outline" className="text-[10px] h-4 px-1">{ORIGIN_LABELS[skill.origin]}</Badge>
+        <Badge variant="outline" className="text-[10px] h-4 px-1">
+          {skill.origin === 'project' && skill.workspaceName
+            ? `项目 · ${skill.workspaceName}`
+            : ORIGIN_LABELS[skill.origin]}
+        </Badge>
         <Badge variant="secondary" className="text-[10px] h-4 px-1">
           {FUNCTION_SOURCE_LABELS[skill.functionSource]}
         </Badge>
