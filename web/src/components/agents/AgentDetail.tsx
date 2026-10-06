@@ -1,7 +1,7 @@
 /**
  * 智能体详情面板：元信息 + 定义文件内容
  * 权限矩阵（spec: add-skill-agent-write-management）：
- * - tool=hub（保险箱）→ 编辑/删除/同步分发
+ * - tool=hub（我的库）→ 编辑/删除/同步分发
  * - 内置 Persona → 只读，无任何操作
  * - 插件/Expert/工具目录自建 → 只读，仅同步分发
  */
@@ -51,7 +51,7 @@ function DeleteConfirmDialog({
         <DialogHeader>
           <DialogTitle>删除智能体「{agent.name}」</DialogTitle>
           <DialogDescription>
-            将从保险箱及所有已分发工具中删除该智能体，此操作不可撤销。
+            将从我的库及所有已分发工具中删除该智能体，此操作不可撤销。
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

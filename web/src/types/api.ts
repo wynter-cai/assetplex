@@ -264,7 +264,11 @@ export type SkillFunction =
   | 'workflow'
   | 'other';
 
-export type SkillOrigin = 'builtin' | 'plugin' | 'personal' | 'project' | 'marketplace' | 'vault';
+/** 纯出处四类（MECE：按这个技能最初从哪来，互斥且穷尽） */
+export type SkillProvenance = 'self' | 'marketplace' | 'plugin' | 'builtin';
+
+/** 库状态（管理轴，独立于出处）：in=已入我的库，out=未入库 */
+export type LibraryStatus = 'in' | 'out';
 
 /** 分类来源：手动覆盖 / AI 分类 / 关键词规则兜底 */
 export type SkillFunctionSource = 'manual' | 'ai' | 'keyword';
@@ -274,18 +278,23 @@ export interface SkillInfo {
   name: string;
   description: string;
   functionCategory: SkillFunction;
-  origin: SkillOrigin;
+  /** 纯出处（这个技能最初从哪来，替代旧 origin 六值对外语义） */
+  provenance: SkillProvenance;
+  /** 是否已入我的库（替代旧 origin=vault 的对外表达） */
+  inLibrary: boolean;
   tool: string;
-  sourcePath: string;
+  /** 物理主文件路径（contract refactor-skill-origin-taxonomy：替代旧 sourcePath） */
+  path: string;
   version: string;
   functionSource: SkillFunctionSource;
-  /** 沉淀来源（仅 vault）：`${origin}:${sourcePath}`；自建技能无此字段 */
+  /** 收藏溯源（仅库内技能）：内部格式 `${origin}:${sourcePath}`；自建技能无此字段 */
   source?: string;
-  /** 所属项目名（工作区目录名）；仅 origin='project' 有值 */
+  /** 所属项目名（工作区目录名）；仅项目技能有值 */
   workspaceName?: string;
-  /** 所属项目工作区绝对路径；仅 origin='project' 有值 */
+  /** 所属项目工作区绝对路径；仅项目技能有值 */
   workspacePath?: string;
-  variants: string[];
+  /** 副本数（不含主本；contract: variants: number，不再透传路径数组） */
+  variants: number;
 }
 
 /** AI 分类配置视图（apiKey 脱敏，明文永不回传） */
@@ -323,17 +332,20 @@ export interface SkillListResult {
   items: SkillInfo[];
   total: number;
   countByFunction: Record<SkillFunction, number>;
-  countByOrigin: Record<SkillOrigin, number>;
+  /** 出处计数（随 status/search 过滤联动） */
+  countByProvenance: Record<SkillProvenance, number>;
+  /** 库状态计数：我的库 / 未入库（随 provenance/search 联动） */
+  countByStatus: { in: number; out: number };
 }
 
-/** 批量沉淀单条失败明细 */
+/** 批量收藏单条失败明细 */
 export interface CurateBatchFailure {
   id: string;
   name: string;
   error: string;
 }
 
-/** 批量沉淀结果：部分成功语义 */
+/** 批量收藏结果：部分成功语义 */
 export interface CurateBatchResult {
   created: SkillInfo[];
   failed: CurateBatchFailure[];

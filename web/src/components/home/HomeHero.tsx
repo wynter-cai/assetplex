@@ -15,7 +15,7 @@ export function HomeHero({ hubInitialized, healthScore, onStartOnboarding }: Hom
           <Boxes className="h-12 w-12 mx-auto text-indigo-500 mb-4" />
           <h2 className="text-2xl font-bold mb-2">欢迎使用 AssetPlex</h2>
           <p className="text-muted-foreground mb-6">
-            你的AI资产保险箱 — 掌控身份、技能、规则、MCP，换工具不丢东西
+            你的 AI 资产库 — 掌控身份、技能、规则、MCP，换工具不丢东西
           </p>
           <button
             type="button"

@@ -5,14 +5,15 @@ import { SkillsView } from './SkillsView';
 import { api } from '@/lib/api';
 import type { SkillInfo, SkillListResult, ToolStatus, SyncResult } from '@/types/api';
 
-function skill(partial: Partial<SkillInfo> & { id: string; name: string; functionCategory: SkillInfo['functionCategory']; origin: SkillInfo['origin'] }): SkillInfo {
+function skill(partial: Partial<SkillInfo> & { id: string; name: string; functionCategory: SkillInfo['functionCategory']; provenance: SkillInfo['provenance'] }): SkillInfo {
   return {
     description: '',
     tool: 'trae',
-    sourcePath: `/x/${partial.id}/SKILL.md`,
+    path: `/x/${partial.id}/SKILL.md`,
     version: '',
     functionSource: 'keyword',
-    variants: [],
+    variants: 0,
+    inLibrary: false,
     ...partial,
   };
 }
@@ -20,14 +21,15 @@ function skill(partial: Partial<SkillInfo> & { id: string; name: string; functio
 const result: SkillListResult = {
   total: 2,
   items: [
-    skill({ id: 'mycode', name: 'mycode', description: 'typescript 编程', functionCategory: 'coding', origin: 'personal', version: '1.2.0' }),
-    skill({ id: 'pdf', name: 'pdf', description: 'pdf 文档', functionCategory: 'writing', origin: 'builtin', variants: ['/a/pdf/SKILL.md', '/b/pdf/SKILL.md'] }),
+    skill({ id: 'mycode', name: 'mycode', description: 'typescript 编程', functionCategory: 'coding', provenance: 'self', version: '1.2.0' }),
+    skill({ id: 'pdf', name: 'pdf', description: 'pdf 文档', functionCategory: 'writing', provenance: 'builtin', variants: 2 }),
   ],
   countByFunction: {
     coding: 1, writing: 1, browser: 0, data: 0, devops: 0,
     'ai-integration': 0, design: 0, workflow: 0, other: 0,
   },
-  countByOrigin: { builtin: 1, plugin: 0, personal: 1, project: 0, marketplace: 0, vault: 0 },
+  countByProvenance: { self: 1, marketplace: 0, plugin: 0, builtin: 1 },
+  countByStatus: { in: 0, out: 2 },
 };
 
 function renderView(): ReturnType<typeof render> {
@@ -46,29 +48,43 @@ describe('SkillsView 技能分类全貌', () => {
     vi.spyOn(api, 'getSkill').mockResolvedValue({ skill: result.items[0], rawContent: '# mycode\n原始内容' });
   });
 
-  it('默认按职能分组，显示总数、版本与副本数', async () => {
+  it('默认按出处分组，显示总数、版本与副本数', async () => {
     renderView();
     expect(await screen.findByText(/去重后共 2 个技能/)).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: '编码开发 1' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: '文档写作 1' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '自建 1' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '官方内置 1' })).toBeInTheDocument();
     expect(screen.getByText('v1.2.0')).toBeInTheDocument();
     expect(screen.getByText('3 副本')).toBeInTheDocument();
   });
 
-  it('点击职能计数条以 function 参数查询，切换来源维度时清空筛选', async () => {
+  it('维度切换时子选项卡跟随切换：出处维度显示出处计数条，职能维度显示职能计数条', async () => {
+    renderView();
+    await screen.findByText(/去重后共 2 个技能/);
+    // 默认出处维度：显示出处 chips，不显示职能 chips
+    expect(screen.getByRole('button', { name: /自建 1/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /编码开发 1/ })).not.toBeInTheDocument();
+    // 切到职能维度：显示职能 chips，不显示出处 chips
+    fireEvent.click(screen.getByRole('button', { name: /按职能/ }));
+    expect(screen.getByRole('button', { name: /编码开发 1/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /自建 1/ })).not.toBeInTheDocument();
+  });
+
+  it('点击职能计数条以 function 参数查询，切换出处维度时清空筛选', async () => {
     renderView();
     await screen.findByText(/去重后共/);
+    // 默认出处维度，先切到职能维度再点子选项卡
+    fireEvent.click(screen.getByRole('button', { name: /按职能/ }));
     fireEvent.click(screen.getByRole('button', { name: /数据处理 0/ }));
     await waitFor(() => {
-      expect(api.listSkills).toHaveBeenLastCalledWith({ function: 'data', origin: undefined, search: undefined });
+      expect(api.listSkills).toHaveBeenLastCalledWith({ function: 'data', provenance: undefined, status: undefined, search: undefined });
     });
 
     fireEvent.click(screen.getByRole('button', { name: /按来源/ }));
     await waitFor(() => {
-      expect(api.listSkills).toHaveBeenLastCalledWith({ function: undefined, origin: undefined, search: undefined });
+      expect(api.listSkills).toHaveBeenLastCalledWith({ function: undefined, provenance: undefined, status: undefined, search: undefined });
     });
-    // 来源分组标题出现
-    expect(screen.getByRole('heading', { name: '个人自建 1' })).toBeInTheDocument();
+    // 出处分组标题出现
+    expect(screen.getByRole('heading', { name: '自建 1' })).toBeInTheDocument();
   });
 
   it('修改职能分类调用覆盖接口', async () => {
@@ -87,10 +103,9 @@ describe('SkillsView 技能分类全貌', () => {
     await waitFor(() => {
       expect(api.getSkill).toHaveBeenCalledWith('pdf');
     });
-    // 3 个副本路径（1 主 + 2 variants）
+    // 主文件路径 + 副本数（API 契约只透传 path 与 variants 数值，不再透传副本路径数组）
     expect(screen.getByText('/x/pdf/SKILL.md')).toBeInTheDocument();
-    expect(screen.getByText('/a/pdf/SKILL.md')).toBeInTheDocument();
-    expect(screen.getByText('/b/pdf/SKILL.md')).toBeInTheDocument();
+    expect(screen.getByText(/共 3 个副本/)).toBeInTheDocument();
     // `# mycode` 应渲染为一级标题而非字面文本
     expect(await screen.findByRole('heading', { name: 'mycode' })).toBeInTheDocument();
     expect(screen.getByText('原始内容')).toBeInTheDocument();
@@ -153,31 +168,33 @@ describe('SkillsView 批量调整职能', () => {
     renderView();
     fireEvent.click(await screen.findByLabelText('选择技能 mycode'));
     expect(screen.getByText('已选 1 个技能')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /文档写作 1/ }));
+    fireEvent.click(screen.getByRole('button', { name: /官方内置 1/ }));
     await waitFor(() => {
       expect(screen.queryByText(/已选/)).not.toBeInTheDocument();
     });
   });
 });
 
-describe('SkillsView 保险箱写管理', () => {
-  const vaultSkill = skill({
+describe('SkillsView 我的库写管理', () => {
+  const librarySkill = skill({
     id: '周报助手',
     name: '周报助手',
     description: '生成中文周报',
     functionCategory: 'writing',
-    origin: 'vault',
+    provenance: 'self',
+    inLibrary: true,
     tool: 'hub',
   });
 
   const writeResult: SkillListResult = {
     total: 2,
-    items: [vaultSkill, result.items[1]],
+    items: [librarySkill, result.items[1]],
     countByFunction: {
       coding: 0, writing: 2, browser: 0, data: 0, devops: 0,
       'ai-integration': 0, design: 0, workflow: 0, other: 0,
     },
-    countByOrigin: { builtin: 1, plugin: 0, personal: 0, project: 0, marketplace: 0, vault: 1 },
+    countByProvenance: { self: 1, marketplace: 0, plugin: 0, builtin: 1 },
+    countByStatus: { in: 1, out: 1 },
   };
 
   const twoTools: ToolStatus[] = [
@@ -188,11 +205,11 @@ describe('SkillsView 保险箱写管理', () => {
   function mockWriteApis(): void {
     vi.spyOn(api, 'listSkills').mockResolvedValue(writeResult);
     vi.spyOn(api, 'getSkill').mockResolvedValue({
-      skill: vaultSkill,
+      skill: librarySkill,
       rawContent: '---\nname: 周报助手\n---\n# 周报正文',
     });
-    vi.spyOn(api, 'createSkill').mockResolvedValue({ skill: vaultSkill });
-    vi.spyOn(api, 'updateSkill').mockResolvedValue({ skill: vaultSkill });
+    vi.spyOn(api, 'createSkill').mockResolvedValue({ skill: librarySkill });
+    vi.spyOn(api, 'updateSkill').mockResolvedValue({ skill: librarySkill });
     vi.spyOn(api, 'deleteSkill').mockResolvedValue({ success: true });
     vi.spyOn(api, 'runSync').mockResolvedValue({ results: [] });
     vi.spyOn(api, 'getTools').mockResolvedValue({ tools: twoTools });
@@ -223,17 +240,17 @@ describe('SkillsView 保险箱写管理', () => {
 
   it('创建重名技能时提示后端错误信息', async () => {
     const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
-    vi.spyOn(api, 'createSkill').mockRejectedValue(new Error('同名技能已存在：pdf（来源：builtin）'));
+    vi.spyOn(api, 'createSkill').mockRejectedValue(new Error('同名技能已存在：pdf（来源：官方内置）'));
     renderView();
     fireEvent.click(await screen.findByRole('button', { name: '新建技能' }));
     fireEvent.change(screen.getByLabelText('技能名称'), { target: { value: 'PDF' } });
     fireEvent.click(screen.getByRole('button', { name: '创建' }));
     await waitFor(() => {
-      expect(alertSpy).toHaveBeenCalledWith('同名技能已存在：pdf（来源：builtin）');
+      expect(alertSpy).toHaveBeenCalledWith('同名技能已存在：pdf（来源：官方内置）');
     });
   });
 
-  it('保险箱技能详情提供编辑/删除/同步分发', async () => {
+  it('库内技能详情提供编辑/删除/同步分发', async () => {
     renderView();
     fireEvent.click(await screen.findByRole('button', { name: '查看 周报助手 详情' }));
     expect(await screen.findByRole('button', { name: '编辑' })).toBeInTheDocument();
@@ -241,7 +258,7 @@ describe('SkillsView 保险箱写管理', () => {
     expect(screen.getByRole('button', { name: '同步分发' })).toBeInTheDocument();
   });
 
-  it('非保险箱技能详情只读，仅提供同步分发', async () => {
+  it('未入库技能详情只读，仅提供同步分发', async () => {
     renderView();
     fireEvent.click(await screen.findByRole('button', { name: '查看 pdf 详情' }));
     expect(await screen.findByRole('button', { name: '同步分发' })).toBeInTheDocument();
@@ -281,7 +298,7 @@ describe('SkillsView 保险箱写管理', () => {
     renderView();
     fireEvent.click(await screen.findByRole('button', { name: '查看 周报助手 详情' }));
     fireEvent.click(await screen.findByRole('button', { name: '删除' }));
-    expect(await screen.findByText(/将从保险箱及所有已分发工具中删除/)).toBeInTheDocument();
+    expect(await screen.findByText(/将从我的库及所有已分发工具中删除/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '确认删除' }));
     await waitFor(() => {
       expect(api.deleteSkill).toHaveBeenCalledWith('周报助手');
@@ -310,39 +327,41 @@ describe('SkillsView 保险箱写管理', () => {
   });
 });
 
-describe('SkillsView 批量沉淀', () => {
-  const vaultSkill = skill({
+describe('SkillsView 批量收藏', () => {
+  const librarySkill = skill({
     id: '周报助手',
     name: '周报助手',
     description: '生成中文周报',
     functionCategory: 'writing',
-    origin: 'vault',
+    provenance: 'self',
+    inLibrary: true,
     tool: 'hub',
   });
-  const vaultCurated = { ...vaultSkill, source: 'builtin:/x/pdf/SKILL.md' };
+  const createdSkill = { ...librarySkill, source: 'builtin:/x/pdf/SKILL.md' };
 
   const writeResult: SkillListResult = {
     total: 2,
-    items: [vaultSkill, result.items[1]],
+    items: [librarySkill, result.items[1]],
     countByFunction: {
       coding: 0, writing: 2, browser: 0, data: 0, devops: 0,
       'ai-integration': 0, design: 0, workflow: 0, other: 0,
     },
-    countByOrigin: { builtin: 1, plugin: 0, personal: 0, project: 0, marketplace: 0, vault: 1 },
+    countByProvenance: { self: 1, marketplace: 0, plugin: 0, builtin: 1 },
+    countByStatus: { in: 1, out: 1 },
   };
 
   beforeEach(() => {
     vi.spyOn(api, 'listSkills').mockResolvedValue(writeResult);
-    vi.spyOn(api, 'getSkill').mockResolvedValue({ skill: vaultSkill, rawContent: '---\nname: 周报助手\n---\n正文' });
+    vi.spyOn(api, 'getSkill').mockResolvedValue({ skill: librarySkill, rawContent: '---\nname: 周报助手\n---\n正文' });
   });
 
-  it('勾选含非保险箱技能时批量条显示沉淀按钮，点击仅沉淀非保险箱项', async () => {
+  it('勾选含未入库技能时批量条显示收藏按钮，点击仅收藏未入库项', async () => {
     const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
-    vi.spyOn(api, 'curateSkillsBatch').mockResolvedValue({ created: [vaultCurated], failed: [] });
+    vi.spyOn(api, 'curateSkillsBatch').mockResolvedValue({ created: [createdSkill], failed: [] });
     renderView();
     fireEvent.click(await screen.findByLabelText('选择技能 周报助手'));
     fireEvent.click(screen.getByLabelText('选择技能 pdf'));
-    fireEvent.click(screen.getByRole('button', { name: '沉淀到保险箱' }));
+    fireEvent.click(screen.getByRole('button', { name: '收藏到我的库' }));
 
     await waitFor(() => {
       expect(api.curateSkillsBatch).toHaveBeenCalledWith(['pdf']);
@@ -351,30 +370,30 @@ describe('SkillsView 批量沉淀', () => {
       expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('成功 1 个'));
     });
     await waitFor(() => {
-      expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('已是保险箱技能'));
+      expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('已在我的库'));
     });
   });
 
   it('服务端冲突跳过时结果提示失败原因且已成功不回滚', async () => {
     const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
     vi.spyOn(api, 'curateSkillsBatch').mockResolvedValue({
-      created: [vaultCurated],
+      created: [createdSkill],
       failed: [{ id: 'ghost', name: 'ghost', error: '同名技能已存在' }],
     });
     renderView();
     fireEvent.click(await screen.findByLabelText('选择技能 pdf'));
-    fireEvent.click(screen.getByRole('button', { name: '沉淀到保险箱' }));
+    fireEvent.click(screen.getByRole('button', { name: '收藏到我的库' }));
 
     await waitFor(() => {
       expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('同名技能已存在'));
     });
   });
 
-  it('勾选全部为保险箱技能时不显示沉淀按钮', async () => {
+  it('勾选全部为库内技能时不显示收藏按钮', async () => {
     vi.spyOn(api, 'curateSkillsBatch');
     renderView();
     fireEvent.click(await screen.findByLabelText('选择技能 周报助手'));
-    expect(screen.queryByRole('button', { name: '沉淀到保险箱' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '收藏到我的库' })).not.toBeInTheDocument();
     expect(api.curateSkillsBatch).not.toHaveBeenCalled();
   });
 });
@@ -393,9 +412,9 @@ describe('SkillsView AI 智能分类', () => {
     vi.spyOn(api, 'listSkills').mockResolvedValue({
       ...result,
       items: [
-        skill({ id: 'a', name: 'a', functionCategory: 'coding', origin: 'personal', functionSource: 'ai' }),
-        skill({ id: 'b', name: 'b', functionCategory: 'writing', origin: 'builtin', functionSource: 'manual' }),
-        skill({ id: 'c', name: 'c', functionCategory: 'data', origin: 'plugin', functionSource: 'keyword' }),
+        skill({ id: 'a', name: 'a', functionCategory: 'coding', provenance: 'self', functionSource: 'ai' }),
+        skill({ id: 'b', name: 'b', functionCategory: 'writing', provenance: 'builtin', functionSource: 'manual' }),
+        skill({ id: 'c', name: 'c', functionCategory: 'data', provenance: 'plugin', functionSource: 'keyword' }),
       ],
     });
     renderView();
@@ -524,8 +543,8 @@ describe('SkillsView 项目技能', () => {
     name: 'douyin-x',
     description: '抖音知识提取',
     functionCategory: 'workflow',
-    origin: 'project',
-    sourcePath: '~/projects/Zhihu/.trae/skills/douyin-x/SKILL.md',
+    provenance: 'self',
+    path: '~/projects/Zhihu/.trae/skills/douyin-x/SKILL.md',
     workspaceName: 'Zhihu',
     workspacePath: '~/projects/Zhihu',
   });
@@ -536,7 +555,8 @@ describe('SkillsView 项目技能', () => {
       coding: 0, writing: 0, browser: 0, data: 0, devops: 0,
       'ai-integration': 0, design: 0, workflow: 1, other: 0,
     },
-    countByOrigin: { builtin: 0, plugin: 0, personal: 0, project: 1, marketplace: 0, vault: 0 },
+    countByProvenance: { self: 1, marketplace: 0, plugin: 0, builtin: 0 },
+    countByStatus: { in: 0, out: 1 },
   };
 
   beforeEach(() => {
@@ -544,19 +564,18 @@ describe('SkillsView 项目技能', () => {
     vi.spyOn(api, 'getSkill').mockResolvedValue({ skill: projectSkill, rawContent: '# douyin-x' });
   });
 
-  it('卡片徽章显示「项目 · 工作区名」，来源维度下归入项目技能分组', async () => {
+  it('卡片徽章显示「项目 · 工作区名」，默认出处维度下归入自建分组', async () => {
     renderView();
     expect(await screen.findByText('项目 · Zhihu')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /按来源/ }));
-    expect(screen.getByRole('heading', { name: '项目技能 1' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '自建 1' })).toBeInTheDocument();
   });
 
-  it('详情展示所属工作区路径，且提供沉淀到保险箱入口', async () => {
+  it('详情展示所属工作区路径，且提供收藏到我的库入口', async () => {
     renderView();
     fireEvent.click(await screen.findByRole('button', { name: '查看 douyin-x 详情' }));
     expect(await screen.findByText('所属工作区')).toBeInTheDocument();
     expect(screen.getByText('Zhihu')).toBeInTheDocument();
     expect(screen.getByText('~/projects/Zhihu')).toBeInTheDocument();
-    expect(await screen.findByRole('button', { name: /沉淀到保险箱/ })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /收藏到我的库/ })).toBeInTheDocument();
   });
 });

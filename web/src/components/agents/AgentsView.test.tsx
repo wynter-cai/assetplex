@@ -111,7 +111,7 @@ describe('AgentsView 智能体只读视图', () => {
   });
 });
 
-describe('AgentsView 保险箱写管理', () => {
+describe('AgentsView 我的库写管理', () => {
   const hubAgent: AgentInfo = {
     id: 'hub:custom-subagent:测试专家',
     name: '测试专家',
@@ -178,7 +178,7 @@ describe('AgentsView 保险箱写管理', () => {
     });
   });
 
-  it('保险箱智能体详情提供编辑/删除/同步分发', async () => {
+  it('我的库智能体详情提供编辑/删除/同步分发', async () => {
     renderView();
     fireEvent.click(await screen.findByText('测试专家'));
     expect(await screen.findByRole('button', { name: '编辑' })).toBeInTheDocument();
@@ -235,7 +235,7 @@ describe('AgentsView 保险箱写管理', () => {
     renderView();
     fireEvent.click(await screen.findByText('测试专家'));
     fireEvent.click(await screen.findByRole('button', { name: '删除' }));
-    expect(await screen.findByText(/将从保险箱及所有已分发工具中删除/)).toBeInTheDocument();
+    expect(await screen.findByText(/将从我的库及所有已分发工具中删除/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '确认删除' }));
     await waitFor(() => {
       expect(api.deleteAgent).toHaveBeenCalledWith('hub:custom-subagent:测试专家');

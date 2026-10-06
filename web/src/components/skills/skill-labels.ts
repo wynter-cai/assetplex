@@ -2,7 +2,7 @@
  * 技能视图共享标签映射与排序（SkillsView / SkillDetail 共用）
  */
 
-import type { SkillFunction, SkillFunctionSource, SkillOrigin } from '@/types/api';
+import type { SkillFunction, SkillFunctionSource, SkillProvenance, LibraryStatus } from '@/types/api';
 
 export const FUNCTION_LABELS: Record<SkillFunction, string> = {
   coding: '编码开发',
@@ -16,13 +16,19 @@ export const FUNCTION_LABELS: Record<SkillFunction, string> = {
   other: '其他',
 };
 
-export const ORIGIN_LABELS: Record<SkillOrigin, string> = {
-  vault: '保险箱',
-  builtin: '官方内置',
-  plugin: '插件自带',
-  personal: '个人自建',
-  project: '项目技能',
+/** 纯出处四类（spec refactor-skill-origin-taxonomy：MECE，库状态不占分类轴） */
+export const PROVENANCE_LABELS: Record<SkillProvenance, string> = {
+  self: '自建',
   marketplace: '市场安装',
+  plugin: '插件自带',
+  builtin: '官方内置',
+};
+
+/** 库状态分段控件标签（与出处 chips 正交组合） */
+export const LIBRARY_STATUS_LABELS: Record<LibraryStatus | 'all', string> = {
+  all: '全部',
+  in: '我的库',
+  out: '未入库',
 };
 
 /** 分类来源标注（spec add-skill-ai-classification：手动 / AI / 关键词） */
@@ -36,14 +42,26 @@ export const FUNCTION_ORDER: SkillFunction[] = [
   'coding', 'writing', 'browser', 'data', 'devops', 'ai-integration', 'design', 'workflow', 'other',
 ];
 
-/** vault（保险箱）为主本，排序最前；项目技能紧随个人自建 */
-export const ORIGIN_ORDER: SkillOrigin[] = ['vault', 'personal', 'project', 'plugin', 'marketplace', 'builtin'];
+export const PROVENANCE_ORDER: SkillProvenance[] = ['self', 'marketplace', 'plugin', 'builtin'];
 
-/** 解析沉淀来源标识（`${origin}:${sourcePath}`）；格式非法返回 null */
-export function parseCurateSource(source: string): { origin: SkillOrigin; path: string } | null {
+/**
+ * 收藏溯源内部 origin → 纯出处映射（source frontmatter `${origin}:${path}` 格式不变，仅内部使用）；
+ * personal/project/vault 无外部出处记 self，marketplace/plugin/builtin 保留原出处
+ */
+const CURATE_SOURCE_PROVENANCE: Record<string, SkillProvenance> = {
+  personal: 'self',
+  project: 'self',
+  vault: 'self',
+  marketplace: 'marketplace',
+  plugin: 'plugin',
+  builtin: 'builtin',
+};
+
+/** 解析收藏溯源标识（`${origin}:${path}`）并映射为纯出处供徽章显示；格式非法返回 null */
+export function parseCurateSource(source: string): { provenance: SkillProvenance; path: string } | null {
   const idx = source.indexOf(':');
   if (idx <= 0) return null;
-  const origin = source.slice(0, idx);
-  if (!(ORIGIN_ORDER as string[]).includes(origin)) return null;
-  return { origin: origin as SkillOrigin, path: source.slice(idx + 1) };
+  const provenance = CURATE_SOURCE_PROVENANCE[source.slice(0, idx)];
+  if (!provenance) return null;
+  return { provenance, path: source.slice(idx + 1) };
 }

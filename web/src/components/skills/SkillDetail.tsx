@@ -1,7 +1,7 @@
 /**
  * 技能详情面板：元信息 + 副本位置 + SKILL.md 原文
- * 保险箱（origin=vault）技能提供 编辑/删除/同步分发；其他来源只读、仅同步分发。
- * spec: add-skill-agent-write-management
+ * 我的库（inLibrary=true）技能提供 编辑/删除/同步分发；未入库技能只读、仅同步分发并提供收藏入口。
+ * spec: add-skill-agent-write-management / refactor-skill-origin-taxonomy
  */
 
 import { useState } from 'react';
@@ -9,22 +9,14 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Sparkles, FileText, Pencil, Archive } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { api } from '@/lib/api';
 import { useEscapeKey } from '@/lib/use-escape-key';
 import { Markdown, stripFrontmatter } from '@/components/common/Markdown';
 import { SyncDistribute } from '@/components/common/SyncDistribute';
-import { FUNCTION_LABELS, ORIGIN_LABELS, FUNCTION_SOURCE_LABELS, parseCurateSource } from './skill-labels';
+import { FUNCTION_LABELS, PROVENANCE_LABELS, FUNCTION_SOURCE_LABELS, parseCurateSource } from './skill-labels';
+import { DeleteConfirmDialog, CurateDialog } from './SkillDialogs';
 import { useAiClassify } from './use-ai-classify';
 import { AiConfigDialog } from './AiConfigDialog';
 import type { SkillInfo } from '@/types/api';
@@ -32,98 +24,8 @@ import type { SkillInfo } from '@/types/api';
 interface SkillDetailProps {
   skill: SkillInfo;
   onClose: () => void;
-  /** 沉淀成功后回调（父组件切换详情到新保险箱技能） */
+  /** 收藏成功后回调（父组件切换详情到新库内技能） */
   onCurated: (skill: SkillInfo) => void;
-}
-
-/** 删除确认对话框：明示影响范围（spec 删除确认文案） */
-function DeleteConfirmDialog({
-  skill,
-  open,
-  onOpenChange,
-  onConfirm,
-}: {
-  skill: SkillInfo;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onConfirm: () => void;
-}): JSX.Element {
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>删除技能「{skill.name}」</DialogTitle>
-          <DialogDescription>
-            将从保险箱及所有已分发工具中删除该技能，此操作不可撤销。
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter>
-          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>取消</Button>
-          <Button variant="destructive" size="sm" onClick={onConfirm}>确认删除</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-/** 沉淀对话框：名称预填可改，确认后复制到保险箱（spec add-skill-curation） */
-function CurateDialog({
-  skill,
-  onOpenChange,
-  onCurated,
-}: {
-  skill: SkillInfo;
-  onOpenChange: (open: boolean) => void;
-  onCurated: (skill: SkillInfo) => void;
-}): JSX.Element {
-  const queryClient = useQueryClient();
-  const [name, setName] = useState(skill.name);
-  const [submitting, setSubmitting] = useState(false);
-
-  const submit = (): void => {
-    const trimmed = name.trim();
-    if (!trimmed || submitting) return;
-    setSubmitting(true);
-    api
-      .curateSkill({ id: skill.id, name: trimmed })
-      .then((result) => {
-        void queryClient.invalidateQueries({ queryKey: ['skills'] });
-        onOpenChange(false);
-        onCurated(result.skill);
-      })
-      .catch((err: unknown) => {
-        // 同名冲突（400）/ 名称非法（400）等后端校验错误直接提示，对话框保持打开
-        alert(err instanceof Error ? err.message : '沉淀失败');
-      })
-      .finally(() => setSubmitting(false));
-  };
-
-  return (
-    <Dialog open onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>沉淀到保险箱</DialogTitle>
-          <DialogDescription>
-            复制「{skill.name}」到保险箱 skills/&lt;名称&gt;/SKILL.md，源技能保留不动
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-1">
-          <span className="text-xs font-medium">名称</span>
-          <Input
-            aria-label="沉淀技能名称"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-        </div>
-        <DialogFooter>
-          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>取消</Button>
-          <Button size="sm" onClick={submit} disabled={!name.trim() || submitting}>
-            {submitting ? '沉淀中…' : '确认沉淀'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
 }
 
 export function SkillDetail({ skill, onClose, onCurated }: SkillDetailProps): JSX.Element {
@@ -138,8 +40,8 @@ export function SkillDetail({ skill, onClose, onCurated }: SkillDetailProps): JS
     queryFn: () => api.getSkill(skill.id),
   });
 
-  const isVault = skill.origin === 'vault';
-  const sourceInfo = isVault && skill.source ? parseCurateSource(skill.source) : null;
+  const isLibrary = skill.inLibrary;
+  const sourceInfo = isLibrary && skill.source ? parseCurateSource(skill.source) : null;
 
   // AI 分类：单条触发，成功后详情与列表同步刷新（spec add-skill-ai-classification）
   const ai = useAiClassify(() => {
@@ -197,13 +99,13 @@ export function SkillDetail({ skill, onClose, onCurated }: SkillDetailProps): JS
         <div className="flex flex-wrap gap-1.5">
           <Badge variant="outline">{FUNCTION_LABELS[skill.functionCategory]}</Badge>
           <Badge variant="outline">
-            {skill.origin === 'project' && skill.workspaceName
+            {skill.provenance === 'self' && skill.workspaceName
               ? `项目 · ${skill.workspaceName}`
-              : ORIGIN_LABELS[skill.origin]}
+              : PROVENANCE_LABELS[skill.provenance]}
           </Badge>
           <Badge variant="secondary">{FUNCTION_SOURCE_LABELS[skill.functionSource]}</Badge>
-          {isVault && sourceInfo && (
-            <Badge variant="secondary">沉淀自 {ORIGIN_LABELS[sourceInfo.origin]}</Badge>
+          {isLibrary && sourceInfo && sourceInfo.provenance !== 'self' && (
+            <Badge variant="secondary">来自 {PROVENANCE_LABELS[sourceInfo.provenance]}</Badge>
           )}
           {skill.version && <Badge variant="secondary">v{skill.version}</Badge>}
         </div>
@@ -217,7 +119,7 @@ export function SkillDetail({ skill, onClose, onCurated }: SkillDetailProps): JS
 
         {!isLoading && (
           <div className="flex flex-wrap items-center gap-2">
-            {isVault && (
+            {isLibrary && (
               <Button variant="outline" size="sm" className="h-8 px-3 text-xs" onClick={startEdit}>
                 <Pencil className="h-3.5 w-3.5 mr-1" />
                 编辑
@@ -232,13 +134,13 @@ export function SkillDetail({ skill, onClose, onCurated }: SkillDetailProps): JS
             >
               {ai.running ? 'AI 分类中…' : 'AI 分类'}
             </Button>
-            {!isVault && (
+            {!isLibrary && (
               <Button variant="outline" size="sm" className="h-8 px-3 text-xs" onClick={() => setCurateOpen(true)}>
                 <Archive className="h-3.5 w-3.5 mr-1" />
-                沉淀到保险箱
+                收藏到我的库
               </Button>
             )}
-            {isVault && (
+            {isLibrary && (
               <Button
                 variant="outline"
                 size="sm"
@@ -252,7 +154,7 @@ export function SkillDetail({ skill, onClose, onCurated }: SkillDetailProps): JS
           </div>
         )}
 
-        {skill.origin === 'project' && skill.workspacePath && (
+        {skill.workspacePath && (
           <div>
             <h3 className="text-xs font-medium text-muted-foreground mb-1">所属工作区</h3>
             <p className="text-sm mb-1">{skill.workspaceName ?? skill.workspacePath}</p>
@@ -262,27 +164,18 @@ export function SkillDetail({ skill, onClose, onCurated }: SkillDetailProps): JS
 
         <div>
           <h3 className="text-xs font-medium text-muted-foreground mb-1">
-            文件位置（共 {skill.variants.length + 1} 个副本）
+            文件位置（共 {skill.variants + 1} 个副本）
           </h3>
-          <ul className="space-y-1">
-            <li>
-              <code className="block text-xs bg-muted rounded p-2 break-all">{skill.sourcePath}</code>
-            </li>
-            {skill.variants.map((v) => (
-              <li key={v}>
-                <code className="block text-xs bg-muted rounded p-2 break-all">{v}</code>
-              </li>
-            ))}
-          </ul>
+          <code className="block text-xs bg-muted rounded p-2 break-all">{skill.path}</code>
         </div>
 
-        <div className="flex flex-col flex-1 min-h-48">
+        <div className="flex flex-col flex-1 min-h-[max(60vh,576px)]">
           <h3 className="text-xs font-medium text-muted-foreground mb-1 flex items-center gap-1 shrink-0">
             <FileText className="h-3 w-3" />
             SKILL.md 文档
           </h3>
           {isLoading ? (
-            <Skeleton className="h-40 w-full" />
+            <Skeleton className="h-[max(60vh,576px)] w-full" />
           ) : editing ? (
             <div className="flex flex-col gap-2 flex-1">
               <Textarea
@@ -299,7 +192,7 @@ export function SkillDetail({ skill, onClose, onCurated }: SkillDetailProps): JS
               </div>
             </div>
           ) : (
-            <div className="flex-1 min-h-0 overflow-auto rounded border bg-muted/30 p-3">
+            <div className="flex-1 rounded border bg-muted/30 p-3">
               {data?.rawContent ? (
                 <Markdown content={stripFrontmatter(data.rawContent)} />
               ) : (

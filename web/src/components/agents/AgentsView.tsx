@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Search, Bot, User as UserIcon } from 'lucide-react';
 import { Card } from '@/components/ui/card';
@@ -45,7 +45,7 @@ function AgentCard({ agent, active, onSelect }: { agent: AgentInfo; active: bool
   );
 }
 
-/** 详情面板改为独立组件（AgentDetail.tsx）：保险箱智能体支持编辑/删除/同步分发 */
+/** 详情面板改为独立组件（AgentDetail.tsx）：我的库智能体支持编辑/删除/同步分发 */
 
 /** 智能体盘点主视图（在资产库 /vault/agent 下渲染） */
 export function AgentsView(): JSX.Element {

@@ -1,5 +1,5 @@
 /**
- * 新建保险箱智能体表单（名称/描述/系统提示词，描述与提示词可空）
+ * 新建我的库智能体表单（名称/描述/系统提示词，描述与提示词可空）
  * 保存为 hub agents/<name>.md（Claude Code 子代理格式）
  * spec: add-skill-agent-write-management
  */
@@ -68,7 +68,7 @@ export function AgentCreateDialog({ open, onOpenChange, onCreated }: AgentCreate
       <DialogContent>
         <DialogHeader>
           <DialogTitle>新建智能体</DialogTitle>
-          <DialogDescription>保存到保险箱 agents/&lt;名称&gt;.md（子代理格式），可再分发到各工具</DialogDescription>
+          <DialogDescription>保存到我的库 agents/&lt;名称&gt;.md（子代理格式），可再分发到各工具</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">

@@ -27,7 +27,8 @@ import type {
   SkillListResult,
   SkillInfo,
   SkillFunction,
-  SkillOrigin,
+  SkillProvenance,
+  LibraryStatus,
   CurateBatchResult,
   AiClassifyConfigView,
   SaveAiClassifyConfigInput,
@@ -172,10 +173,11 @@ export const api = {
     request<{ success: boolean }>(`/agents/${encodeURIComponent(id)}`, { method: 'DELETE' }),
 
   // Skills（分类全貌，只读 + 职能覆盖）
-  listSkills: (params?: { function?: SkillFunction; origin?: SkillOrigin; search?: string }) => {
+  listSkills: (params?: { function?: SkillFunction; provenance?: SkillProvenance; status?: LibraryStatus; search?: string }) => {
     const qs = new URLSearchParams();
     if (params?.function) qs.set('function', params.function);
-    if (params?.origin) qs.set('origin', params.origin);
+    if (params?.provenance) qs.set('provenance', params.provenance);
+    if (params?.status) qs.set('status', params.status);
     if (params?.search) qs.set('search', params.search);
     const q = qs.toString();
     return request<SkillListResult>(`/skills${q ? `?${q}` : ''}`);

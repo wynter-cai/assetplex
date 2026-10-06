@@ -11,9 +11,9 @@ export const KIND_LABELS: Record<AgentKind, string> = {
   'plugin-agent': '插件智能体',
 };
 
-/** hub = 保险箱（主本） */
+/** hub = 我的库（主本） */
 export const TOOL_LABELS: Record<AgentTool, string> = {
-  hub: '保险箱',
+  hub: '我的库',
   trae: 'TRAE',
   codebuddy: 'CodeBuddy',
   claude: 'Claude Code',
@@ -22,7 +22,7 @@ export const TOOL_LABELS: Record<AgentTool, string> = {
 
 export const ALL_KINDS: AgentKind[] = ['custom-subagent', 'expert', 'builtin-persona', 'plugin-agent'];
 
-/** hub（保险箱）为主本，排序最前 */
+/** hub（我的库）为主本，排序最前 */
 export const ALL_TOOLS: AgentTool[] = ['hub', 'trae', 'codebuddy', 'claude', 'codex'];
 
 export function formatTime(iso: string | null): string {

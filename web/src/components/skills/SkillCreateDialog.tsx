@@ -1,5 +1,5 @@
 /**
- * 新建保险箱技能表单（名称/描述/正文，描述与正文可空）
+ * 新建我的库技能表单（名称/描述/正文，描述与正文可空）
  * spec: add-skill-agent-write-management
  */
 
@@ -67,7 +67,7 @@ export function SkillCreateDialog({ open, onOpenChange, onCreated }: SkillCreate
       <DialogContent>
         <DialogHeader>
           <DialogTitle>新建技能</DialogTitle>
-          <DialogDescription>保存到保险箱 skills/&lt;名称&gt;/SKILL.md，可再分发到各工具</DialogDescription>
+          <DialogDescription>保存到我的库 skills/&lt;名称&gt;/SKILL.md，可再分发到各工具</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
