@@ -27,7 +27,7 @@ const result: SkillListResult = {
     coding: 1, writing: 1, browser: 0, data: 0, devops: 0,
     'ai-integration': 0, design: 0, workflow: 0, other: 0,
   },
-  countByOrigin: { builtin: 1, plugin: 0, personal: 1, marketplace: 0, vault: 0 },
+  countByOrigin: { builtin: 1, plugin: 0, personal: 1, project: 0, marketplace: 0, vault: 0 },
 };
 
 function renderView(): ReturnType<typeof render> {
@@ -177,7 +177,7 @@ describe('SkillsView 保险箱写管理', () => {
       coding: 0, writing: 2, browser: 0, data: 0, devops: 0,
       'ai-integration': 0, design: 0, workflow: 0, other: 0,
     },
-    countByOrigin: { builtin: 1, plugin: 0, personal: 0, marketplace: 0, vault: 1 },
+    countByOrigin: { builtin: 1, plugin: 0, personal: 0, project: 0, marketplace: 0, vault: 1 },
   };
 
   const twoTools: ToolStatus[] = [
@@ -328,7 +328,7 @@ describe('SkillsView 批量沉淀', () => {
       coding: 0, writing: 2, browser: 0, data: 0, devops: 0,
       'ai-integration': 0, design: 0, workflow: 0, other: 0,
     },
-    countByOrigin: { builtin: 1, plugin: 0, personal: 0, marketplace: 0, vault: 1 },
+    countByOrigin: { builtin: 1, plugin: 0, personal: 0, project: 0, marketplace: 0, vault: 1 },
   };
 
   beforeEach(() => {

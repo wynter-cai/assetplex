@@ -264,7 +264,7 @@ export type SkillFunction =
   | 'workflow'
   | 'other';
 
-export type SkillOrigin = 'builtin' | 'plugin' | 'personal' | 'marketplace' | 'vault';
+export type SkillOrigin = 'builtin' | 'plugin' | 'personal' | 'project' | 'marketplace' | 'vault';
 
 /** 分类来源：手动覆盖 / AI 分类 / 关键词规则兜底 */
 export type SkillFunctionSource = 'manual' | 'ai' | 'keyword';
@@ -281,6 +281,10 @@ export interface SkillInfo {
   functionSource: SkillFunctionSource;
   /** 沉淀来源（仅 vault）：`${origin}:${sourcePath}`；自建技能无此字段 */
   source?: string;
+  /** 所属项目名（工作区目录名）；仅 origin='project' 有值 */
+  workspaceName?: string;
+  /** 所属项目工作区绝对路径；仅 origin='project' 有值 */
+  workspacePath?: string;
   variants: string[];
 }
 
@@ -334,6 +338,37 @@ export interface CurateBatchResult {
   created: SkillInfo[];
   failed: CurateBatchFailure[];
 }
+
+// ========== 工作区发现（项目级技能） ==========
+
+export interface WorkspacesConfig {
+  /** 从 TRAE storage.json 自动发现 */
+  autoDiscover: boolean;
+  /** 手动工作区根绝对路径 */
+  roots: string[];
+  /** 被排除的自动发现工作区绝对路径 */
+  disabledWorkspaces: string[];
+}
+
+export interface WorkspaceInfo {
+  path: string;
+  name: string;
+  source: 'auto' | 'manual';
+  skillsDirExists: boolean;
+  skillCount: number;
+  disabled?: boolean;
+}
+
+export interface WorkspacesResponse {
+  config: WorkspacesConfig;
+  workspaces: WorkspaceInfo[];
+  truncated: boolean;
+  maxWorkspaces: number;
+  errors: string[];
+}
+
+/** PUT 合并语义：所有字段可选，缺省保持原值 */
+export type UpdateWorkspacesInput = Partial<WorkspacesConfig>;
 
 // ========== AI-Coding 项目类型 ==========
 

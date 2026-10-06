@@ -21,6 +21,7 @@ export const ORIGIN_LABELS: Record<SkillOrigin, string> = {
   builtin: '官方内置',
   plugin: '插件自带',
   personal: '个人自建',
+  project: '项目技能',
   marketplace: '市场安装',
 };
 
@@ -35,8 +36,8 @@ export const FUNCTION_ORDER: SkillFunction[] = [
   'coding', 'writing', 'browser', 'data', 'devops', 'ai-integration', 'design', 'workflow', 'other',
 ];
 
-/** vault（保险箱）为主本，排序最前 */
-export const ORIGIN_ORDER: SkillOrigin[] = ['vault', 'personal', 'plugin', 'marketplace', 'builtin'];
+/** vault（保险箱）为主本，排序最前；项目技能紧随个人自建 */
+export const ORIGIN_ORDER: SkillOrigin[] = ['vault', 'personal', 'project', 'plugin', 'marketplace', 'builtin'];
 
 /** 解析沉淀来源标识（`${origin}:${sourcePath}`）；格式非法返回 null */
 export function parseCurateSource(source: string): { origin: SkillOrigin; path: string } | null {

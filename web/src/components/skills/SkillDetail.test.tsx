@@ -70,7 +70,7 @@ describe('SkillDetail 沉淀到保险箱', () => {
         coding: 0, writing: 0, browser: 0, data: 0, devops: 0,
         'ai-integration': 0, design: 0, workflow: 0, other: 1,
       },
-      countByOrigin: { builtin: 0, plugin: 0, personal: 0, marketplace: 0, vault: 1 },
+      countByOrigin: { builtin: 0, plugin: 0, personal: 0, project: 0, marketplace: 0, vault: 1 },
     });
   });
 

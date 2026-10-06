@@ -34,6 +34,8 @@ import type {
   AiClassifyResult,
   ProjectListResult,
   ProjectOpenTarget,
+  WorkspacesResponse,
+  UpdateWorkspacesInput,
 } from '@/types/api';
 
 const BASE = '/api';
@@ -225,6 +227,14 @@ export const api = {
     request<AiClassifyResult>('/skills/ai-classify', {
       method: 'POST',
       body: JSON.stringify(ids ? { ids } : {}),
+    }),
+
+  // Workspaces（项目级技能工作区发现）
+  getWorkspaces: () => request<WorkspacesResponse>('/workspaces'),
+  updateWorkspaces: (body: UpdateWorkspacesInput) =>
+    request<WorkspacesResponse>('/workspaces', {
+      method: 'PUT',
+      body: JSON.stringify(body),
     }),
 
   // Projects（AI-Coding 项目可视化）
