@@ -23,7 +23,7 @@ export type SkillFunction =
   | 'workflow'
   | 'other';
 
-export type SkillOrigin = 'builtin' | 'plugin' | 'personal' | 'marketplace' | 'vault';
+export type SkillOrigin = 'builtin' | 'plugin' | 'personal' | 'project' | 'marketplace' | 'vault';
 
 /** 分类来源：手动覆盖 / AI 分类 / 关键词规则兜底 */
 export type SkillFunctionSource = 'manual' | 'ai' | 'keyword';
@@ -44,6 +44,10 @@ export interface SkillInfo {
   functionSource: SkillFunctionSource;
   /** 沉淀来源（仅 vault 有值）：`${origin}:${sourcePath}`；自建/非 vault 为 undefined */
   source?: string;
+  /** 所属项目名（工作区目录名）；仅 origin='project' 有值 */
+  workspaceName?: string;
+  /** 所属项目工作区绝对路径；仅 origin='project' 有值 */
+  workspacePath?: string;
   /** 其他副本 SKILL.md 绝对路径 */
   variants: string[];
 }
@@ -81,6 +85,8 @@ export interface SkillSources {
   pluginsRoot: string;
   /** ~/.codebuddy/skills-marketplace/skills */
   marketplaceSkillsDir: string;
+  /** TRAE 项目工作区目录列表（每个目录下扫 .trae/skills）；无工作区时为空数组 */
+  workspaceDirs: string[];
   /** 保险箱技能根目录（Hub skills/<name>/SKILL.md） */
   vaultSkillsDir: string;
 }
@@ -108,6 +114,10 @@ interface RawSkill {
   tool: string;
   /** frontmatter source（沉淀来源标识），非 vault 技能透传前会被过滤 */
   source?: string;
+  /** 所属项目名（工作区目录名）；仅 project 来源副本有值 */
+  workspaceName?: string;
+  /** 所属项目工作区绝对路径；仅 project 来源副本有值 */
+  workspacePath?: string;
   /** SKILL.md 原文（含 frontmatter），AI 缓存 hash 的依据 */
   raw: string;
   /** frontmatter 之后的正文，用于兜底分类 */
@@ -128,7 +138,14 @@ export const SKILL_FUNCTIONS: SkillFunction[] = [
   'other',
 ];
 
-export const SKILL_ORIGINS: SkillOrigin[] = ['builtin', 'plugin', 'personal', 'marketplace', 'vault'];
+export const SKILL_ORIGINS: SkillOrigin[] = [
+  'builtin',
+  'plugin',
+  'personal',
+  'project',
+  'marketplace',
+  'vault',
+];
 
 /**
  * 职能关键词规则表：按数组顺序匹配，首个命中的类别胜出。
@@ -202,13 +219,21 @@ export function parseFrontmatter(content: string): ParsedFrontmatter {
 
 /**
  * 按绝对路径前缀判定来源类别。
- * personal / marketplace / plugin 优先于 builtin 判断，未匹配路径保守归为 builtin。
+ * personal / marketplace / plugin / project 优先于 builtin 判断，未匹配路径保守归为 builtin。
+ * 比较时统一反斜杠为正斜杠，容忍 Windows 混合分隔符。
  */
 export function classifyOrigin(absolutePath: string, sources: SkillSources): SkillOrigin {
-  if (absolutePath.startsWith(sources.vaultSkillsDir)) return 'vault';
-  if (absolutePath.startsWith(sources.userSkillsDir)) return 'personal';
-  if (absolutePath.startsWith(sources.marketplaceSkillsDir)) return 'marketplace';
-  if (absolutePath.startsWith(sources.pluginsRoot)) return 'plugin';
+  const p = absolutePath.replace(/\\/g, '/').replace(/\/+$/, '');
+  const norm = (dir: string): string => dir.replace(/\\/g, '/').replace(/\/+$/, '');
+  const under = (dir: string, prefix = ''): boolean =>
+    p.startsWith(`${norm(dir)}${prefix}`);
+
+  if (under(sources.vaultSkillsDir)) return 'vault';
+  if (under(sources.userSkillsDir)) return 'personal';
+  // 项目工作区：限定到 <workspace>/.trae/skills 前缀，避免同前缀兄弟目录误判
+  if (sources.workspaceDirs.some((dir) => under(dir, '/.trae/skills'))) return 'project';
+  if (under(sources.marketplaceSkillsDir)) return 'marketplace';
+  if (under(sources.pluginsRoot)) return 'plugin';
   return 'builtin';
 }
 
@@ -248,6 +273,7 @@ function scanSkillDir(
   skillsDir: string,
   origin: SkillOrigin,
   tool: string,
+  workspace?: { workspaceName: string; workspacePath: string },
 ): RawSkill[] {
   const result: RawSkill[] = [];
   for (const entry of fs.listDir(skillsDir)) {
@@ -263,11 +289,20 @@ function scanSkillDir(
       origin,
       tool,
       source: data.source,
+      workspaceName: workspace?.workspaceName,
+      workspacePath: workspace?.workspacePath,
       raw,
       body,
     });
   }
   return result;
+}
+
+/** 取路径最后一段作为工作区展示名（兼容混合分隔符） */
+function baseName(path: string): string {
+  const normalized = path.replace(/\\/g, '/').replace(/\/+$/, '');
+  const idx = normalized.lastIndexOf('/');
+  return idx >= 0 ? normalized.slice(idx + 1) : normalized;
 }
 
 /** 跨全部来源发现技能副本；缺失目录贡献零条目不报错 */
@@ -279,6 +314,13 @@ export function discoverSkillFiles(fs: SkillFs, sources: SkillSources): RawSkill
 
   // 个人自建（~/.trae-cn/skills）
   out.push(...scanSkillDir(fs, sources.userSkillsDir, 'personal', 'trae'));
+
+  // 项目级技能（各 TRAE 工作区 <workspace>/.trae/skills）
+  for (const workspaceDir of sources.workspaceDirs) {
+    if (!workspaceDir) continue;
+    const workspace = { workspaceName: baseName(workspaceDir), workspacePath: workspaceDir };
+    out.push(...scanSkillDir(fs, `${workspaceDir}/.trae/skills`, 'project', 'trae', workspace));
+  }
 
   // 官方内置：全局技能
   out.push(...scanSkillDir(fs, `${sources.builtinRoot}/global/skills`, 'builtin', 'trae'));
@@ -349,9 +391,10 @@ function dedupeByRealPath(raws: RawSkill[], fs: SkillFs): RawSkill[] {
 const ORIGIN_PRIORITY: Record<SkillOrigin, number> = {
   vault: 0,
   personal: 1,
-  plugin: 2,
-  marketplace: 3,
-  builtin: 4,
+  project: 2,
+  plugin: 3,
+  marketplace: 4,
+  builtin: 5,
 };
 
 /** 正文兜底分类时只取开头部分，降低长文档里偶然提及关键词的噪声 */
@@ -359,7 +402,7 @@ const BODY_FALLBACK_LIMIT = 400;
 
 /**
  * 同名技能（小写比较）合并为一个主条目。
- * 主副本来源按 vault > personal > plugin > marketplace > builtin 选取，同优先级取路径靠前。
+ * 主副本来源按 vault > personal > project > plugin > marketplace > builtin 选取，同优先级取路径靠前。
  * 其余副本绝对路径计入 variants。
  * 分类优先级：手动覆盖 > AI 缓存（aiLookup 命中）> 关键词规则。
  */
@@ -420,6 +463,8 @@ export function dedupeSkills(
       version: primary.version,
       functionSource,
       source: primary.origin === 'vault' ? primary.source : undefined,
+      workspaceName: primary.origin === 'project' ? primary.workspaceName : undefined,
+      workspacePath: primary.origin === 'project' ? primary.workspacePath : undefined,
       variants,
     });
   }

@@ -78,6 +78,7 @@ const SOURCES: SkillSources = {
   builtinSkillsDir: '/home/u/.trae-cn/builtin_skills',
   pluginsRoot: '/home/u/.trae-cn/plugins',
   marketplaceSkillsDir: '/home/u/.codebuddy/skills-marketplace/skills',
+  workspaceDirs: [],
 };
 
 function makeDeps(fs: MemoryWriteFs): { fs: MemoryWriteFs; sources: SkillSources; store: SkillOverrideStore } {

@@ -109,6 +109,7 @@ const sources: SkillSources = {
   builtinSkillsDir: '/root/.trae-cn/builtin_skills',
   pluginsRoot: '/root/.trae-cn/plugins',
   marketplaceSkillsDir: '/root/.codebuddy/skills-marketplace/skills',
+  workspaceDirs: [],
 };
 
 const SKILL_MD = (name: string, description: string): string =>

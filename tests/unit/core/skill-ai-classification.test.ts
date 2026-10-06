@@ -80,6 +80,7 @@ const SOURCES: SkillSources = {
   builtinSkillsDir: '/home/u/.trae-cn/builtin_skills',
   pluginsRoot: '/home/u/.trae-cn/plugins',
   marketplaceSkillsDir: '/cb/skills',
+  workspaceDirs: [],
 };
 
 const CONFIG: AiClassifyConfig = { baseUrl: 'https://api.example.com/v1', apiKey: 'sk-test', model: 'lite-model' };

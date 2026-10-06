@@ -82,6 +82,8 @@ export function defaultSkillSources(): SkillSources {
     builtinSkillsDir: join(home, '.trae-cn', 'builtin_skills'),
     pluginsRoot: join(home, '.trae-cn', 'plugins'),
     marketplaceSkillsDir: join(home, '.codebuddy', 'skills-marketplace', 'skills'),
+    // T4 将替换为工作区服务动态解析；T2 阶段先保证类型完整（空数组=行为与旧盘点一致）
+    workspaceDirs: [],
     vaultSkillsDir: join(getHubRoot(), 'skills'),
   };
 }

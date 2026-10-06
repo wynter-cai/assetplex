@@ -78,6 +78,7 @@ const sources: SkillSources = {
   builtinSkillsDir: '/root/.trae-cn/builtin_skills',
   pluginsRoot: '/root/.trae-cn/plugins',
   marketplaceSkillsDir: '/root/.codebuddy/skills-marketplace/skills',
+  workspaceDirs: [],
 };
 
 function buildApp(fs: MemoryWriteFs, store: SkillOverrideStore = new MemoryStore()): Hono {

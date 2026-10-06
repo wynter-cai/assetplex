@@ -76,6 +76,7 @@ const SOURCES: SkillSources = {
   builtinSkillsDir: '/home/u/.trae-cn/builtin_skills',
   pluginsRoot: '/home/u/.trae-cn/plugins',
   marketplaceSkillsDir: '/home/u/.codebuddy/skills-marketplace/skills',
+  workspaceDirs: [],
 };
 
 describe('discoverSkillFiles 跨来源发现', () => {
@@ -382,6 +383,120 @@ describe('保险箱（vault）技能纳入盘点', () => {
 
   it('classifyOrigin 识别 vault 前缀', () => {
     expect(classifyOrigin(`${SOURCES.vaultSkillsDir}/x/SKILL.md`, SOURCES)).toBe('vault');
+  });
+});
+
+describe('项目级技能 project（add-project-skills-discovery）', () => {
+  const WS: SkillSources = {
+    ...SOURCES,
+    workspaceDirs: ['/d/demo/Zhihu', '/d/demo/Demo App', '/d/demo/Super Powers'],
+  };
+  const wsSkill = (ws: string, name: string): string =>
+    `/d/demo/${ws}/.trae/skills/${name}/SKILL.md`;
+
+  it('扫描各工作区 .trae/skills：origin=project、tool=trae、携带所属项目信息', () => {
+    const fs = makeFs({
+      [wsSkill('Zhihu', 'zhihu')]: SKILL('zhihu', '知乎写作'),
+      [wsSkill('Demo App', 'douyin-knowledge-extraction')]: SKILL(
+        'douyin-knowledge-extraction',
+        '抖音知识萃取',
+      ),
+    });
+    const found = discoverSkillFiles(fs, WS);
+    expect(found).toHaveLength(2);
+    const zhihu = found.find((s) => s.name === 'zhihu');
+    expect(zhihu).toMatchObject({
+      origin: 'project',
+      tool: 'trae',
+      workspaceName: 'Zhihu',
+      workspacePath: '/d/demo/Zhihu',
+    });
+  });
+
+  it('工作区没有 .trae/skills 时零贡献不报错', () => {
+    const fs = makeFs({
+      [wsSkill('Zhihu', 'zhihu')]: SKILL('zhihu', '知乎写作'),
+      '/d/demo/Super Powers/README.md': 'no skills here',
+    });
+    const found = discoverSkillFiles(fs, WS);
+    expect(found).toHaveLength(1);
+    expect(found[0]?.workspaceName).toBe('Zhihu');
+  });
+
+  it('同名技能跨项目副本合并：主条目稳定、variants 收齐其余副本', () => {
+    const fs = makeFs({
+      [wsSkill('Zhihu', 'dup-skill')]: SKILL('dup-skill', '知乎版'),
+      [wsSkill('Super Powers', 'dup-skill')]: SKILL('dup-skill', '改编版'),
+    });
+    const skills = dedupeSkills(discoverSkillFiles(fs, WS), {});
+    expect(skills).toHaveLength(1);
+    const primary = skills[0];
+    expect(primary.workspaceName).toBe('Super Powers');
+    expect(primary.variants).toEqual([wsSkill('Zhihu', 'dup-skill')]);
+  });
+
+  it('与市场技能同名时 project 胜出：计数计入 project，市场副本进 variants', () => {
+    const fs = makeFs({
+      [wsSkill('Super Powers', 'brainstorming')]: SKILL('brainstorming', '项目改编版'),
+      [`${SOURCES.marketplaceSkillsDir}/brainstorming/SKILL.md`]: SKILL(
+        'brainstorming',
+        '市场版',
+      ),
+    });
+    const all = listSkills({ fs, sources: WS, store: new MemoryOverrideStore() });
+    expect(all.total).toBe(1);
+    expect(all.countByOrigin.project).toBe(1);
+    expect(all.countByOrigin.marketplace).toBe(0);
+    expect(all.items[0]?.origin).toBe('project');
+    expect(all.items[0]?.variants).toEqual([
+      `${SOURCES.marketplaceSkillsDir}/brainstorming/SKILL.md`,
+    ]);
+  });
+
+  it('classifyOrigin 按工作区前缀判定 project（容忍 Windows 反斜杠）', () => {
+    expect(classifyOrigin(wsSkill('Zhihu', 'x'), WS)).toBe('project');
+    expect(classifyOrigin('\\d\\Trae\\Zhihu\\.trae\\skills\\x\\SKILL.md', WS)).toBe('project');
+    // 前缀边界：同前缀的另一目录不命中
+    expect(classifyOrigin('/d/demo/Zhihu-backup/.trae/skills/x/SKILL.md', WS)).not.toBe('project');
+  });
+
+  it('项目技能被链接进保险箱时按真实路径去重并保留 vault', () => {
+    const projectPath = wsSkill('Zhihu', 'zhihu');
+    const vaultPath = `${SOURCES.vaultSkillsDir}/zhihu/SKILL.md`;
+    const base = makeFs({
+      [projectPath]: SKILL('zhihu', '项目版'),
+      [vaultPath]: SKILL('zhihu', '保险箱版'),
+    });
+    const fs: SkillFs = { ...base, realpath: () => '/real/zhihu/SKILL.md' };
+    const found = discoverSkillFiles(fs, WS);
+    expect(found).toHaveLength(1);
+    expect(found[0].origin).toBe('vault');
+  });
+
+  it('listSkills 支持 origin=project 筛选且 countByOrigin 含 project 键', () => {
+    const store = new MemoryOverrideStore();
+    const fs = makeFs({
+      [wsSkill('Zhihu', 'zhihu')]: SKILL('zhihu', '知乎写作'),
+      [`${SOURCES.userSkillsDir}/mine/SKILL.md`]: SKILL('mine', '全局个人技能'),
+    });
+    const onlyProject = listSkills({
+      fs,
+      sources: WS,
+      store,
+      params: { origin: 'project' },
+    });
+    expect(onlyProject.items.map((s) => s.id)).toEqual(['zhihu']);
+    expect(onlyProject.countByOrigin.project).toBe(1);
+    expect(onlyProject.countByOrigin.personal).toBe(1);
+  });
+
+  it('手动职能覆盖对 project 技能生效（manual 优先）', () => {
+    const store = new MemoryOverrideStore();
+    const fs = makeFs({ [wsSkill('Zhihu', 'zhihu')]: SKILL('zhihu', '知乎写作') });
+    const updated = overrideSkillFunction('zhihu', 'data', { fs, sources: WS, store });
+    expect(updated?.origin).toBe('project');
+    expect(updated?.functionCategory).toBe('data');
+    expect(updated?.functionSource).toBe('manual');
   });
 });
 
