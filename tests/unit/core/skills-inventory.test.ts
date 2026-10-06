@@ -384,3 +384,46 @@ describe('保险箱（vault）技能纳入盘点', () => {
     expect(classifyOrigin(`${SOURCES.vaultSkillsDir}/x/SKILL.md`, SOURCES)).toBe('vault');
   });
 });
+
+describe('SkillInfo source 沉淀来源标识（add-skill-curation）', () => {
+  it('vault 技能 frontmatter 的 source 字段透传到盘点条目', () => {
+    const fs = makeFs({
+      [`${SOURCES.vaultSkillsDir}/airbnb/SKILL.md`]: SKILL(
+        'airbnb',
+        '旅行预订',
+        '\nsource: marketplace:/x/airbnb/SKILL.md',
+      ),
+    });
+    const skills = dedupeSkills(discoverSkillFiles(fs, SOURCES), {});
+    expect(skills).toHaveLength(1);
+    expect(skills[0].source).toBe('marketplace:/x/airbnb/SKILL.md');
+  });
+
+  it('frontmatter 无 source 时条目 source 为 undefined（自建技能）', () => {
+    const fs = makeFs({
+      [`${SOURCES.vaultSkillsDir}/mine/SKILL.md`]: SKILL('mine', '自建技能'),
+    });
+    const skills = dedupeSkills(discoverSkillFiles(fs, SOURCES), {});
+    expect(skills[0].source).toBeUndefined();
+  });
+
+  it('非 vault 来源技能不透传 source（source 仅表达沉淀来源）', () => {
+    const fs = makeFs({
+      [`${SOURCES.marketplaceSkillsDir}/x-tool/SKILL.md`]: SKILL('x-tool', '第三方', '\nsource: something-else'),
+    });
+    const skills = dedupeSkills(discoverSkillFiles(fs, SOURCES), {});
+    expect(skills[0].origin).toBe('marketplace');
+    expect(skills[0].source).toBeUndefined();
+  });
+
+  it('同名合并时取主副本（vault 优先）的 source', () => {
+    const fs = makeFs({
+      [`${SOURCES.vaultSkillsDir}/pdf/SKILL.md`]: SKILL('pdf', '保险箱版', '\nsource: personal:/home/pdf/SKILL.md'),
+      [`${SOURCES.userSkillsDir}/pdf/SKILL.md`]: SKILL('pdf', '用户版'),
+    });
+    const skills = dedupeSkills(discoverSkillFiles(fs, SOURCES), {});
+    expect(skills).toHaveLength(1);
+    expect(skills[0].origin).toBe('vault');
+    expect(skills[0].source).toBe('personal:/home/pdf/SKILL.md');
+  });
+});

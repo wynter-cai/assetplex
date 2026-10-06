@@ -38,6 +38,8 @@ export interface SkillInfo {
   sourcePath: string;
   version: string;
   functionOverridden: boolean;
+  /** 沉淀来源（仅 vault 有值）：`${origin}:${sourcePath}`；自建/非 vault 为 undefined */
+  source?: string;
   /** 其他副本 SKILL.md 绝对路径 */
   variants: string[];
 }
@@ -93,6 +95,8 @@ interface RawSkill {
   sourcePath: string;
   origin: SkillOrigin;
   tool: string;
+  /** frontmatter source（沉淀来源标识），非 vault 技能透传前会被过滤 */
+  source?: string;
   /** frontmatter 之后的正文，用于兜底分类 */
   body: string;
 }
@@ -245,6 +249,7 @@ function scanSkillDir(
       sourcePath: skillMd,
       origin,
       tool,
+      source: data.source,
       body,
     });
   }
@@ -380,6 +385,7 @@ export function dedupeSkills(raws: RawSkill[], overrides: Record<string, SkillFu
       sourcePath: primary.sourcePath,
       version: primary.version,
       functionOverridden: overridden !== undefined,
+      source: primary.origin === 'vault' ? primary.source : undefined,
       variants,
     });
   }

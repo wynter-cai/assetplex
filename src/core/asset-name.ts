@@ -44,12 +44,19 @@ export function validateAssetName(name: string): string {
 }
 
 /**
- * 拼装带 frontmatter 的 Markdown（name/description 两行 + 空行 + 正文）
+ * 拼装带 frontmatter 的 Markdown（name/description + 可选 source 两/三行 + 空行 + 正文）
  *
  * 描述中的换行替换为空格，避免破坏 frontmatter 结构；正文保留原文。
+ * source 为沉淀来源标识（add-skill-curation），空值不写入。
  */
-export function buildAssetMarkdown(fields: { name: string; description: string; content: string }): string {
+export function buildAssetMarkdown(fields: {
+  name: string;
+  description: string;
+  content: string;
+  source?: string;
+}): string {
   const description = fields.description.replace(/\r?\n/g, ' ');
   const body = fields.content.replace(/^\r?\n/, '');
-  return `---\nname: ${fields.name}\ndescription: ${description}\n---\n\n${body}`;
+  const sourceLine = fields.source ? `\nsource: ${fields.source}` : '';
+  return `---\nname: ${fields.name}\ndescription: ${description}${sourceLine}\n---\n\n${body}`;
 }
