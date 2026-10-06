@@ -25,6 +25,9 @@ export type SkillFunction =
 
 export type SkillOrigin = 'builtin' | 'plugin' | 'personal' | 'marketplace' | 'vault';
 
+/** 分类来源：手动覆盖 / AI 分类 / 关键词规则兜底 */
+export type SkillFunctionSource = 'manual' | 'ai' | 'keyword';
+
 export interface SkillInfo {
   /** 稳定 ID：技能名小写形式（跨重扫稳定，用作覆盖键） */
   id: string;
@@ -37,7 +40,8 @@ export interface SkillInfo {
   /** 主副本 SKILL.md 绝对路径 */
   sourcePath: string;
   version: string;
-  functionOverridden: boolean;
+  /** 分类来源：手动覆盖 > AI 分类 > 关键词兜底 */
+  functionSource: SkillFunctionSource;
   /** 沉淀来源（仅 vault 有值）：`${origin}:${sourcePath}`；自建/非 vault 为 undefined */
   source?: string;
   /** 其他副本 SKILL.md 绝对路径 */
@@ -384,7 +388,7 @@ export function dedupeSkills(raws: RawSkill[], overrides: Record<string, SkillFu
       tool: primary.tool,
       sourcePath: primary.sourcePath,
       version: primary.version,
-      functionOverridden: overridden !== undefined,
+      functionSource: overridden !== undefined ? 'manual' : 'keyword',
       source: primary.origin === 'vault' ? primary.source : undefined,
       variants,
     });
@@ -475,7 +479,7 @@ export function overrideSkillFunction(
   overrides[key] = functionCategory;
   store.save(overrides);
 
-  return { ...target, functionCategory, functionOverridden: true };
+  return { ...target, functionCategory, functionSource: 'manual' };
 }
 
 /** 批量覆盖结果：updated 为更新后的条目，missing 为磁盘上已不存在的 id（原样返回） */
@@ -517,7 +521,7 @@ export function overrideSkillFunctionsBatch(
   }
 
   return {
-    updated: targets.map((t) => ({ ...t, functionCategory, functionOverridden: true })),
+    updated: targets.map((t) => ({ ...t, functionCategory, functionSource: 'manual' })),
     missing,
   };
 }

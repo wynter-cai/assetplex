@@ -123,7 +123,7 @@ describe('PUT /api/skills/:id/function', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.skill.functionCategory).toBe('data');
-    expect(body.skill.functionOverridden).toBe(true);
+    expect(body.skill.functionSource).toBe('manual');
     expect(store.data.odd).toBe('data');
 
     // 再查列表，覆盖仍然生效
@@ -169,7 +169,7 @@ describe('POST /api/skills/function-batch', () => {
     const body = await res.json();
     expect(body.updated).toHaveLength(2);
     expect(body.missing).toEqual([]);
-    expect(body.updated.every((s: { functionOverridden: boolean }) => s.functionOverridden)).toBe(true);
+    expect(body.updated.every((s: { functionSource: string }) => s.functionSource === 'manual')).toBe(true);
     expect(store.data.a).toBe('data');
     expect(store.data.b).toBe('data');
   });

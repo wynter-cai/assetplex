@@ -198,7 +198,7 @@ describe('listSkills 聚合计数与筛选', () => {
 });
 
 describe('手动覆盖职能分类', () => {
-  it('覆盖后 functionOverridden=true 且重新扫描后保持，不改动 SKILL.md', () => {
+  it('覆盖后 functionSource=manual 且重新扫描后保持，不改动 SKILL.md；未覆盖为 keyword', () => {
     const files: Record<string, string> = {
       [`${SOURCES.userSkillsDir}/odd/SKILL.md`]: SKILL('odd', '奇怪用途'),
     };
@@ -207,17 +207,17 @@ describe('手动覆盖职能分类', () => {
 
     const before = listSkills({ fs, sources: SOURCES, store });
     expect(before.items[0].functionCategory).toBe('other');
-    expect(before.items[0].functionOverridden).toBe(false);
+    expect(before.items[0].functionSource).toBe('keyword');
 
     const updated = overrideSkillFunction('odd', 'data', { fs, sources: SOURCES, store });
     expect(updated?.functionCategory).toBe('data');
-    expect(updated?.functionOverridden).toBe(true);
+    expect(updated?.functionSource).toBe('manual');
     expect(store.saves).toBe(1);
 
     // 重新扫描（模拟规则更新/重启）
     const after = listSkills({ fs, sources: SOURCES, store });
     expect(after.items[0].functionCategory).toBe('data');
-    expect(after.items[0].functionOverridden).toBe(true);
+    expect(after.items[0].functionSource).toBe('manual');
 
     // 原始 SKILL.md 未被写入
     expect(files[`${SOURCES.userSkillsDir}/odd/SKILL.md`]).toContain('奇怪用途');
@@ -288,7 +288,7 @@ describe('overrideSkillFunctionsBatch 批量覆盖', () => {
     // id 大小写不敏感
     const b = result.updated.find((s) => s.id === 'b');
     expect(b?.functionCategory).toBe('data');
-    expect(b?.functionOverridden).toBe(true);
+    expect(b?.functionSource).toBe('manual');
     // 只持久化一次
     expect(store.saves).toBe(1);
     // 重新扫描后覆盖保持
