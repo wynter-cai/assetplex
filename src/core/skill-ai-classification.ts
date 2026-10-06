@@ -17,6 +17,7 @@
 import {
   SKILL_FUNCTIONS,
   listSkills,
+  type AiCacheLookup,
   type SkillFs,
   type SkillFunction,
   type SkillInfo,
@@ -44,6 +45,17 @@ export class AiConfigIncompleteError extends Error {
     super('AI 配置不完整，请先在设置中配置 baseUrl、apiKey 与 model');
     this.name = 'AiConfigIncompleteError';
   }
+}
+
+/**
+ * 把内容 hash 缓存组装为盘点用的 aiLookup 回调（listSkills 的 aiLookup 入参）。
+ * hash 命中返回缓存分类，未命中/脏数据返回 null（回退关键词）；纯本地查询，无 LLM 调用。
+ */
+export function createAiLookup(cache: AiClassifyCacheStore): AiCacheLookup {
+  return (rawContent: string) => {
+    const entry = getCachedByHash(cache, hashSkillContent(rawContent));
+    return entry?.category ?? null;
+  };
 }
 
 // ============ prompt ============

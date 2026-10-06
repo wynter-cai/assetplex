@@ -57,6 +57,13 @@ export interface SkillFs {
   realpath?(absolutePath: string): string;
 }
 
+/**
+ * AI 缓存查询回调：入参为 SKILL.md 原文（hash 建立在原文上），
+ * 命中返回 AI 分类，未命中返回 null（回退关键词）。
+ * 由调用方组装（避免本模块依赖缓存实现），盘点过程无任何 LLM 调用。
+ */
+export type AiCacheLookup = (rawContent: string) => SkillFunction | null;
+
 /** 手动覆盖存储抽象 */
 export interface SkillOverrideStore {
   load(): Record<string, SkillFunction>;
@@ -101,6 +108,8 @@ interface RawSkill {
   tool: string;
   /** frontmatter source（沉淀来源标识），非 vault 技能透传前会被过滤 */
   source?: string;
+  /** SKILL.md 原文（含 frontmatter），AI 缓存 hash 的依据 */
+  raw: string;
   /** frontmatter 之后的正文，用于兜底分类 */
   body: string;
 }
@@ -254,6 +263,7 @@ function scanSkillDir(
       origin,
       tool,
       source: data.source,
+      raw,
       body,
     });
   }
@@ -351,8 +361,13 @@ const BODY_FALLBACK_LIMIT = 400;
  * 同名技能（小写比较）合并为一个主条目。
  * 主副本来源按 vault > personal > plugin > marketplace > builtin 选取，同优先级取路径靠前。
  * 其余副本绝对路径计入 variants。
+ * 分类优先级：手动覆盖 > AI 缓存（aiLookup 命中）> 关键词规则。
  */
-export function dedupeSkills(raws: RawSkill[], overrides: Record<string, SkillFunction>): SkillInfo[] {
+export function dedupeSkills(
+  raws: RawSkill[],
+  overrides: Record<string, SkillFunction>,
+  aiLookup?: AiCacheLookup,
+): SkillInfo[] {
   const groups = new Map<string, RawSkill[]>();
   for (const raw of raws) {
     const key = raw.name.toLowerCase();
@@ -374,21 +389,36 @@ export function dedupeSkills(raws: RawSkill[], overrides: Record<string, SkillFu
       ? overrides[key]
       : undefined;
 
-    // 有描述时以名称+描述分类；描述缺失时才取正文开头兜底
-    const bodyFallback = primary.description ? '' : primary.body.slice(0, BODY_FALLBACK_LIMIT);
+    // 分类优先级：手动覆盖 > AI 缓存命中 > 关键词规则（描述缺失才取正文兜底）
+    const aiCategory = overridden === undefined && aiLookup ? aiLookup(primary.raw) : undefined;
+    const hasAi = aiCategory !== undefined && aiCategory !== null;
+    const bodyFallback = !hasAi && !primary.description
+      ? primary.body.slice(0, BODY_FALLBACK_LIMIT)
+      : '';
+
+    let functionCategory: SkillFunction;
+    let functionSource: SkillFunctionSource;
+    if (overridden !== undefined) {
+      functionCategory = overridden;
+      functionSource = 'manual';
+    } else if (hasAi) {
+      functionCategory = aiCategory as SkillFunction;
+      functionSource = 'ai';
+    } else {
+      functionCategory = classifyFunction({ name: primary.name, description: primary.description, text: bodyFallback });
+      functionSource = 'keyword';
+    }
 
     skills.push({
       id: key,
       name: primary.name,
       description: primary.description,
-      functionCategory:
-        overridden ??
-        classifyFunction({ name: primary.name, description: primary.description, text: bodyFallback }),
+      functionCategory,
       origin: primary.origin,
       tool: primary.tool,
       sourcePath: primary.sourcePath,
       version: primary.version,
-      functionSource: overridden !== undefined ? 'manual' : 'keyword',
+      functionSource,
       source: primary.origin === 'vault' ? primary.source : undefined,
       variants,
     });
@@ -412,18 +442,20 @@ function emptyOriginCounts(): Record<SkillOrigin, number> {
   return obj;
 }
 
-function buildAll(fs: SkillFs, sources: SkillSources, store: SkillOverrideStore): SkillInfo[] {
+function buildAll(fs: SkillFs, sources: SkillSources, store: SkillOverrideStore, aiLookup?: AiCacheLookup): SkillInfo[] {
   const raws = discoverSkillFiles(fs, sources);
-  return dedupeSkills(raws, store.load());
+  return dedupeSkills(raws, store.load(), aiLookup);
 }
 
 export function listSkills(input: {
   fs: SkillFs;
   sources: SkillSources;
   store: SkillOverrideStore;
+  /** AI 缓存查询（可选）：命中则分类来源为 ai，缺省时全部走关键词兜底 */
+  aiLookup?: AiCacheLookup;
   params?: ListSkillsParams;
 }): ListSkillsResult {
-  const { fs, sources, store, params = {} } = input;
+  const { fs, sources, store, aiLookup, params = {} } = input;
 
   if (params.function && !SKILL_FUNCTIONS.includes(params.function)) {
     throw new Error(`无效职能：${params.function}，支持：${SKILL_FUNCTIONS.join(', ')}`);
@@ -432,7 +464,7 @@ export function listSkills(input: {
     throw new Error(`无效来源：${params.origin}，支持：${SKILL_ORIGINS.join(', ')}`);
   }
 
-  const all = buildAll(fs, sources, store);
+  const all = buildAll(fs, sources, store, aiLookup);
 
   // 计数始终反映全貌（不受筛选影响）
   const countByFunction = emptyFunctionCounts();
@@ -464,14 +496,14 @@ export function listSkills(input: {
 export function overrideSkillFunction(
   id: string,
   functionCategory: SkillFunction,
-  input: { fs: SkillFs; sources: SkillSources; store: SkillOverrideStore },
+  input: { fs: SkillFs; sources: SkillSources; store: SkillOverrideStore; aiLookup?: AiCacheLookup },
 ): SkillInfo | null {
   if (!SKILL_FUNCTIONS.includes(functionCategory)) {
     throw new Error(`无效职能：${functionCategory}，支持：${SKILL_FUNCTIONS.join(', ')}`);
   }
   const key = id.toLowerCase();
-  const { fs, sources, store } = input;
-  const all = buildAll(fs, sources, store);
+  const { fs, sources, store, aiLookup } = input;
+  const all = buildAll(fs, sources, store, aiLookup);
   const target = all.find((s) => s.id === key);
   if (!target) return null;
 
@@ -497,13 +529,13 @@ export interface BatchOverrideResult {
 export function overrideSkillFunctionsBatch(
   ids: string[],
   functionCategory: SkillFunction,
-  input: { fs: SkillFs; sources: SkillSources; store: SkillOverrideStore },
+  input: { fs: SkillFs; sources: SkillSources; store: SkillOverrideStore; aiLookup?: AiCacheLookup },
 ): BatchOverrideResult {
   if (!SKILL_FUNCTIONS.includes(functionCategory)) {
     throw new Error(`无效职能：${functionCategory}，支持：${SKILL_FUNCTIONS.join(', ')}`);
   }
-  const { fs, sources, store } = input;
-  const all = buildAll(fs, sources, store);
+  const { fs, sources, store, aiLookup } = input;
+  const all = buildAll(fs, sources, store, aiLookup);
   const byId = new Map(all.map((s) => [s.id, s]));
 
   const targets: SkillInfo[] = [];
@@ -535,10 +567,10 @@ export function overrideSkillFunctionsBatch(
  */
 export function getSkillRawContent(
   id: string,
-  input: { fs: SkillFs; sources: SkillSources; store: SkillOverrideStore },
+  input: { fs: SkillFs; sources: SkillSources; store: SkillOverrideStore; aiLookup?: AiCacheLookup },
 ): { skill: SkillInfo; rawContent: string } | null {
-  const { fs, sources, store } = input;
-  const all = buildAll(fs, sources, store);
+  const { fs, sources, store, aiLookup } = input;
+  const all = buildAll(fs, sources, store, aiLookup);
   const skill = all.find((s) => s.id === id.toLowerCase());
   if (!skill) return null;
   return { skill, rawContent: fs.read(skill.sourcePath) ?? '' };

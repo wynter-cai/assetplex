@@ -291,3 +291,26 @@ describe('classifySkillsWithAi', () => {
     expect(cache.data[hashed]?.category).toBe('workflow');
   });
 });
+
+describe('createAiLookup（缓存 → 盘点回调组装）', () => {
+  const RAW = SKILL('airbnb', '订房助手');
+
+  it('hash 命中返回缓存分类，未命中返回 null', async () => {
+    const { createAiLookup } = await import('../../../src/core/skill-ai-classification.js');
+    const cache = new MemoryCacheStore();
+    cache.data[hashSkillContent(RAW)] = { category: 'workflow', model: 'lite', classifiedAt: 't' };
+    const lookup = createAiLookup(cache);
+
+    expect(lookup(RAW)).toBe('workflow');
+    expect(lookup(SKILL('other', '别的技能'))).toBeNull();
+  });
+
+  it('内容变更后旧缓存不再命中', async () => {
+    const { createAiLookup } = await import('../../../src/core/skill-ai-classification.js');
+    const cache = new MemoryCacheStore();
+    cache.data[hashSkillContent(RAW)] = { category: 'workflow', model: 'lite', classifiedAt: 't' };
+    const lookup = createAiLookup(cache);
+
+    expect(lookup(SKILL('airbnb', '订房助手（改版）'))).toBeNull();
+  });
+});

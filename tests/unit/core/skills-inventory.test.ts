@@ -427,3 +427,65 @@ describe('SkillInfo source 沉淀来源标识（add-skill-curation）', () => {
     expect(skills[0].source).toBe('personal:/home/pdf/SKILL.md');
   });
 });
+
+describe('AI 分类盘点集成（优先级 手动 > AI > 关键词）', () => {
+  const files = (): Record<string, string> => ({
+    [`${SOURCES.userSkillsDir}/airbnb/SKILL.md`]: SKILL('airbnb', '订房助手'),
+    [`${SOURCES.userSkillsDir}/pdf/SKILL.md`]: SKILL('pdf', 'pdf 文档'),
+  });
+
+  it('aiLookup 命中时分类生效且来源为 ai，盘点无 LLM 调用语义', () => {
+    const fs = makeFs(files());
+    const result = listSkills({
+      fs, sources: SOURCES, store: new MemoryOverrideStore(),
+      aiLookup: (raw) => (raw.includes('airbnb') ? 'workflow' : null),
+    });
+    const airbnb = result.items.find((s) => s.id === 'airbnb');
+    expect(airbnb?.functionCategory).toBe('workflow');
+    expect(airbnb?.functionSource).toBe('ai');
+  });
+
+  it('手动覆盖优先于 AI 缓存命中', () => {
+    const fs = makeFs(files());
+    const store = new MemoryOverrideStore({ pdf: 'data' });
+    const result = listSkills({
+      fs, sources: SOURCES, store,
+      aiLookup: () => 'workflow',
+    });
+    const pdf = result.items.find((s) => s.id === 'pdf');
+    expect(pdf?.functionCategory).toBe('data');
+    expect(pdf?.functionSource).toBe('manual');
+    // 无覆盖的 airbnb 用 AI 结果
+    expect(result.items.find((s) => s.id === 'airbnb')?.functionSource).toBe('ai');
+  });
+
+  it('aiLookup 返回 null（hash 未命中）时回退关键词兜底', () => {
+    const fs = makeFs(files());
+    const result = listSkills({
+      fs, sources: SOURCES, store: new MemoryOverrideStore(),
+      aiLookup: () => null,
+    });
+    const pdf = result.items.find((s) => s.id === 'pdf');
+    expect(pdf?.functionCategory).toBe('writing');
+    expect(pdf?.functionSource).toBe('keyword');
+  });
+
+  it('不传 aiLookup 时行为与现状一致（全部 keyword/manual）', () => {
+    const fs = makeFs(files());
+    const result = listSkills({ fs, sources: SOURCES, store: new MemoryOverrideStore() });
+    expect(result.items.every((s) => s.functionSource === 'keyword')).toBe(true);
+  });
+
+  it('aiLookup 收到的是 SKILL.md 原文（含 frontmatter，hash 建立在原文上）', () => {
+    const fs = makeFs(files());
+    const seen: string[] = [];
+    listSkills({
+      fs, sources: SOURCES, store: new MemoryOverrideStore(),
+      aiLookup: (raw) => {
+        seen.push(raw);
+        return null;
+      },
+    });
+    expect(seen.some((raw) => raw.startsWith('---\nname: airbnb'))).toBe(true);
+  });
+});
