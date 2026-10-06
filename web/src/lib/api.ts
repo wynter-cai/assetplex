@@ -29,6 +29,9 @@ import type {
   SkillFunction,
   SkillOrigin,
   CurateBatchResult,
+  AiClassifyConfigView,
+  SaveAiClassifyConfigInput,
+  AiClassifyResult,
   ProjectListResult,
   ProjectOpenTarget,
 } from '@/types/api';
@@ -208,6 +211,20 @@ export const api = {
     request<CurateBatchResult>('/skills/curate-batch', {
       method: 'POST',
       body: JSON.stringify({ ids }),
+    }),
+
+  // AI 智能分类（配置 + 显式触发，结果按内容 hash 缓存）
+  getAiClassifyConfig: () =>
+    request<AiClassifyConfigView>('/skills/ai-classify/config'),
+  saveAiClassifyConfig: (body: SaveAiClassifyConfigInput) =>
+    request<AiClassifyConfigView>('/skills/ai-classify/config', {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    }),
+  aiClassifySkills: (ids?: string[]) =>
+    request<AiClassifyResult>('/skills/ai-classify', {
+      method: 'POST',
+      body: JSON.stringify(ids ? { ids } : {}),
     }),
 
   // Projects（AI-Coding 项目可视化）

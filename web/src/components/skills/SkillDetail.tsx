@@ -24,7 +24,9 @@ import { api } from '@/lib/api';
 import { useEscapeKey } from '@/lib/use-escape-key';
 import { Markdown, stripFrontmatter } from '@/components/common/Markdown';
 import { SyncDistribute } from '@/components/common/SyncDistribute';
-import { FUNCTION_LABELS, ORIGIN_LABELS, parseCurateSource } from './skill-labels';
+import { FUNCTION_LABELS, ORIGIN_LABELS, FUNCTION_SOURCE_LABELS, parseCurateSource } from './skill-labels';
+import { useAiClassify } from './use-ai-classify';
+import { AiConfigDialog } from './AiConfigDialog';
 import type { SkillInfo } from '@/types/api';
 
 interface SkillDetailProps {
@@ -139,6 +141,11 @@ export function SkillDetail({ skill, onClose, onCurated }: SkillDetailProps): JS
   const isVault = skill.origin === 'vault';
   const sourceInfo = isVault && skill.source ? parseCurateSource(skill.source) : null;
 
+  // AI 分类：单条触发，成功后详情与列表同步刷新（spec add-skill-ai-classification）
+  const ai = useAiClassify(() => {
+    void queryClient.invalidateQueries({ queryKey: ['skill', skill.id] });
+  });
+
   const refresh = (): void => {
     void queryClient.invalidateQueries({ queryKey: ['skills'] });
     void queryClient.invalidateQueries({ queryKey: ['skill', skill.id] });
@@ -190,11 +197,11 @@ export function SkillDetail({ skill, onClose, onCurated }: SkillDetailProps): JS
         <div className="flex flex-wrap gap-1.5">
           <Badge variant="outline">{FUNCTION_LABELS[skill.functionCategory]}</Badge>
           <Badge variant="outline">{ORIGIN_LABELS[skill.origin]}</Badge>
+          <Badge variant="secondary">{FUNCTION_SOURCE_LABELS[skill.functionSource]}</Badge>
           {isVault && sourceInfo && (
             <Badge variant="secondary">沉淀自 {ORIGIN_LABELS[sourceInfo.origin]}</Badge>
           )}
           {skill.version && <Badge variant="secondary">v{skill.version}</Badge>}
-          {skill.functionOverridden && <Badge variant="secondary">已手动分类</Badge>}
         </div>
 
         {skill.description && (
@@ -212,6 +219,15 @@ export function SkillDetail({ skill, onClose, onCurated }: SkillDetailProps): JS
                 编辑
               </Button>
             )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 px-3 text-xs"
+              onClick={() => ai.classify([skill.id])}
+              disabled={ai.running}
+            >
+              {ai.running ? 'AI 分类中…' : 'AI 分类'}
+            </Button>
             {!isVault && (
               <Button variant="outline" size="sm" className="h-8 px-3 text-xs" onClick={() => setCurateOpen(true)}>
                 <Archive className="h-3.5 w-3.5 mr-1" />
@@ -292,6 +308,12 @@ export function SkillDetail({ skill, onClose, onCurated }: SkillDetailProps): JS
       {curateOpen && (
         <CurateDialog skill={skill} onOpenChange={setCurateOpen} onCurated={onCurated} />
       )}
+
+      <AiConfigDialog
+        open={ai.configOpen}
+        onOpenChange={ai.setConfigOpen}
+        onSaved={ai.resumePending}
+      />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Search, Sparkles, Layers, Factory } from 'lucide-react';
+import { Search, Sparkles, Layers, Factory, Bot, Settings } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,9 @@ import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { SkillDetail } from './SkillDetail';
 import { SkillCreateDialog } from './SkillCreateDialog';
-import { FUNCTION_LABELS, ORIGIN_LABELS, FUNCTION_ORDER, ORIGIN_ORDER } from './skill-labels';
+import { FUNCTION_LABELS, ORIGIN_LABELS, FUNCTION_SOURCE_LABELS, FUNCTION_ORDER, ORIGIN_ORDER } from './skill-labels';
+import { useAiClassify } from './use-ai-classify';
+import { AiConfigDialog } from './AiConfigDialog';
 import type { SkillInfo, SkillFunction, SkillOrigin } from '@/types/api';
 
 type Dimension = 'function' | 'origin';
@@ -89,9 +91,9 @@ function SkillCard({
       <div className="flex flex-wrap items-center gap-1 mb-3">
         <Badge variant="outline" className="text-[10px] h-4 px-1">{FUNCTION_LABELS[skill.functionCategory]}</Badge>
         <Badge variant="outline" className="text-[10px] h-4 px-1">{ORIGIN_LABELS[skill.origin]}</Badge>
-        {skill.functionOverridden && (
-          <Badge variant="secondary" className="text-[10px] h-4 px-1">已手动分类</Badge>
-        )}
+        <Badge variant="secondary" className="text-[10px] h-4 px-1">
+          {FUNCTION_SOURCE_LABELS[skill.functionSource]}
+        </Badge>
       </div>
       <div className="flex items-center justify-between gap-2 pt-2 border-t">
         <label
@@ -176,6 +178,20 @@ export function SkillsView(): JSX.Element {
   useEffect(() => {
     setCheckedIds(new Set());
   }, [dimension, functionFilter, originFilter, search]);
+
+  // AI 分类统一触发逻辑（未配置时先弹配置对话框，保存后自动续跑）
+  const ai = useAiClassify();
+
+  // 全量清单（无筛选）用于「全部 AI 分类」待分类计数：
+  // 手动跳过、AI 源为缓存命中，仅关键词源需要实际调用 LLM
+  const { data: allData } = useQuery({
+    queryKey: ['skills', null, null, ''],
+    queryFn: () => api.listSkills(),
+    staleTime: 30_000,
+  });
+  const pendingAiCount = allData
+    ? allData.items.filter((s) => s.functionSource === 'keyword').length
+    : 0;
 
   const switchDimension = (next: Dimension): void => {
     setDimension(next);
@@ -337,6 +353,25 @@ export function SkillsView(): JSX.Element {
           </button>
         )}
         <div className="flex-1" />
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-9 px-3 text-xs"
+          onClick={() => ai.classify()}
+          disabled={ai.running}
+        >
+          <Bot className="h-3.5 w-3.5 mr-1" />
+          {ai.running ? 'AI 分类中…' : `全部 AI 分类（待分类 ${pendingAiCount}）`}
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-9 px-3 text-xs"
+          onClick={() => ai.setConfigOpen(true)}
+        >
+          <Settings className="h-3.5 w-3.5 mr-1" />
+          AI 配置
+        </Button>
         <Button size="sm" className="h-9 px-3 text-xs" onClick={() => setCreateOpen(true)}>
           <Sparkles className="h-3.5 w-3.5 mr-1" />
           新建技能
@@ -364,6 +399,16 @@ export function SkillsView(): JSX.Element {
             清空
           </button>
           <div className="flex-1" />
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 px-3 text-xs"
+            onClick={() => ai.classify(Array.from(checkedIds))}
+            disabled={ai.running}
+          >
+            <Bot className="h-3.5 w-3.5 mr-1" />
+            {ai.running ? 'AI 分类中…' : 'AI 分类'}
+          </Button>
           {data && data.items.some((s) => checkedIds.has(s.id) && s.origin !== 'vault') && (
             <Button
               size="sm"
@@ -462,6 +507,12 @@ export function SkillsView(): JSX.Element {
         open={createOpen}
         onOpenChange={setCreateOpen}
         onCreated={handleCreated}
+      />
+
+      <AiConfigDialog
+        open={ai.configOpen}
+        onOpenChange={ai.setConfigOpen}
+        onSaved={ai.resumePending}
       />
     </div>
   );

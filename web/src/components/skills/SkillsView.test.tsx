@@ -11,7 +11,7 @@ function skill(partial: Partial<SkillInfo> & { id: string; name: string; functio
     tool: 'trae',
     sourcePath: `/x/${partial.id}/SKILL.md`,
     version: '',
-    functionOverridden: false,
+    functionSource: 'keyword',
     variants: [],
     ...partial,
   };
@@ -42,7 +42,7 @@ function renderView(): ReturnType<typeof render> {
 describe('SkillsView 技能分类全貌', () => {
   beforeEach(() => {
     vi.spyOn(api, 'listSkills').mockResolvedValue(result);
-    vi.spyOn(api, 'overrideSkillFunction').mockResolvedValue({ skill: { ...result.items[0], functionCategory: 'data', functionOverridden: true } });
+    vi.spyOn(api, 'overrideSkillFunction').mockResolvedValue({ skill: { ...result.items[0], functionCategory: 'data', functionSource: 'manual' } });
     vi.spyOn(api, 'getSkill').mockResolvedValue({ skill: result.items[0], rawContent: '# mycode\n原始内容' });
   });
 
@@ -105,7 +105,7 @@ describe('SkillsView 技能分类全貌', () => {
 describe('SkillsView 批量调整职能', () => {
   beforeEach(() => {
     vi.spyOn(api, 'listSkills').mockResolvedValue(result);
-    vi.spyOn(api, 'overrideSkillFunction').mockResolvedValue({ skill: { ...result.items[0], functionCategory: 'data', functionOverridden: true } });
+    vi.spyOn(api, 'overrideSkillFunction').mockResolvedValue({ skill: { ...result.items[0], functionCategory: 'data', functionSource: 'manual' } });
     vi.spyOn(api, 'getSkill').mockResolvedValue({ skill: result.items[0], rawContent: '# mycode\n原始内容' });
     vi.spyOn(api, 'batchSetSkillFunction').mockResolvedValue({ updated: [], missing: [] });
   });
@@ -376,5 +376,144 @@ describe('SkillsView 批量沉淀', () => {
     fireEvent.click(await screen.findByLabelText('选择技能 周报助手'));
     expect(screen.queryByRole('button', { name: '沉淀到保险箱' })).not.toBeInTheDocument();
     expect(api.curateSkillsBatch).not.toHaveBeenCalled();
+  });
+});
+
+describe('SkillsView AI 智能分类', () => {
+  const aiConfig = { baseUrl: 'https://api.example.com/v1', model: 'lite-model', hasApiKey: true };
+  const emptyConfig = { baseUrl: '', model: '', hasApiKey: false };
+
+  beforeEach(() => {
+    vi.spyOn(api, 'listSkills').mockResolvedValue(result);
+    vi.spyOn(api, 'getSkill').mockResolvedValue({ skill: result.items[0], rawContent: '# mycode\n原始内容' });
+    vi.spyOn(window, 'alert').mockImplementation(() => {});
+  });
+
+  it('卡片显示分类来源徽章三态，工具栏展示待分类数量', async () => {
+    vi.spyOn(api, 'listSkills').mockResolvedValue({
+      ...result,
+      items: [
+        skill({ id: 'a', name: 'a', functionCategory: 'coding', origin: 'personal', functionSource: 'ai' }),
+        skill({ id: 'b', name: 'b', functionCategory: 'writing', origin: 'builtin', functionSource: 'manual' }),
+        skill({ id: 'c', name: 'c', functionCategory: 'data', origin: 'plugin', functionSource: 'keyword' }),
+      ],
+    });
+    renderView();
+    expect(await screen.findByText('AI')).toBeInTheDocument();
+    expect(screen.getByText('手动')).toBeInTheDocument();
+    expect(screen.getByText('关键词')).toBeInTheDocument();
+    // 待分类数量 = 关键词源数量（手动跳过、AI 源为缓存命中不占调用）
+    expect(await screen.findByText(/全部 AI 分类（待分类 1）/)).toBeInTheDocument();
+  });
+
+  it('配置完整时点击全部 AI 分类调用分类接口并汇总结果', async () => {
+    vi.spyOn(api, 'getAiClassifyConfig').mockResolvedValue(aiConfig);
+    vi.spyOn(api, 'aiClassifySkills').mockResolvedValue({
+      classified: [result.items[0]],
+      cacheHits: 0,
+      skipped: [],
+      failed: [],
+    });
+    renderView();
+    fireEvent.click(await screen.findByRole('button', { name: /全部 AI 分类/ }));
+    await waitFor(() => {
+      expect(api.aiClassifySkills).toHaveBeenCalledWith(undefined);
+    });
+    await waitFor(() => {
+      expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('成功 1 个（缓存命中 0 个）'));
+    });
+  });
+
+  it('未配置时点击分类先弹配置对话框，不发起分类请求', async () => {
+    vi.spyOn(api, 'getAiClassifyConfig').mockResolvedValue(emptyConfig);
+    const classifySpy = vi.spyOn(api, 'aiClassifySkills');
+    renderView();
+    fireEvent.click(await screen.findByRole('button', { name: /全部 AI 分类/ }));
+    expect(await screen.findByLabelText('AI 分类 Base URL')).toBeInTheDocument();
+    expect(classifySpy).not.toHaveBeenCalled();
+  });
+
+  it('配置保存成功后自动续跑之前的分类意图', async () => {
+    vi.spyOn(api, 'getAiClassifyConfig').mockResolvedValue(emptyConfig);
+    const saveSpy = vi.spyOn(api, 'saveAiClassifyConfig').mockResolvedValue(aiConfig);
+    const classifySpy = vi.spyOn(api, 'aiClassifySkills').mockResolvedValue({
+      classified: [], cacheHits: 0, skipped: [], failed: [],
+    });
+    renderView();
+    fireEvent.click(await screen.findByRole('button', { name: /全部 AI 分类/ }));
+    fireEvent.change(await screen.findByLabelText('AI 分类 Base URL'), { target: { value: 'https://api.example.com/v1' } });
+    fireEvent.change(screen.getByLabelText('AI 分类 API Key'), { target: { value: 'sk-xxx' } });
+    fireEvent.change(screen.getByLabelText('AI 分类模型'), { target: { value: 'lite-model' } });
+    fireEvent.click(screen.getByRole('button', { name: '保存' }));
+    await waitFor(() => {
+      expect(saveSpy).toHaveBeenCalledWith({
+        baseUrl: 'https://api.example.com/v1',
+        apiKey: 'sk-xxx',
+        model: 'lite-model',
+      });
+    });
+    await waitFor(() => {
+      expect(classifySpy).toHaveBeenCalledWith(undefined);
+    });
+  });
+
+  it('已配置时 apiKey 显示留空保留提示，留空保存不传明文', async () => {
+    vi.spyOn(api, 'getAiClassifyConfig').mockResolvedValue(aiConfig);
+    const saveSpy = vi.spyOn(api, 'saveAiClassifyConfig').mockResolvedValue(aiConfig);
+    vi.spyOn(api, 'aiClassifySkills').mockResolvedValue({
+      classified: [], cacheHits: 0, skipped: [], failed: [],
+    });
+    renderView();
+    fireEvent.click(screen.getByRole('button', { name: 'AI 配置' }));
+    const keyInput = (await screen.findByLabelText('AI 分类 API Key')) as HTMLInputElement;
+    expect(keyInput.placeholder).toContain('留空保留原值');
+    fireEvent.change(screen.getByLabelText('AI 分类 Base URL'), { target: { value: 'https://api.example.com/v1' } });
+    fireEvent.change(screen.getByLabelText('AI 分类模型'), { target: { value: 'lite-model' } });
+    fireEvent.click(screen.getByRole('button', { name: '保存' }));
+    await waitFor(() => {
+      expect(saveSpy).toHaveBeenCalledWith({
+        baseUrl: 'https://api.example.com/v1',
+        apiKey: undefined,
+        model: 'lite-model',
+      });
+    });
+  });
+
+  it('批量 AI 分类：按勾选 ids 触发，手动覆盖的跳过并提示', async () => {
+    vi.spyOn(api, 'getAiClassifyConfig').mockResolvedValue(aiConfig);
+    vi.spyOn(api, 'aiClassifySkills').mockResolvedValue({
+      classified: [result.items[0]],
+      cacheHits: 0,
+      skipped: [{ id: 'pdf', name: 'pdf' }],
+      failed: [],
+    });
+    renderView();
+    fireEvent.click(await screen.findByLabelText('选择技能 mycode'));
+    fireEvent.click(screen.getByLabelText('选择技能 pdf'));
+    fireEvent.click(screen.getByRole('button', { name: 'AI 分类' }));
+    await waitFor(() => {
+      expect(api.aiClassifySkills).toHaveBeenCalledWith(['mycode', 'pdf']);
+    });
+    await waitFor(() => {
+      expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('跳过 1 个（已手动分类）'));
+    });
+  });
+
+  it('失败明细随结果提示展示，成功项不受影响', async () => {
+    vi.spyOn(api, 'getAiClassifyConfig').mockResolvedValue(aiConfig);
+    vi.spyOn(api, 'aiClassifySkills').mockResolvedValue({
+      classified: [result.items[0]],
+      cacheHits: 1,
+      skipped: [],
+      failed: [{ id: 'pdf', name: 'pdf', error: '输出分类不合法' }],
+    });
+    renderView();
+    fireEvent.click(await screen.findByRole('button', { name: /全部 AI 分类/ }));
+    await waitFor(() => {
+      expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('失败 1 个（pdf：输出分类不合法）'));
+    });
+    await waitFor(() => {
+      expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('成功 1 个（缓存命中 1 个）'));
+    });
   });
 });

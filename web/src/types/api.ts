@@ -266,6 +266,9 @@ export type SkillFunction =
 
 export type SkillOrigin = 'builtin' | 'plugin' | 'personal' | 'marketplace' | 'vault';
 
+/** 分类来源：手动覆盖 / AI 分类 / 关键词规则兜底 */
+export type SkillFunctionSource = 'manual' | 'ai' | 'keyword';
+
 export interface SkillInfo {
   id: string;
   name: string;
@@ -275,10 +278,41 @@ export interface SkillInfo {
   tool: string;
   sourcePath: string;
   version: string;
-  functionOverridden: boolean;
+  functionSource: SkillFunctionSource;
   /** 沉淀来源（仅 vault）：`${origin}:${sourcePath}`；自建技能无此字段 */
   source?: string;
   variants: string[];
+}
+
+/** AI 分类配置视图（apiKey 脱敏，明文永不回传） */
+export interface AiClassifyConfigView {
+  baseUrl: string;
+  model: string;
+  hasApiKey: boolean;
+}
+
+/** 保存 AI 分类配置入参：apiKey 缺省表示保留已存值 */
+export interface SaveAiClassifyConfigInput {
+  baseUrl: string;
+  apiKey?: string;
+  model: string;
+}
+
+/** AI 分类单条失败明细 */
+export interface AiClassifyFailure {
+  id: string;
+  name: string;
+  error: string;
+}
+
+/** AI 分类结果：部分成功语义 */
+export interface AiClassifyResult {
+  classified: SkillInfo[];
+  /** 其中直接命中内容缓存、未实际调用 LLM 的条数 */
+  cacheHits: number;
+  /** 已手动覆盖被跳过的技能 */
+  skipped: Array<{ id: string; name: string }>;
+  failed: AiClassifyFailure[];
 }
 
 export interface SkillListResult {

@@ -17,7 +17,7 @@ function skill(partial: Partial<SkillInfo> & { id: string; name: string; functio
     tool: 'trae',
     sourcePath: `/x/${partial.id}/SKILL.md`,
     version: '',
-    functionOverridden: false,
+    functionSource: 'keyword',
     variants: [],
     ...partial,
   };
@@ -139,5 +139,63 @@ describe('SkillDetail 沉淀来源标识', () => {
     renderDetail(vaultSelfBuilt);
     await screen.findByRole('button', { name: '编辑' });
     expect(screen.queryByText(/沉淀自/)).not.toBeInTheDocument();
+  });
+});
+
+describe('SkillDetail AI 智能分类', () => {
+  const aiConfig = { baseUrl: 'https://api.example.com/v1', model: 'lite-model', hasApiKey: true };
+
+  beforeEach(() => {
+    vi.spyOn(api, 'getSkill').mockResolvedValue({ skill: marketSkill, rawContent: '# airbnb\n内容' });
+    vi.spyOn(window, 'alert').mockImplementation(() => {});
+  });
+
+  it('详情面板显示分类来源徽章（AI 源）', async () => {
+    renderDetail({ ...marketSkill, functionSource: 'ai' });
+    expect(await screen.findByText('AI')).toBeInTheDocument();
+  });
+
+  it('单条 AI 分类：以当前技能 id 调用接口，成功后刷新详情', async () => {
+    vi.spyOn(api, 'getAiClassifyConfig').mockResolvedValue(aiConfig);
+    vi.spyOn(api, 'aiClassifySkills').mockResolvedValue({
+      classified: [{ ...marketSkill, functionSource: 'ai' }],
+      cacheHits: 0,
+      skipped: [],
+      failed: [],
+    });
+    renderDetail(marketSkill);
+    fireEvent.click(await screen.findByRole('button', { name: 'AI 分类' }));
+    await waitFor(() => {
+      expect(api.aiClassifySkills).toHaveBeenCalledWith(['airbnb']);
+    });
+    // 初始加载 1 次 + 分类成功刷新 1 次
+    await waitFor(() => {
+      expect(api.getSkill).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it('未配置时单条分类弹配置对话框，不发起分类请求', async () => {
+    vi.spyOn(api, 'getAiClassifyConfig').mockResolvedValue({ baseUrl: '', model: '', hasApiKey: false });
+    const classifySpy = vi.spyOn(api, 'aiClassifySkills');
+    renderDetail(marketSkill);
+    fireEvent.click(await screen.findByRole('button', { name: 'AI 分类' }));
+    expect(await screen.findByLabelText('AI 分类 Base URL')).toBeInTheDocument();
+    expect(classifySpy).not.toHaveBeenCalled();
+  });
+
+  it('配置保存成功后自动续跑单条分类', async () => {
+    vi.spyOn(api, 'getAiClassifyConfig').mockResolvedValue({ baseUrl: '', model: '', hasApiKey: false });
+    vi.spyOn(api, 'saveAiClassifyConfig').mockResolvedValue(aiConfig);
+    vi.spyOn(api, 'aiClassifySkills').mockResolvedValue({
+      classified: [], cacheHits: 0, skipped: [], failed: [],
+    });
+    renderDetail(marketSkill);
+    fireEvent.click(await screen.findByRole('button', { name: 'AI 分类' }));
+    fireEvent.change(await screen.findByLabelText('AI 分类 Base URL'), { target: { value: 'https://api.example.com/v1' } });
+    fireEvent.change(screen.getByLabelText('AI 分类模型'), { target: { value: 'lite-model' } });
+    fireEvent.click(screen.getByRole('button', { name: '保存' }));
+    await waitFor(() => {
+      expect(api.aiClassifySkills).toHaveBeenCalledWith(['airbnb']);
+    });
   });
 });

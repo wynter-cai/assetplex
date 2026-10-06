@@ -2,7 +2,7 @@
  * 技能视图共享标签映射与排序（SkillsView / SkillDetail 共用）
  */
 
-import type { SkillFunction, SkillOrigin } from '@/types/api';
+import type { SkillFunction, SkillFunctionSource, SkillOrigin } from '@/types/api';
 
 export const FUNCTION_LABELS: Record<SkillFunction, string> = {
   coding: '编码开发',
@@ -22,6 +22,13 @@ export const ORIGIN_LABELS: Record<SkillOrigin, string> = {
   plugin: '插件自带',
   personal: '个人自建',
   marketplace: '市场安装',
+};
+
+/** 分类来源标注（spec add-skill-ai-classification：手动 / AI / 关键词） */
+export const FUNCTION_SOURCE_LABELS: Record<SkillFunctionSource, string> = {
+  manual: '手动',
+  ai: 'AI',
+  keyword: '关键词',
 };
 
 export const FUNCTION_ORDER: SkillFunction[] = [
