@@ -158,13 +158,13 @@ const FUNCTION_KEYWORDS: Array<{ category: Exclude<SkillFunction, 'other'>; keyw
 
 // ============ frontmatter ============
 
-interface ParsedFrontmatter {
+export interface ParsedFrontmatter {
   data: Record<string, string>;
   body: string;
 }
 
 /** 解析 Markdown 开头的扁平 YAML-ish frontmatter */
-function parseFrontmatter(content: string): ParsedFrontmatter {
+export function parseFrontmatter(content: string): ParsedFrontmatter {
   const match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(content);
   if (!match) return { data: {}, body: content };
 
