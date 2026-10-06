@@ -10,6 +10,12 @@ import {
   MAX_WORKSPACES,
   type WorkspaceFs,
 } from '../../../src/core/workspaces.js';
+import {
+  sanitizeWorkspacesConfig,
+  mergeWorkspacesConfig,
+  WorkspaceConfigError,
+  DEFAULT_WORKSPACES_CONFIG,
+} from '../../../src/core/workspaces-config.js';
 
 /** 以「存在的目录」集合构造内存 fs（自动推导全部父目录）；路径统一 posix 风格 */
 function makeFs(existingDirs: string[], realpaths?: Record<string, string>): WorkspaceFs {
@@ -37,6 +43,7 @@ function makeFs(existingDirs: string[], realpaths?: Record<string, string>): Wor
   return {
     listDir: list,
     isDirectory: (p: string) => dirSet.has(p.replace(/\/+$/, '')),
+    exists: (p: string) => dirSet.has(p.replace(/\/+$/, '')),
     realpath: realpaths
       ? (p: string) => {
           const key = p.replace(/\/+$/, '');
@@ -235,5 +242,71 @@ describe('resolveWorkspaceDirs 工作区组装', () => {
 
   it('默认上限常量为 100', () => {
     expect(MAX_WORKSPACES).toBe(100);
+  });
+});
+
+describe('工作区配置 sanitize / merge', () => {
+  it('缺省配置：自动发现开启、列表为空', () => {
+    expect(DEFAULT_WORKSPACES_CONFIG).toEqual({
+      autoDiscover: true,
+      roots: [],
+      disabledWorkspaces: [],
+    });
+  });
+
+  it('sanitize 容错：null/非法类型/未知键回退默认', () => {
+    expect(sanitizeWorkspacesConfig(null)).toEqual(DEFAULT_WORKSPACES_CONFIG);
+    expect(sanitizeWorkspacesConfig('x')).toEqual(DEFAULT_WORKSPACES_CONFIG);
+    expect(sanitizeWorkspacesConfig({ autoDiscover: 'no', roots: 42, unknown: 1 })).toEqual(
+      DEFAULT_WORKSPACES_CONFIG,
+    );
+  });
+
+  it('sanitize 部分字段合法时采用并规范化路径', () => {
+    expect(
+      sanitizeWorkspacesConfig({
+        autoDiscover: false,
+        roots: ['D:\\demo\\Zhihu\\', 'd:/trae/zhihu'],
+        disabledWorkspaces: ['~/projects/Ghost'],
+      }),
+    ).toEqual({
+      autoDiscover: false,
+      roots: ['~/projects/Zhihu'],
+      disabledWorkspaces: ['~/projects/Ghost'],
+    });
+  });
+
+  it('merge 合并语义：缺省字段保持原值', () => {
+    const current = { autoDiscover: false, roots: ['d:/a'], disabledWorkspaces: [] };
+    expect(mergeWorkspacesConfig({ roots: ['d:/b'] }, current)).toEqual({
+      autoDiscover: false,
+      roots: ['d:/b'],
+      disabledWorkspaces: [],
+    });
+  });
+
+  it('merge 非法输入抛 WorkspaceConfigError 且不改变原配置语义', () => {
+    expect(() => mergeWorkspacesConfig(null, DEFAULT_WORKSPACES_CONFIG)).toThrow(WorkspaceConfigError);
+    expect(() =>
+      mergeWorkspacesConfig({ autoDiscover: 'yes' }, DEFAULT_WORKSPACES_CONFIG),
+    ).toThrow(WorkspaceConfigError);
+    expect(() =>
+      mergeWorkspacesConfig({ roots: ['relative/x'] }, DEFAULT_WORKSPACES_CONFIG),
+    ).toThrow(WorkspaceConfigError);
+    expect(() =>
+      mergeWorkspacesConfig({ roots: [42] }, DEFAULT_WORKSPACES_CONFIG),
+    ).toThrow(WorkspaceConfigError);
+  });
+
+  it('merge 路径去重；数量超上限拒绝', () => {
+    const merged = mergeWorkspacesConfig(
+      { disabledWorkspaces: ['D:\\demo\\A\\', '~/projects/a'] },
+      DEFAULT_WORKSPACES_CONFIG,
+    );
+    expect(merged.disabledWorkspaces).toEqual(['~/projects/A']);
+    const tooMany = Array.from({ length: MAX_WORKSPACES + 1 }, (_, i) => `d:/p${i}`);
+    expect(() =>
+      mergeWorkspacesConfig({ roots: tooMany }, DEFAULT_WORKSPACES_CONFIG),
+    ).toThrow(WorkspaceConfigError);
   });
 });

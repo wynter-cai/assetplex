@@ -15,6 +15,8 @@ export interface WorkspaceFs {
   listDir(absolutePath: string): string[];
   /** 路径是否为存在的目录 */
   isDirectory(absolutePath: string): boolean;
+  /** 文件或目录是否存在 */
+  exists(absolutePath: string): boolean;
   /** 解析真实路径（符号链接/联接归一）；实现可省略，省略时按规范化路径比较 */
   realpath?(absolutePath: string): string;
 }
