@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Save } from 'lucide-react';
+import { WorkspaceSettingsCard } from '@/components/settings/WorkspaceSettingsCard';
 
 export default function Settings() {
   const queryClient = useQueryClient();
@@ -203,6 +204,8 @@ export default function Settings() {
           </div>
         </CardContent>
       </Card>
+
+      <WorkspaceSettingsCard />
 
       <div className="flex justify-end">
         <Button onClick={() => saveMutation.mutate()} disabled={!dirty || saveMutation.isPending}>
