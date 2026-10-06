@@ -309,3 +309,72 @@ describe('SkillsView 保险箱写管理', () => {
     });
   });
 });
+
+describe('SkillsView 批量沉淀', () => {
+  const vaultSkill = skill({
+    id: '周报助手',
+    name: '周报助手',
+    description: '生成中文周报',
+    functionCategory: 'writing',
+    origin: 'vault',
+    tool: 'hub',
+  });
+  const vaultCurated = { ...vaultSkill, source: 'builtin:/x/pdf/SKILL.md' };
+
+  const writeResult: SkillListResult = {
+    total: 2,
+    items: [vaultSkill, result.items[1]],
+    countByFunction: {
+      coding: 0, writing: 2, browser: 0, data: 0, devops: 0,
+      'ai-integration': 0, design: 0, workflow: 0, other: 0,
+    },
+    countByOrigin: { builtin: 1, plugin: 0, personal: 0, marketplace: 0, vault: 1 },
+  };
+
+  beforeEach(() => {
+    vi.spyOn(api, 'listSkills').mockResolvedValue(writeResult);
+    vi.spyOn(api, 'getSkill').mockResolvedValue({ skill: vaultSkill, rawContent: '---\nname: 周报助手\n---\n正文' });
+  });
+
+  it('勾选含非保险箱技能时批量条显示沉淀按钮，点击仅沉淀非保险箱项', async () => {
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+    vi.spyOn(api, 'curateSkillsBatch').mockResolvedValue({ created: [vaultCurated], failed: [] });
+    renderView();
+    fireEvent.click(await screen.findByLabelText('选择技能 周报助手'));
+    fireEvent.click(screen.getByLabelText('选择技能 pdf'));
+    fireEvent.click(screen.getByRole('button', { name: '沉淀到保险箱' }));
+
+    await waitFor(() => {
+      expect(api.curateSkillsBatch).toHaveBeenCalledWith(['pdf']);
+    });
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('成功 1 个'));
+    });
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('已是保险箱技能'));
+    });
+  });
+
+  it('服务端冲突跳过时结果提示失败原因且已成功不回滚', async () => {
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+    vi.spyOn(api, 'curateSkillsBatch').mockResolvedValue({
+      created: [vaultCurated],
+      failed: [{ id: 'ghost', name: 'ghost', error: '同名技能已存在' }],
+    });
+    renderView();
+    fireEvent.click(await screen.findByLabelText('选择技能 pdf'));
+    fireEvent.click(screen.getByRole('button', { name: '沉淀到保险箱' }));
+
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('同名技能已存在'));
+    });
+  });
+
+  it('勾选全部为保险箱技能时不显示沉淀按钮', async () => {
+    vi.spyOn(api, 'curateSkillsBatch');
+    renderView();
+    fireEvent.click(await screen.findByLabelText('选择技能 周报助手'));
+    expect(screen.queryByRole('button', { name: '沉淀到保险箱' })).not.toBeInTheDocument();
+    expect(api.curateSkillsBatch).not.toHaveBeenCalled();
+  });
+});

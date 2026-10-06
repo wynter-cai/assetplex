@@ -6,9 +6,10 @@
 
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Sparkles, FileText, Pencil } from 'lucide-react';
+import { Sparkles, FileText, Pencil, Archive } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -23,12 +24,14 @@ import { api } from '@/lib/api';
 import { useEscapeKey } from '@/lib/use-escape-key';
 import { Markdown, stripFrontmatter } from '@/components/common/Markdown';
 import { SyncDistribute } from '@/components/common/SyncDistribute';
-import { FUNCTION_LABELS, ORIGIN_LABELS } from './skill-labels';
+import { FUNCTION_LABELS, ORIGIN_LABELS, parseCurateSource } from './skill-labels';
 import type { SkillInfo } from '@/types/api';
 
 interface SkillDetailProps {
   skill: SkillInfo;
   onClose: () => void;
+  /** 沉淀成功后回调（父组件切换详情到新保险箱技能） */
+  onCurated: (skill: SkillInfo) => void;
 }
 
 /** 删除确认对话框：明示影响范围（spec 删除确认文案） */
@@ -61,18 +64,80 @@ function DeleteConfirmDialog({
   );
 }
 
-export function SkillDetail({ skill, onClose }: SkillDetailProps): JSX.Element {
+/** 沉淀对话框：名称预填可改，确认后复制到保险箱（spec add-skill-curation） */
+function CurateDialog({
+  skill,
+  onOpenChange,
+  onCurated,
+}: {
+  skill: SkillInfo;
+  onOpenChange: (open: boolean) => void;
+  onCurated: (skill: SkillInfo) => void;
+}): JSX.Element {
+  const queryClient = useQueryClient();
+  const [name, setName] = useState(skill.name);
+  const [submitting, setSubmitting] = useState(false);
+
+  const submit = (): void => {
+    const trimmed = name.trim();
+    if (!trimmed || submitting) return;
+    setSubmitting(true);
+    api
+      .curateSkill({ id: skill.id, name: trimmed })
+      .then((result) => {
+        void queryClient.invalidateQueries({ queryKey: ['skills'] });
+        onOpenChange(false);
+        onCurated(result.skill);
+      })
+      .catch((err: unknown) => {
+        // 同名冲突（400）/ 名称非法（400）等后端校验错误直接提示，对话框保持打开
+        alert(err instanceof Error ? err.message : '沉淀失败');
+      })
+      .finally(() => setSubmitting(false));
+  };
+
+  return (
+    <Dialog open onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>沉淀到保险箱</DialogTitle>
+          <DialogDescription>
+            复制「{skill.name}」到保险箱 skills/&lt;名称&gt;/SKILL.md，源技能保留不动
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-1">
+          <span className="text-xs font-medium">名称</span>
+          <Input
+            aria-label="沉淀技能名称"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </div>
+        <DialogFooter>
+          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>取消</Button>
+          <Button size="sm" onClick={submit} disabled={!name.trim() || submitting}>
+            {submitting ? '沉淀中…' : '确认沉淀'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export function SkillDetail({ skill, onClose, onCurated }: SkillDetailProps): JSX.Element {
   useEscapeKey(true, onClose);
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [editContent, setEditContent] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [curateOpen, setCurateOpen] = useState(false);
   const { data, isLoading } = useQuery({
     queryKey: ['skill', skill.id],
     queryFn: () => api.getSkill(skill.id),
   });
 
   const isVault = skill.origin === 'vault';
+  const sourceInfo = isVault && skill.source ? parseCurateSource(skill.source) : null;
 
   const refresh = (): void => {
     void queryClient.invalidateQueries({ queryKey: ['skills'] });
@@ -125,6 +190,9 @@ export function SkillDetail({ skill, onClose }: SkillDetailProps): JSX.Element {
         <div className="flex flex-wrap gap-1.5">
           <Badge variant="outline">{FUNCTION_LABELS[skill.functionCategory]}</Badge>
           <Badge variant="outline">{ORIGIN_LABELS[skill.origin]}</Badge>
+          {isVault && sourceInfo && (
+            <Badge variant="secondary">沉淀自 {ORIGIN_LABELS[sourceInfo.origin]}</Badge>
+          )}
           {skill.version && <Badge variant="secondary">v{skill.version}</Badge>}
           {skill.functionOverridden && <Badge variant="secondary">已手动分类</Badge>}
         </div>
@@ -142,6 +210,12 @@ export function SkillDetail({ skill, onClose }: SkillDetailProps): JSX.Element {
               <Button variant="outline" size="sm" className="h-8 px-3 text-xs" onClick={startEdit}>
                 <Pencil className="h-3.5 w-3.5 mr-1" />
                 编辑
+              </Button>
+            )}
+            {!isVault && (
+              <Button variant="outline" size="sm" className="h-8 px-3 text-xs" onClick={() => setCurateOpen(true)}>
+                <Archive className="h-3.5 w-3.5 mr-1" />
+                沉淀到保险箱
               </Button>
             )}
             {isVault && (
@@ -214,6 +288,10 @@ export function SkillDetail({ skill, onClose }: SkillDetailProps): JSX.Element {
         onOpenChange={setConfirmDelete}
         onConfirm={doDelete}
       />
+
+      {curateOpen && (
+        <CurateDialog skill={skill} onOpenChange={setCurateOpen} onCurated={onCurated} />
+      )}
     </div>
   );
 }

@@ -28,6 +28,7 @@ import type {
   SkillInfo,
   SkillFunction,
   SkillOrigin,
+  CurateBatchResult,
   ProjectListResult,
   ProjectOpenTarget,
 } from '@/types/api';
@@ -197,6 +198,16 @@ export const api = {
     request<{ updated: SkillInfo[]; missing: string[] }>('/skills/function-batch', {
       method: 'POST',
       body: JSON.stringify({ ids, functionCategory }),
+    }),
+  curateSkill: (body: { id: string; name?: string }) =>
+    request<{ skill: SkillInfo }>('/skills/curate', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  curateSkillsBatch: (ids: string[]) =>
+    request<CurateBatchResult>('/skills/curate-batch', {
+      method: 'POST',
+      body: JSON.stringify({ ids }),
     }),
 
   // Projects（AI-Coding 项目可视化）

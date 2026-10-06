@@ -157,6 +157,7 @@ export function SkillsView(): JSX.Element {
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [batchFunction, setBatchFunction] = useState<SkillFunction>('other');
   const [applying, setApplying] = useState(false);
+  const [curating, setCurating] = useState(false);
 
   /** 新建成功后打开新技能详情 */
   const handleCreated = (skill: SkillInfo): void => setSelected(skill);
@@ -206,6 +207,34 @@ export function SkillsView(): JSX.Element {
         alert(err instanceof Error ? err.message : '批量修改失败');
       })
       .finally(() => setApplying(false));
+  };
+
+  /** 批量沉淀：仅沉淀勾选中的非保险箱技能，结果汇总提示（spec add-skill-curation） */
+  const applyCurate = (): void => {
+    if (!data || curating) return;
+    const checked = data.items.filter((s) => checkedIds.has(s.id));
+    const targets = checked.filter((s) => s.origin !== 'vault');
+    const skipped = checked.filter((s) => s.origin === 'vault');
+    if (targets.length === 0) return;
+    setCurating(true);
+    api
+      .curateSkillsBatch(targets.map((s) => s.id))
+      .then((result) => {
+        const parts: string[] = [];
+        if (result.created.length > 0) parts.push(`成功 ${result.created.length} 个`);
+        const skipParts = [
+          ...skipped.map((s) => `${s.name}：已是保险箱技能`),
+          ...result.failed.map((f) => `${f.name}：${f.error}`),
+        ];
+        if (skipParts.length > 0) parts.push(`跳过 ${skipParts.length} 个（${skipParts.join('、')}）`);
+        if (parts.length > 0) alert(`沉淀完成：${parts.join('；')}`);
+        setCheckedIds(new Set());
+        void queryClient.invalidateQueries({ queryKey: ['skills'] });
+      })
+      .catch((err: unknown) => {
+        alert(err instanceof Error ? err.message : '批量沉淀失败');
+      })
+      .finally(() => setCurating(false));
   };
 
   const activeKey: SkillFunction | SkillOrigin | null =
@@ -335,6 +364,17 @@ export function SkillsView(): JSX.Element {
             清空
           </button>
           <div className="flex-1" />
+          {data && data.items.some((s) => checkedIds.has(s.id) && s.origin !== 'vault') && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 px-3 text-xs"
+              onClick={applyCurate}
+              disabled={curating}
+            >
+              {curating ? '沉淀中…' : '沉淀到保险箱'}
+            </Button>
+          )}
           <select
             aria-label="批量设置职能分类"
             value={batchFunction}
@@ -410,7 +450,13 @@ export function SkillsView(): JSX.Element {
       )}
       </div>
 
-      {selected && <SkillDetail skill={selected} onClose={() => setSelected(null)} />}
+      {selected && (
+        <SkillDetail
+          skill={selected}
+          onClose={() => setSelected(null)}
+          onCurated={(s) => setSelected(s)}
+        />
+      )}
 
       <SkillCreateDialog
         open={createOpen}

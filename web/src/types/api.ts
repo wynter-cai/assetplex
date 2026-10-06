@@ -276,6 +276,8 @@ export interface SkillInfo {
   sourcePath: string;
   version: string;
   functionOverridden: boolean;
+  /** 沉淀来源（仅 vault）：`${origin}:${sourcePath}`；自建技能无此字段 */
+  source?: string;
   variants: string[];
 }
 
@@ -284,6 +286,19 @@ export interface SkillListResult {
   total: number;
   countByFunction: Record<SkillFunction, number>;
   countByOrigin: Record<SkillOrigin, number>;
+}
+
+/** 批量沉淀单条失败明细 */
+export interface CurateBatchFailure {
+  id: string;
+  name: string;
+  error: string;
+}
+
+/** 批量沉淀结果：部分成功语义 */
+export interface CurateBatchResult {
+  created: SkillInfo[];
+  failed: CurateBatchFailure[];
 }
 
 // ========== AI-Coding 项目类型 ==========

@@ -30,3 +30,12 @@ export const FUNCTION_ORDER: SkillFunction[] = [
 
 /** vault（保险箱）为主本，排序最前 */
 export const ORIGIN_ORDER: SkillOrigin[] = ['vault', 'personal', 'plugin', 'marketplace', 'builtin'];
+
+/** 解析沉淀来源标识（`${origin}:${sourcePath}`）；格式非法返回 null */
+export function parseCurateSource(source: string): { origin: SkillOrigin; path: string } | null {
+  const idx = source.indexOf(':');
+  if (idx <= 0) return null;
+  const origin = source.slice(0, idx);
+  if (!(ORIGIN_ORDER as string[]).includes(origin)) return null;
+  return { origin: origin as SkillOrigin, path: source.slice(idx + 1) };
+}
