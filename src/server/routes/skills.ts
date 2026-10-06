@@ -1,14 +1,20 @@
 /**
  * 技能分类全貌 API 路由
  *
- * GET /api/skills                 列出（可按职能/来源筛选、搜索）
- * PUT /api/skills/:id/function    手动覆盖某技能的职能分类
- * POST /api/skills/function-batch 批量覆盖职能分类
- * POST /api/skills                新建保险箱技能
- * PUT /api/skills/:id             编辑保险箱技能（整文件替换）
- * DELETE /api/skills/:id          删除保险箱技能
+ * GET  /api/skills                        列出（可按职能/来源筛选、搜索；AI 缓存自动应用）
+ * PUT  /api/skills/:id/function           手动覆盖某技能的职能分类
+ * POST /api/skills/function-batch         批量覆盖职能分类
+ * POST /api/skills/curate                 沉淀单个技能到保险箱
+ * POST /api/skills/curate-batch           批量沉淀
+ * POST /api/skills                        新建保险箱技能
+ * PUT  /api/skills/:id                    编辑保险箱技能（整文件替换）
+ * DELETE /api/skills/:id                  删除保险箱技能
+ * GET  /api/skills/ai-classify/config     读取 AI 分类配置（apiKey 脱敏）
+ * PUT  /api/skills/ai-classify/config     保存 AI 分类配置（apiKey 缺省保留旧值）
+ * POST /api/skills/ai-classify            执行 AI 分类（部分成功语义）
  *
- * spec: skills-taxonomy.spec.md, add-skill-agent-write-management
+ * spec: skills-taxonomy.spec.md, add-skill-agent-write-management, add-skill-curation,
+ *       设计文档/changes/add-skill-ai-classification/specs/skill-ai-classification.spec.md
  */
 
 import { Hono } from 'hono';
@@ -33,10 +39,25 @@ import {
   type SkillWriteFs,
 } from '../../core/skill-write.js';
 import { curateVaultSkill, curateVaultSkills } from '../../core/skill-curation.js';
+import {
+  classifySkillsWithAi,
+  createAiLookup,
+  AiConfigIncompleteError,
+  type LlmClient,
+} from '../../core/skill-ai-classification.js';
+import {
+  loadAiClassifyConfig,
+  saveAiClassifyConfig,
+  toAiConfigView,
+} from '../../core/ai-config.js';
+import type { AiConfigStore } from '../../core/ai-config.js';
+import type { AiClassifyCacheStore } from '../../core/skill-ai-cache.js';
 import { getHubRoot } from '../../utils/paths.js';
 import { nodeAgentFs } from '../lib/node-agent-fs.js';
 import { nodeSkillWriteFs } from '../lib/node-skill-write-fs.js';
 import { nodeSkillOverrideStore } from '../lib/node-skill-override-store.js';
+import { nodeAiConfigStore, nodeAiCacheStore } from '../lib/node-ai-classify-store.js';
+import { createOpenAiLlmClient } from '../lib/openai-llm-client.js';
 import { toWriteErrorResponse } from '../lib/write-error.js';
 
 export interface SkillsRouteDeps {
@@ -44,6 +65,12 @@ export interface SkillsRouteDeps {
   writeFs: SkillWriteFs;
   sources: SkillSources;
   store: SkillOverrideStore;
+  /** AI 分类配置存储（可选；缺省用全局单例，测试可注入内存实现） */
+  aiConfigStore?: AiConfigStore;
+  /** AI 分类内容缓存（可选；缺省用全局单例） */
+  aiCacheStore?: AiClassifyCacheStore;
+  /** LLM 客户端（可选；缺省按配置现场构造 OpenAI 兼容客户端，测试注入 mock） */
+  llmClient?: LlmClient;
 }
 
 /** 解析本机各技能来源根目录 */
@@ -66,10 +93,15 @@ export function skillsRouteFactory(
     writeFs: nodeSkillWriteFs,
     sources: defaultSkillSources(),
     store: nodeSkillOverrideStore,
+    aiConfigStore: nodeAiConfigStore,
+    aiCacheStore: nodeAiCacheStore,
   },
 ): Hono {
   const routes = new Hono();
   const { fs, writeFs, sources, store } = deps;
+
+  /** AI 缓存查询（缓存未注入时为 undefined，盘点回退关键词兜底） */
+  const aiLookup = deps.aiCacheStore ? createAiLookup(deps.aiCacheStore) : undefined;
 
   /** 列出技能全貌 */
   routes.get('/', (c) => {
@@ -78,6 +110,7 @@ export function skillsRouteFactory(
         fs,
         sources,
         store,
+        aiLookup,
         params: {
           function: (c.req.query('function') as ListSkillsParams['function']) ?? undefined,
           origin: (c.req.query('origin') as ListSkillsParams['origin']) ?? undefined,
@@ -105,7 +138,7 @@ export function skillsRouteFactory(
     }
 
     try {
-      const skill = overrideSkillFunction(id, functionCategory as SkillFunction, { fs, sources, store });
+      const skill = overrideSkillFunction(id, functionCategory as SkillFunction, { fs, sources, store, aiLookup });
       if (!skill) {
         return c.json({ error: `技能不存在：${id}` }, 404);
       }
@@ -136,7 +169,7 @@ export function skillsRouteFactory(
       return c.json({ error: `无效职能，支持：${SKILL_FUNCTIONS.join(', ')}` }, 400);
     }
     try {
-      const result = overrideSkillFunctionsBatch(ids, functionCategory as SkillFunction, { fs, sources, store });
+      const result = overrideSkillFunctionsBatch(ids, functionCategory as SkillFunction, { fs, sources, store, aiLookup });
       return c.json(result);
     } catch (err) {
       return c.json({ error: err instanceof Error ? err.message : String(err) }, 400);
@@ -192,6 +225,72 @@ export function skillsRouteFactory(
     } catch (err) {
       const { status, message } = toWriteErrorResponse(err);
       return c.json({ error: message }, status);
+    }
+  });
+
+  /** 读取 AI 分类配置（apiKey 脱敏，只回传 hasApiKey） */
+  routes.get('/ai-classify/config', (c) => {
+    const config = loadAiClassifyConfig(deps.aiConfigStore ?? nodeAiConfigStore);
+    return c.json(toAiConfigView(config));
+  });
+
+  /** 保存 AI 分类配置（校验失败 400 且不写入；apiKey 缺省保留旧值） */
+  routes.put('/ai-classify/config', async (c) => {
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: '请求体必须是 JSON' }, 400);
+    }
+    const parsed = body as { baseUrl?: unknown; apiKey?: unknown; model?: unknown } | null;
+    if (typeof parsed?.baseUrl !== 'string' || typeof parsed?.model !== 'string') {
+      return c.json({ error: 'baseUrl 与 model 必须是字符串' }, 400);
+    }
+    if (parsed.apiKey !== undefined && typeof parsed.apiKey !== 'string') {
+      return c.json({ error: 'apiKey 必须是字符串或缺省（缺省保留旧值）' }, 400);
+    }
+    try {
+      const view = saveAiClassifyConfig(deps.aiConfigStore ?? nodeAiConfigStore, {
+        baseUrl: parsed.baseUrl,
+        apiKey: parsed.apiKey as string | undefined,
+        model: parsed.model,
+      });
+      return c.json(view);
+    } catch (err) {
+      return c.json({ error: err instanceof Error ? err.message : String(err) }, 400);
+    }
+  });
+
+  /** 执行 AI 分类（部分成功语义；配置未就绪 400；失败明细不写缓存） */
+  routes.post('/ai-classify', async (c) => {
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: '请求体必须是 JSON' }, 400);
+    }
+    const parsed = body as { ids?: unknown } | null;
+    if (parsed?.ids !== undefined && (!Array.isArray(parsed.ids) || parsed.ids.some((id) => typeof id !== 'string'))) {
+      return c.json({ error: 'ids 必须是字符串数组或缺省' }, 400);
+    }
+    const ids = parsed?.ids as string[] | undefined;
+
+    const aiConfigStore = deps.aiConfigStore ?? nodeAiConfigStore;
+    const aiCacheStore = deps.aiCacheStore ?? nodeAiCacheStore;
+    const config = loadAiClassifyConfig(aiConfigStore);
+    const llm = deps.llmClient ?? createOpenAiLlmClient(config);
+
+    try {
+      const result = await classifySkillsWithAi(
+        { ids },
+        { fs, sources, store, cache: aiCacheStore, llm, config },
+      );
+      return c.json(result);
+    } catch (err) {
+      if (err instanceof AiConfigIncompleteError) {
+        return c.json({ error: err.message }, 400);
+      }
+      return c.json({ error: err instanceof Error ? err.message : String(err) }, 500);
     }
   });
 
@@ -262,7 +361,7 @@ export function skillsRouteFactory(
   /** 单个技能详情（元信息 + SKILL.md 原文） */
   routes.get('/:id', (c) => {
     const id = decodeURIComponent(c.req.param('id'));
-    const result = getSkillRawContent(id, { fs, sources, store });
+    const result = getSkillRawContent(id, { fs, sources, store, aiLookup });
     if (!result) {
       return c.json({ error: `技能不存在：${id}` }, 404);
     }

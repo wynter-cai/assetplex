@@ -36,11 +36,6 @@ export interface SaveAiConfigInput {
   model: string;
 }
 
-/** 空配置（文件缺失或脏数据时的兜底） */
-function emptyConfig(): AiClassifyConfig {
-  return { baseUrl: '', apiKey: '', model: '' };
-}
-
 /** 读取完整配置；存储缺失时返回空配置，不抛错 */
 export function loadAiClassifyConfig(store: AiConfigStore): AiClassifyConfig {
   const raw = store.load();
