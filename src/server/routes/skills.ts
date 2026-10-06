@@ -32,6 +32,7 @@ import {
   deleteVaultSkill,
   type SkillWriteFs,
 } from '../../core/skill-write.js';
+import { curateVaultSkill, curateVaultSkills } from '../../core/skill-curation.js';
 import { getHubRoot } from '../../utils/paths.js';
 import { nodeAgentFs } from '../lib/node-agent-fs.js';
 import { nodeSkillWriteFs } from '../lib/node-skill-write-fs.js';
@@ -139,6 +140,58 @@ export function skillsRouteFactory(
       return c.json(result);
     } catch (err) {
       return c.json({ error: err instanceof Error ? err.message : String(err) }, 400);
+    }
+  });
+
+  /** 沉淀单个技能到保险箱（复制非 vault 技能并记录来源） */
+  routes.post('/curate', async (c) => {
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: '请求体必须是 JSON' }, 400);
+    }
+    const parsed = body as { id?: unknown; name?: unknown } | null;
+    if (typeof parsed?.id !== 'string' || parsed.id.trim() === '') {
+      return c.json({ error: 'id 必须是非空字符串' }, 400);
+    }
+    if (parsed.name !== undefined && typeof parsed.name !== 'string') {
+      return c.json({ error: 'name 必须是字符串' }, 400);
+    }
+    try {
+      const skill = curateVaultSkill(
+        { id: parsed.id, name: parsed.name as string | undefined },
+        { fs: writeFs, sources, store },
+      );
+      return c.json({ skill }, 201);
+    } catch (err) {
+      const { status, message } = toWriteErrorResponse(err);
+      return c.json({ error: message }, status);
+    }
+  });
+
+  /** 批量沉淀（部分成功语义：created 与 failed 分开返回，已成功不回滚） */
+  routes.post('/curate-batch', async (c) => {
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: '请求体必须是 JSON' }, 400);
+    }
+    const parsed = body as { ids?: unknown } | null;
+    if (!Array.isArray(parsed?.ids) || parsed.ids.some((id) => typeof id !== 'string')) {
+      return c.json({ error: 'ids 必须是字符串数组' }, 400);
+    }
+    const ids = parsed.ids as string[];
+    if (ids.length === 0) {
+      return c.json({ error: 'ids 不能为空' }, 400);
+    }
+    try {
+      const result = curateVaultSkills({ ids }, { fs: writeFs, sources, store });
+      return c.json(result);
+    } catch (err) {
+      const { status, message } = toWriteErrorResponse(err);
+      return c.json({ error: message }, status);
     }
   });
 

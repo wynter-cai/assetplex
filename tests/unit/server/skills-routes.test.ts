@@ -352,3 +352,119 @@ describe('DELETE /api/skills/:id 删除保险箱技能', () => {
     expect(res.status).toBe(400);
   });
 });
+
+describe('POST /api/skills/curate 沉淀单个技能', () => {
+  const headers = { 'Content-Type': 'application/json' };
+
+  it('201 沉淀成功：返回 vault 条目带 source，保险箱落盘', async () => {
+    const marketPath = `${sources.marketplaceSkillsDir}/airbnb/SKILL.md`;
+    const fs = makeFs({ [marketPath]: '---\nname: airbnb\ndescription: 旅行预订\n---\n# airbnb 正文' });
+    const res = await buildApp(fs).request('/api/skills/curate', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ id: 'airbnb' }),
+    });
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.skill.origin).toBe('vault');
+    expect(body.skill.source).toBe(`marketplace:${marketPath}`);
+    expect(fs.files['/hub/skills/airbnb/SKILL.md']).toContain('source: marketplace:');
+
+    const list = await buildApp(fs).request('/api/skills');
+    expect((await list.json()).countByOrigin.vault).toBe(1);
+  });
+
+  it('201 改名沉淀：目标目录按 name 创建', async () => {
+    const fs = makeFs({
+      [`${sources.marketplaceSkillsDir}/airbnb/SKILL.md`]: '---\nname: airbnb\ndescription: 旅行\n---正文',
+    });
+    const res = await buildApp(fs).request('/api/skills/curate', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ id: 'airbnb', name: 'airbnb-travel' }),
+    });
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.skill.name).toBe('airbnb-travel');
+    expect(fs.files['/hub/skills/airbnb-travel/SKILL.md']).toBeDefined();
+  });
+
+  it('400 源为保险箱技能拒绝沉淀', async () => {
+    const fs = makeFs({ [`${sources.vaultSkillsDir}/mine/SKILL.md`]: '---\nname: mine\ndescription: 自建\n---' });
+    const res = await buildApp(fs).request('/api/skills/curate', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ id: 'mine' }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('404 源技能不存在', async () => {
+    const res = await buildApp(makeFs({})).request('/api/skills/curate', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ id: 'ghost' }),
+    });
+    expect(res.status).toBe(404);
+  });
+
+  it('400 同名冲突', async () => {
+    const fs = makeFs({
+      [`${sources.marketplaceSkillsDir}/airbnb/SKILL.md`]: '---\nname: airbnb\ndescription: 旅行\n---',
+      [`${sources.userSkillsDir}/pdf/SKILL.md`]: '---\nname: pdf\ndescription: 已有\n---',
+    });
+    const res = await buildApp(fs).request('/api/skills/curate', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ id: 'airbnb', name: 'pdf' }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('400 缺 id 或请求体非 JSON', async () => {
+    const app = buildApp(makeFs({}));
+    const res1 = await app.request('/api/skills/curate', { method: 'POST', headers, body: 'not-json' });
+    expect(res1.status).toBe(400);
+    const res2 = await app.request('/api/skills/curate', { method: 'POST', headers, body: JSON.stringify({ name: 'x' }) });
+    expect(res2.status).toBe(400);
+  });
+});
+
+describe('POST /api/skills/curate-batch 批量沉淀', () => {
+  const headers = { 'Content-Type': 'application/json' };
+
+  it('200 部分成功：created 与 failed 分开返回', async () => {
+    const fs = makeFs({
+      [`${sources.marketplaceSkillsDir}/airbnb/SKILL.md`]: '---\nname: airbnb\ndescription: 旅行\n---正文a',
+      [`${sources.vaultSkillsDir}/mine/SKILL.md`]: '---\nname: mine\ndescription: 自建\n---正文b',
+    });
+    const res = await buildApp(fs).request('/api/skills/curate-batch', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ ids: ['airbnb', 'mine', 'ghost'] }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.created).toHaveLength(1);
+    expect(body.created[0].name).toBe('airbnb');
+    expect(body.created[0].source).toContain('marketplace:');
+    expect(body.failed.map((f: { id: string }) => f.id).sort()).toEqual(['ghost', 'mine']);
+    expect(fs.files['/hub/skills/airbnb/SKILL.md']).toBeDefined();
+  });
+
+  it('400 ids 为空或非数组', async () => {
+    const app = buildApp(makeFs({}));
+    const res1 = await app.request('/api/skills/curate-batch', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ ids: [] }),
+    });
+    expect(res1.status).toBe(400);
+    const res2 = await app.request('/api/skills/curate-batch', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ ids: 'airbnb' }),
+    });
+    expect(res2.status).toBe(400);
+  });
+});
