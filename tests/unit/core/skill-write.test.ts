@@ -118,14 +118,14 @@ describe('createVaultSkill 新建保险箱技能', () => {
     expect(raw).toContain('# 周报');
   });
 
-  it('创建后立即纳入盘点（来源=保险箱，计数+1）', () => {
+  it('创建后立即纳入盘点（库内技能，计数+1）', () => {
     const fs = new MemoryWriteFs();
     createVaultSkill({ name: '代码审查', content: '审查代码' }, makeDeps(fs));
 
     const list = listSkills({ fs, sources: SOURCES, store: new MemoryStore() });
     expect(list.total).toBe(1);
     expect(list.items[0]?.origin).toBe('vault');
-    expect(list.countByOrigin.vault).toBe(1);
+    expect(list.countByStatus.in).toBe(1);
   });
 
   it('描述含换行时替换为空格，避免破坏 frontmatter', () => {
@@ -178,10 +178,10 @@ describe('updateVaultSkill 编辑保险箱技能', () => {
     expectWriteError(() => updateVaultSkill('ghost', 'x', makeDeps(fs)), 404, '不存在');
   });
 
-  it('非保险箱来源拒绝编辑', () => {
+  it('非库技能只读拒绝编辑（契约文案：未入库技能只读）', () => {
     const fs = new MemoryWriteFs();
     fs.files.set(`${SOURCES.userSkillsDir}/mine/SKILL.md`, '---\nname: mine\ndescription: 个人技能\n---');
-    expectWriteError(() => updateVaultSkill('mine', 'x', makeDeps(fs)), 400);
+    expectWriteError(() => updateVaultSkill('mine', 'x', makeDeps(fs)), 400, '未入库技能只读，请先收藏到我的库');
   });
 });
 
@@ -217,9 +217,9 @@ describe('deleteVaultSkill 删除保险箱技能', () => {
     expectWriteError(() => deleteVaultSkill('ghost', makeDeps(fs)), 404, '不存在');
   });
 
-  it('非保险箱来源拒绝删除', () => {
+  it('非库技能只读拒绝删除（契约文案：未入库技能只读）', () => {
     const fs = new MemoryWriteFs();
     fs.files.set(`${SOURCES.userSkillsDir}/mine/SKILL.md`, '---\nname: mine\ndescription: 个人技能\n---');
-    expectWriteError(() => deleteVaultSkill('mine', makeDeps(fs)), 400);
+    expectWriteError(() => deleteVaultSkill('mine', makeDeps(fs)), 400, '未入库技能只读，请先收藏到我的库');
   });
 });

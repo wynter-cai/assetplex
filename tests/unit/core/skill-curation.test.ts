@@ -144,10 +144,10 @@ describe('curateVaultSkill 单条沉淀', () => {
     expectCurateError(() => curateVaultSkill({ id: 'ghost' }, makeDeps(fs)), 404, '不存在');
   });
 
-  it('保险箱技能拒绝沉淀（400）', () => {
+  it('我的库技能拒绝重复收藏（400）', () => {
     const fs = new MemoryWriteFs();
     addSkill(fs, SOURCES.vaultSkillsDir, 'mine', '自建技能', '正文');
-    expectCurateError(() => curateVaultSkill({ id: 'mine' }, makeDeps(fs)), 400, '保险箱');
+    expectCurateError(() => curateVaultSkill({ id: 'mine' }, makeDeps(fs)), 400, '无需收藏');
   });
 
   it('改名撞上已有技能（跨来源）拒绝（400）', () => {
@@ -162,15 +162,15 @@ describe('curateVaultSkill 单条沉淀', () => {
     );
   });
 
-  it('保险箱已存在同名技能时拒绝沉淀（400，防御重复沉淀）', () => {
+  it('我的库与市场同名时拒绝收藏（400；合并卡片主本为 vault，命中已收藏分支）', () => {
     const fs = new MemoryWriteFs();
-    // 保险箱与市场各有一份 airbnb：合并卡片主本为 vault，市场副本在 variants
-    addSkill(fs, SOURCES.vaultSkillsDir, 'airbnb', '保险箱版', '正文');
+    // 我的库与市场各有一份 airbnb：合并卡片主本为 vault，市场副本在 variants
+    addSkill(fs, SOURCES.vaultSkillsDir, 'airbnb', '库内版', '正文');
     addSkill(fs, SOURCES.marketplaceSkillsDir, 'airbnb', '市场版', '正文');
-    // 直接按市场路径构造一个独立卡片来源测试冲突：改名后与 vault 同名
     expectCurateError(
       () => curateVaultSkill({ id: 'airbnb', name: 'airbnb' }, makeDeps(fs)),
       400,
+      '无需收藏',
     );
   });
 
@@ -209,7 +209,7 @@ describe('项目技能（project）沉淀回归', () => {
     const project = before.items.find((s) => s.id === 'douyin-x');
     expect(project?.origin).toBe('project');
     expect(project?.workspaceName).toBe('ws1');
-    expect(before.countByOrigin.project).toBe(1);
+    expect(before.countByProvenance.self).toBe(1);
 
     const skill = curateVaultSkill(
       { id: 'douyin-x' },
@@ -227,7 +227,7 @@ describe('项目技能（project）沉淀回归', () => {
     const after = listSkills({ fs, sources: PROJECT_SOURCES, store: new MemoryStore() });
     // 翻转守恒：同名卡片主本变 vault，项目副本保留在 variants
     expect(after.total).toBe(1);
-    expect(after.countByOrigin).toMatchObject({ project: 0, vault: 1 });
+    expect(after.countByStatus).toMatchObject({ in: 1, out: 0 });
     const card = after.items[0];
     expect(card.origin).toBe('vault');
     expect(card.variants).toContain(projectSkillPath);
@@ -262,7 +262,7 @@ describe('curateVaultSkills 批量沉淀', () => {
     expect(result.created.map((s) => s.name).sort()).toEqual(['airbnb', 'x-tool']);
     expect(result.failed).toHaveLength(1);
     expect(result.failed[0]?.id).toBe('mine');
-    expect(result.failed[0]?.error).toContain('保险箱');
+    expect(result.failed[0]?.error).toContain('我的库');
   });
 
   it('批量中个别失败不影响其他（已成功不回滚）', () => {

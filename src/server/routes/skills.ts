@@ -60,6 +60,7 @@ import { nodeAiConfigStore, nodeAiCacheStore } from '../lib/node-ai-classify-sto
 import { createOpenAiLlmClient } from '../lib/openai-llm-client.js';
 import { buildWorkspacesOverview } from '../lib/node-workspaces.js';
 import { toWriteErrorResponse } from '../lib/write-error.js';
+import { toApiSkill } from '../lib/skill-api.js';
 
 export interface SkillsRouteDeps {
   fs: SkillFs;
@@ -115,7 +116,7 @@ export function skillsRouteFactory(
   /** AI 缓存查询（缓存未注入时为 undefined，盘点回退关键词兜底） */
   const aiLookup = deps.aiCacheStore ? createAiLookup(deps.aiCacheStore) : undefined;
 
-  /** 列出技能全貌 */
+  /** 列出技能全貌（provenance/status 过滤；计数随筛选联动） */
   routes.get('/', (c) => {
     try {
       const result = listSkills({
@@ -125,11 +126,18 @@ export function skillsRouteFactory(
         aiLookup,
         params: {
           function: (c.req.query('function') as ListSkillsParams['function']) ?? undefined,
-          origin: (c.req.query('origin') as ListSkillsParams['origin']) ?? undefined,
+          provenance: (c.req.query('provenance') as ListSkillsParams['provenance']) ?? undefined,
+          status: (c.req.query('status') as ListSkillsParams['status']) ?? undefined,
           search: c.req.query('search') ?? undefined,
         },
       });
-      return c.json(result);
+      return c.json({
+        total: result.total,
+        items: result.items.map(toApiSkill),
+        countByFunction: result.countByFunction,
+        countByProvenance: result.countByProvenance,
+        countByStatus: result.countByStatus,
+      });
     } catch (err) {
       return c.json({ error: err instanceof Error ? err.message : String(err) }, 400);
     }
@@ -154,7 +162,7 @@ export function skillsRouteFactory(
       if (!skill) {
         return c.json({ error: `技能不存在：${id}` }, 404);
       }
-      return c.json({ skill });
+      return c.json({ skill: toApiSkill(skill) });
     } catch (err) {
       return c.json({ error: err instanceof Error ? err.message : String(err) }, 400);
     }
@@ -182,7 +190,7 @@ export function skillsRouteFactory(
     }
     try {
       const result = overrideSkillFunctionsBatch(ids, functionCategory as SkillFunction, { fs, sources: currentSources(), store, aiLookup });
-      return c.json(result);
+      return c.json({ updated: result.updated.map(toApiSkill), missing: result.missing });
     } catch (err) {
       return c.json({ error: err instanceof Error ? err.message : String(err) }, 400);
     }
@@ -208,7 +216,7 @@ export function skillsRouteFactory(
         { id: parsed.id, name: parsed.name as string | undefined },
         { fs: writeFs, sources: currentSources(), store },
       );
-      return c.json({ skill }, 201);
+      return c.json({ skill: toApiSkill(skill) }, 201);
     } catch (err) {
       const { status, message } = toWriteErrorResponse(err);
       return c.json({ error: message }, status);
@@ -233,7 +241,7 @@ export function skillsRouteFactory(
     }
     try {
       const result = curateVaultSkills({ ids }, { fs: writeFs, sources: currentSources(), store });
-      return c.json(result);
+      return c.json({ created: result.created.map(toApiSkill), failed: result.failed });
     } catch (err) {
       const { status, message } = toWriteErrorResponse(err);
       return c.json({ error: message }, status);
@@ -297,7 +305,7 @@ export function skillsRouteFactory(
         { ids },
         { fs, sources: currentSources(), store, cache: aiCacheStore, llm, config },
       );
-      return c.json(result);
+      return c.json({ ...result, classified: result.classified.map(toApiSkill) });
     } catch (err) {
       if (err instanceof AiConfigIncompleteError) {
         return c.json({ error: err.message }, 400);
@@ -329,7 +337,7 @@ export function skillsRouteFactory(
         { name: parsed.name, description: parsed.description, content: parsed.content },
         { fs: writeFs, sources: currentSources(), store },
       );
-      return c.json({ skill }, 201);
+      return c.json({ skill: toApiSkill(skill) }, 201);
     } catch (err) {
       const { status, message } = toWriteErrorResponse(err);
       return c.json({ error: message }, status);
@@ -351,7 +359,7 @@ export function skillsRouteFactory(
     }
     try {
       const skill = updateVaultSkill(id, content, { fs: writeFs, sources: currentSources(), store });
-      return c.json({ skill });
+      return c.json({ skill: toApiSkill(skill) });
     } catch (err) {
       const { status, message } = toWriteErrorResponse(err);
       return c.json({ error: message }, status);
@@ -377,7 +385,7 @@ export function skillsRouteFactory(
     if (!result) {
       return c.json({ error: `技能不存在：${id}` }, 404);
     }
-    return c.json(result);
+    return c.json({ skill: toApiSkill(result.skill), rawContent: result.rawContent });
   });
 
   return routes;

@@ -99,14 +99,114 @@ describe('GET /api/skills', () => {
     const body = await res.json();
     expect(body.total).toBe(2);
     expect(body.countByFunction.writing).toBe(1);
-    expect(body.countByOrigin.personal).toBe(1);
+    expect(body.countByProvenance.self).toBe(1);
     const pdf = body.items.find((s: { name: string }) => s.name === 'pdf');
-    expect(pdf.variants).toHaveLength(1);
+    expect(pdf.variants).toBe(1);
   });
 
   it('非法 function 返回 400', async () => {
     const res = await buildApp(makeFs({})).request('/api/skills?function=nope');
     expect(res.status).toBe(400);
+  });
+
+  it('200 条目对外语义：provenance+inLibrary 替换 origin（refactor-skill-origin-taxonomy）', async () => {
+    const fs = makeFs({
+      [`${sources.vaultSkillsDir}/mine/SKILL.md`]: '---\nname: mine\ndescription: 自建\n---',
+      [`${sources.vaultSkillsDir}/airbnb/SKILL.md`]: '---\nname: airbnb\ndescription: 旅行\nsource: marketplace:/x/airbnb/SKILL.md\n---',
+      [`${sources.marketplaceSkillsDir}/stock/SKILL.md`]: '---\nname: stock\ndescription: 股票数据\n---',
+      [`${sources.userSkillsDir}/pdf/SKILL.md`]: '---\nname: pdf\ndescription: 个人文档\n---',
+      [`${sources.builtinRoot}/global/skills/g-SKILL/SKILL.md`]: '---\nname: g-skill\ndescription: 官方内置\n---',
+    });
+    const res = await buildApp(fs).request('/api/skills');
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    const mine = body.items.find((s: { id: string }) => s.id === 'mine');
+    const airbnb = body.items.find((s: { id: string }) => s.id === 'airbnb');
+    const stock = body.items.find((s: { id: string }) => s.id === 'stock');
+    const pdf = body.items.find((s: { id: string }) => s.id === 'pdf');
+    const gskill = body.items.find((s: { id: string }) => s.id === 'g-skill');
+    // 库内自建 → self；库内沉淀自市场 → marketplace；市场未入库 → marketplace；个人 → self
+    expect(mine).toMatchObject({ provenance: 'self', inLibrary: true });
+    expect(airbnb).toMatchObject({
+      provenance: 'marketplace',
+      inLibrary: true,
+      source: 'marketplace:/x/airbnb/SKILL.md',
+    });
+    expect(stock).toMatchObject({ provenance: 'marketplace', inLibrary: false });
+    expect(pdf).toMatchObject({ provenance: 'self', inLibrary: false });
+    expect(gskill).toMatchObject({ provenance: 'builtin', inLibrary: false });
+    // origin/sourcePath 不再对外暴露；path=主文件路径、variants=副本数
+    expect(
+      body.items.every(
+        (s: Record<string, unknown>) => s.origin === undefined && s.sourcePath === undefined,
+      ),
+    ).toBe(true);
+    expect(pdf.path).toBe(`${sources.userSkillsDir}/pdf/SKILL.md`);
+    expect(typeof pdf.variants).toBe('number');
+  });
+});
+
+describe('GET /api/skills provenance/status 过滤（refactor-skill-origin-taxonomy）', () => {
+  /** 布景：库内自建 mine、库内沉淀自市场 airbnb、市场未入库 stock、个人未入库 pdf */
+  function seed(): MemoryWriteFs {
+    return makeFs({
+      [`${sources.vaultSkillsDir}/mine/SKILL.md`]: '---\nname: mine\ndescription: 库内自建\n---',
+      [`${sources.vaultSkillsDir}/airbnb/SKILL.md`]: '---\nname: airbnb\ndescription: 旅行\nsource: marketplace:/x/airbnb/SKILL.md\n---',
+      [`${sources.marketplaceSkillsDir}/stock/SKILL.md`]: '---\nname: stock\ndescription: 股票数据\n---',
+      [`${sources.userSkillsDir}/pdf/SKILL.md`]: '---\nname: pdf\ndescription: 个人文档\n---',
+    });
+  }
+
+  it('?provenance=self 只返回自建技能', async () => {
+    const res = await buildApp(seed()).request('/api/skills?provenance=self');
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.items.map((s: { id: string }) => s.id)).toEqual(['mine', 'pdf']);
+  });
+
+  it('?status=in 只返回库内技能；?status=out 只返回未入库', async () => {
+    const inRes = await buildApp(seed()).request('/api/skills?status=in');
+    const inBody = await inRes.json();
+    expect(inBody.items.map((s: { id: string }) => s.id)).toEqual(['airbnb', 'mine']);
+
+    const outRes = await buildApp(seed()).request('/api/skills?status=out');
+    const outBody = await outRes.json();
+    expect(outBody.items.map((s: { id: string }) => s.id)).toEqual(['pdf', 'stock']);
+  });
+
+  it('交集查询：未入库 × 市场安装（待收藏候选）', async () => {
+    const res = await buildApp(seed()).request('/api/skills?status=out&provenance=marketplace');
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.items.map((s: { id: string }) => s.id)).toEqual(['stock']);
+  });
+
+  it('状态=我的库时出处 chips 计数联动重算', async () => {
+    const res = await buildApp(seed()).request('/api/skills?status=in');
+    const body = await res.json();
+    expect(body.countByProvenance).toEqual({ self: 1, marketplace: 1, plugin: 0, builtin: 0 });
+    expect(body.countByStatus).toEqual({ in: 2, out: 2 });
+  });
+
+  it('非法 provenance 返回 400（无效来源式错误）', async () => {
+    const res = await buildApp(seed()).request('/api/skills?provenance=vault');
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toContain('无效来源：vault');
+  });
+
+  it('非法 status 返回 400', async () => {
+    const res = await buildApp(seed()).request('/api/skills?status=all');
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toContain('无效库状态：all');
+  });
+
+  it('origin 参数已移除：传入不再生效（返回全部技能）', async () => {
+    const res = await buildApp(seed()).request('/api/skills?origin=vault');
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.items).toHaveLength(4);
   });
 });
 
@@ -242,12 +342,13 @@ describe('POST /api/skills 新建保险箱技能', () => {
     });
     expect(res.status).toBe(201);
     const body = await res.json();
-    expect(body.skill.origin).toBe('vault');
+    expect(body.skill.inLibrary).toBe(true);
+    expect(body.skill.provenance).toBe('self');
     expect(body.skill.id).toBe('周报助手');
     expect(fs.files['/hub/skills/周报助手/SKILL.md']).toContain('description: 生成中文周报');
 
     const list = await buildApp(fs).request('/api/skills');
-    expect((await list.json()).countByOrigin.vault).toBe(1);
+    expect((await list.json()).countByStatus.in).toBe(1);
   });
 
   it('重名（跨来源、大小写不敏感）返回 400', async () => {
@@ -307,7 +408,7 @@ describe('PUT /api/skills/:id 编辑保险箱技能', () => {
     expect(res.status).toBe(404);
   });
 
-  it('400 非保险箱技能拒绝编辑', async () => {
+  it('400 非库技能只读拒绝编辑（契约错误体）', async () => {
     const fs = makeFs({ [`${sources.userSkillsDir}/mine/SKILL.md`]: '---\nname: mine\ndescription: 个人\n---' });
     const res = await buildApp(fs).request('/api/skills/mine', {
       method: 'PUT',
@@ -315,6 +416,8 @@ describe('PUT /api/skills/:id 编辑保险箱技能', () => {
       body: JSON.stringify({ content: 'x' }),
     });
     expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBe('未入库技能只读，请先收藏到我的库');
   });
 
   it('400 content 缺失或非字符串', async () => {
@@ -347,10 +450,12 @@ describe('DELETE /api/skills/:id 删除保险箱技能', () => {
     expect(res.status).toBe(404);
   });
 
-  it('400 非保险箱技能拒绝删除', async () => {
+  it('400 非库技能只读拒绝删除（契约错误体）', async () => {
     const fs = makeFs({ [`${sources.userSkillsDir}/mine/SKILL.md`]: '---\nname: mine\ndescription: 个人\n---' });
     const res = await buildApp(fs).request('/api/skills/mine', { method: 'DELETE' });
     expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBe('未入库技能只读，请先收藏到我的库');
   });
 });
 
@@ -367,12 +472,13 @@ describe('POST /api/skills/curate 沉淀单个技能', () => {
     });
     expect(res.status).toBe(201);
     const body = await res.json();
-    expect(body.skill.origin).toBe('vault');
+    expect(body.skill.inLibrary).toBe(true);
+    expect(body.skill.provenance).toBe('marketplace');
     expect(body.skill.source).toBe(`marketplace:${marketPath}`);
     expect(fs.files['/hub/skills/airbnb/SKILL.md']).toContain('source: marketplace:');
 
     const list = await buildApp(fs).request('/api/skills');
-    expect((await list.json()).countByOrigin.vault).toBe(1);
+    expect((await list.json()).countByStatus.in).toBe(1);
   });
 
   it('201 改名沉淀：目标目录按 name 创建', async () => {

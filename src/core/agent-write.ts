@@ -118,7 +118,7 @@ export function deleteVaultAgent(id: string, deps: AgentWriteDeps): void {
 function assertEditableAgent(agent: AgentInfo): void {
   if (agent.tool !== 'hub' || agent.kind !== 'custom-subagent') {
     throw new AssetWriteError(
-      `仅保险箱智能体可执行写操作：${agent.name}（工具：${agent.tool}）`,
+      `仅我的库中的智能体可执行写操作：${agent.name}（工具：${agent.tool}）`,
       400,
     );
   }

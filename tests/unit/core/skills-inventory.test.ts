@@ -186,7 +186,7 @@ describe('listSkills 聚合计数与筛选', () => {
     expect(all.countByFunction.coding).toBe(1);
     expect(all.countByFunction.browser).toBe(1);
     expect(all.countByFunction.data).toBe(1);
-    expect(all.countByOrigin.marketplace).toBe(1);
+    expect(all.countByProvenance.marketplace).toBe(1);
 
     const onlyData = listSkills({ fs, sources: SOURCES, store, params: { function: 'data' } });
     expect(onlyData.items.map((s) => s.name)).toEqual(['a-stock']);
@@ -343,14 +343,15 @@ describe('保险箱（vault）技能纳入盘点', () => {
     expect(found[0].sourcePath).toBe(`${SOURCES.vaultSkillsDir}/周报助手/SKILL.md`);
   });
 
-  it('listSkills 计数包含 vault 来源', () => {
+  it('listSkills 计数包含库内技能（countByStatus）', () => {
     const fs = makeFs({
       [`${SOURCES.vaultSkillsDir}/a/SKILL.md`]: SKILL('a', '用途'),
       [`${SOURCES.userSkillsDir}/b/SKILL.md`]: SKILL('b', '用途'),
     });
     const all = listSkills({ fs, sources: SOURCES, store: new MemoryOverrideStore() });
     expect(all.total).toBe(2);
-    expect(all.countByOrigin.vault).toBe(1);
+    expect(all.countByStatus.in).toBe(1);
+    expect(all.countByStatus.out).toBe(1);
   });
 
   it('同名去重：vault 主本优先于 personal，其余副本进 variants', () => {
@@ -445,8 +446,8 @@ describe('项目级技能 project（add-project-skills-discovery）', () => {
     });
     const all = listSkills({ fs, sources: WS, store: new MemoryOverrideStore() });
     expect(all.total).toBe(1);
-    expect(all.countByOrigin.project).toBe(1);
-    expect(all.countByOrigin.marketplace).toBe(0);
+    expect(all.countByProvenance.self).toBe(1);
+    expect(all.countByProvenance.marketplace).toBe(0);
     expect(all.items[0]?.origin).toBe('project');
     expect(all.items[0]?.variants).toEqual([
       `${SOURCES.marketplaceSkillsDir}/brainstorming/SKILL.md`,
@@ -473,21 +474,20 @@ describe('项目级技能 project（add-project-skills-discovery）', () => {
     expect(found[0].origin).toBe('vault');
   });
 
-  it('listSkills 支持 origin=project 筛选且 countByOrigin 含 project 键', () => {
+  it('listSkills 支持 provenance=self 筛选（项目+个人合并为自建出处）', () => {
     const store = new MemoryOverrideStore();
     const fs = makeFs({
       [wsSkill('Zhihu', 'zhihu')]: SKILL('zhihu', '知乎写作'),
       [`${SOURCES.userSkillsDir}/mine/SKILL.md`]: SKILL('mine', '全局个人技能'),
     });
-    const onlyProject = listSkills({
+    const onlySelf = listSkills({
       fs,
       sources: WS,
       store,
-      params: { origin: 'project' },
+      params: { provenance: 'self' },
     });
-    expect(onlyProject.items.map((s) => s.id)).toEqual(['zhihu']);
-    expect(onlyProject.countByOrigin.project).toBe(1);
-    expect(onlyProject.countByOrigin.personal).toBe(1);
+    expect(onlySelf.items.map((s) => s.id)).toEqual(['mine', 'zhihu']);
+    expect(onlySelf.countByProvenance.self).toBe(2);
   });
 
   it('手动职能覆盖对 project 技能生效（manual 优先）', () => {
@@ -497,6 +497,101 @@ describe('项目级技能 project（add-project-skills-discovery）', () => {
     expect(updated?.origin).toBe('project');
     expect(updated?.functionCategory).toBe('data');
     expect(updated?.functionSource).toBe('manual');
+  });
+});
+
+describe('listSkills provenance/status 筛选与联动计数（refactor-skill-origin-taxonomy）', () => {
+  /** 基线布景：库内自建 a、库内沉淀自市场 d、个人 b、市场 c */
+  function setup(): { fs: SkillFs; store: MemoryOverrideStore } {
+    const fs = makeFs({
+      [`${SOURCES.vaultSkillsDir}/a/SKILL.md`]: SKILL('a', '库内自建'),
+      [`${SOURCES.vaultSkillsDir}/d/SKILL.md`]: SKILL('d', '沉淀自市场', '\nsource: marketplace:/x/d/SKILL.md'),
+      [`${SOURCES.userSkillsDir}/b/SKILL.md`]: SKILL('b', '个人技能'),
+      [`${SOURCES.marketplaceSkillsDir}/c/SKILL.md`]: SKILL('c', '市场技能'),
+    });
+    return { fs, store: new MemoryOverrideStore() };
+  }
+
+  it('默认计数为全集构成：self 2 / marketplace 2，status in 2 / out 2', () => {
+    const { fs, store } = setup();
+    const all = listSkills({ fs, sources: SOURCES, store });
+    expect(all.total).toBe(4);
+    expect(all.countByProvenance).toEqual({ self: 2, marketplace: 2, plugin: 0, builtin: 0 });
+    expect(all.countByStatus).toEqual({ in: 2, out: 2 });
+  });
+
+  it('provenance=self 只返回自建技能（含库内自建与个人/项目）', () => {
+    const { fs, store } = setup();
+    const result = listSkills({ fs, sources: SOURCES, store, params: { provenance: 'self' } });
+    expect(result.items.map((s) => s.id)).toEqual(['a', 'b']);
+  });
+
+  it('provenance=marketplace 含库内沉淀自市场的技能（出处唯一不重复计数）', () => {
+    const { fs, store } = setup();
+    const result = listSkills({ fs, sources: SOURCES, store, params: { provenance: 'marketplace' } });
+    expect(result.items.map((s) => s.id)).toEqual(['c', 'd']);
+  });
+
+  it('status=in 只返回库内技能；status=out 只返回未入库技能', () => {
+    const { fs, store } = setup();
+    const inLib = listSkills({ fs, sources: SOURCES, store, params: { status: 'in' } });
+    expect(inLib.items.map((s) => s.id)).toEqual(['a', 'd']);
+    const outLib = listSkills({ fs, sources: SOURCES, store, params: { status: 'out' } });
+    expect(outLib.items.map((s) => s.id)).toEqual(['b', 'c']);
+  });
+
+  it('状态=我的库时出处计数联动重算（self 1 / 其余 0）', () => {
+    const { fs, store } = setup();
+    const result = listSkills({ fs, sources: SOURCES, store, params: { status: 'in' } });
+    expect(result.countByProvenance).toEqual({ self: 1, marketplace: 1, plugin: 0, builtin: 0 });
+  });
+
+  it('出处=市场安装时状态计数联动重算（in 1 / out 1）', () => {
+    const { fs, store } = setup();
+    const result = listSkills({ fs, sources: SOURCES, store, params: { provenance: 'marketplace' } });
+    expect(result.countByStatus).toEqual({ in: 1, out: 1 });
+  });
+
+  it('交集查询：未入库 × 市场安装（待收藏候选）', () => {
+    const { fs, store } = setup();
+    const result = listSkills({
+      fs, sources: SOURCES, store,
+      params: { status: 'out', provenance: 'marketplace' },
+    });
+    expect(result.items.map((s) => s.id)).toEqual(['c']);
+    // 状态计数只随 provenance/search 联动（不含 status 自身维度）：市场技能 1 库内 1 未入库
+    expect(result.countByStatus).toEqual({ in: 1, out: 1 });
+  });
+
+  it('search 联动出处计数', () => {
+    const { fs, store } = setup();
+    const result = listSkills({ fs, sources: SOURCES, store, params: { search: '市场' } });
+    expect(result.items.map((s) => s.id)).toEqual(['c', 'd']);
+    expect(result.countByProvenance).toEqual({ self: 0, marketplace: 2, plugin: 0, builtin: 0 });
+  });
+
+  it('total 保持全集不随筛选变化', () => {
+    const { fs, store } = setup();
+    const filtered = listSkills({
+      fs, sources: SOURCES, store,
+      params: { status: 'in', provenance: 'self', search: '不存在的关键词' },
+    });
+    expect(filtered.items).toEqual([]);
+    expect(filtered.total).toBe(4);
+  });
+
+  it('无效 provenance 抛「无效来源」式错误', () => {
+    const { fs, store } = setup();
+    expect(() =>
+      listSkills({ fs, sources: SOURCES, store, params: { provenance: 'vault' as never } }),
+    ).toThrow(/无效来源：vault/);
+  });
+
+  it('无效 status 抛错', () => {
+    const { fs, store } = setup();
+    expect(() =>
+      listSkills({ fs, sources: SOURCES, store, params: { status: 'all' as never } }),
+    ).toThrow(/无效库状态：all/);
   });
 });
 

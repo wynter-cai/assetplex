@@ -58,7 +58,7 @@ export function curateVaultSkill(input: CurateSkillInput, deps: SkillWriteDeps):
   }
   const { skill, rawContent } = found;
   if (skill.origin === 'vault') {
-    throw new AssetWriteError(`已是保险箱技能，无需沉淀：${skill.name}`, 400);
+    throw new AssetWriteError(`已是我的库技能，无需收藏：${skill.name}`, 400);
   }
 
   const targetName = validateAssetName(input.name ?? skill.name);
@@ -80,7 +80,7 @@ export function curateVaultSkill(input: CurateSkillInput, deps: SkillWriteDeps):
 
   const created = listSkills({ fs, sources, store }).items.find((s) => s.id === targetId);
   if (!created) {
-    throw new Error(`技能沉淀后未纳入盘点：${targetName}`);
+    throw new Error(`技能收藏后未纳入盘点：${targetName}`);
   }
   return created;
 }
@@ -104,7 +104,7 @@ function assertNameAvailable(
   }
   if (existing.origin === 'vault') {
     throw new AssetWriteError(
-      `保险箱已存在同名技能：${targetName}（可能已沉淀过），请改名`,
+      `我的库已存在同名技能：${targetName}（可能已收藏过），请改名`,
       400,
     );
   }

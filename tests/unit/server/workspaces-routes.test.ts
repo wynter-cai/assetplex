@@ -202,7 +202,7 @@ describe('技能盘点动态工作区接线', () => {
     const res = await app.request('/api/skills');
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.countByOrigin.project).toBe(1);
+    expect(body.countByProvenance.self).toBe(1);
     expect(body.items[0].workspaceName).toBe('ws1');
   });
 });

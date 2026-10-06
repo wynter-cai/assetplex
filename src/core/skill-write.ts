@@ -115,10 +115,8 @@ export function deleteVaultSkill(id: string, deps: SkillWriteDeps): void {
 }
 
 function assertVaultSkill(skill: SkillInfo): void {
+  // 内部判定保持 origin==='vault'（与 inLibrary=true 天然等价，契约行为零迁移）
   if (skill.origin !== 'vault') {
-    throw new AssetWriteError(
-      `仅保险箱技能可执行写操作：${skill.name}（来源：${skill.origin}）`,
-      400,
-    );
+    throw new AssetWriteError('未入库技能只读，请先收藏到我的库', 400);
   }
 }

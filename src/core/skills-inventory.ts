@@ -8,7 +8,16 @@
  * 纯逻辑：文件系统访问通过注入的 SkillFs，覆盖存储通过 SkillOverrideStore。
  *
  * spec: specs/skills-taxonomy.spec.md
+ * 对外出处语义（provenance/inLibrary）见 skill-provenance.ts：
+ * 设计文档/changes/refactor-skill-origin-taxonomy/specs/skill-origin-taxonomy.spec.md
  */
+
+import {
+  filterAndCountSkills,
+  validateSkillListParams,
+  type SkillListParams,
+} from './skill-listing.js';
+import type { SkillProvenance } from './skill-provenance.js';
 
 // ============ 类型 ============
 
@@ -91,17 +100,17 @@ export interface SkillSources {
   vaultSkillsDir: string;
 }
 
-export interface ListSkillsParams {
-  function?: SkillFunction;
-  origin?: SkillOrigin;
-  search?: string;
-}
+/** 列表筛选参数（function/provenance/status/search） */
+export type ListSkillsParams = SkillListParams;
 
 export interface ListSkillsResult {
   items: SkillInfo[];
   total: number;
   countByFunction: Record<SkillFunction, number>;
-  countByOrigin: Record<SkillOrigin, number>;
+  /** 出处计数（随 status/search 过滤联动，不含 provenance 自身维度） */
+  countByProvenance: Record<SkillProvenance, number>;
+  /** 状态计数：我的库 / 未入库（随 provenance/search 联动，不含 status 自身维度） */
+  countByStatus: { in: number; out: number };
 }
 
 /** 发现到的原始技能副本 */
@@ -475,18 +484,6 @@ export function dedupeSkills(
 
 // ============ 聚合 ============
 
-function emptyFunctionCounts(): Record<SkillFunction, number> {
-  const obj = {} as Record<SkillFunction, number>;
-  for (const f of SKILL_FUNCTIONS) obj[f] = 0;
-  return obj;
-}
-
-function emptyOriginCounts(): Record<SkillOrigin, number> {
-  const obj = {} as Record<SkillOrigin, number>;
-  for (const o of SKILL_ORIGINS) obj[o] = 0;
-  return obj;
-}
-
 function buildAll(fs: SkillFs, sources: SkillSources, store: SkillOverrideStore, aiLookup?: AiCacheLookup): SkillInfo[] {
   const raws = discoverSkillFiles(fs, sources);
   return dedupeSkills(raws, store.load(), aiLookup);
@@ -502,34 +499,16 @@ export function listSkills(input: {
 }): ListSkillsResult {
   const { fs, sources, store, aiLookup, params = {} } = input;
 
-  if (params.function && !SKILL_FUNCTIONS.includes(params.function)) {
-    throw new Error(`无效职能：${params.function}，支持：${SKILL_FUNCTIONS.join(', ')}`);
-  }
-  if (params.origin && !SKILL_ORIGINS.includes(params.origin)) {
-    throw new Error(`无效来源：${params.origin}，支持：${SKILL_ORIGINS.join(', ')}`);
-  }
-
+  validateSkillListParams(params, SKILL_FUNCTIONS);
   const all = buildAll(fs, sources, store, aiLookup);
 
-  // 计数始终反映全貌（不受筛选影响）
-  const countByFunction = emptyFunctionCounts();
-  const countByOrigin = emptyOriginCounts();
-  for (const s of all) {
-    countByFunction[s.functionCategory] += 1;
-    countByOrigin[s.origin] += 1;
-  }
-
-  let items = all;
-  if (params.function) items = items.filter((s) => s.functionCategory === params.function);
-  if (params.origin) items = items.filter((s) => s.origin === params.origin);
-  if (params.search && params.search.trim()) {
-    const q = params.search.trim().toLowerCase();
-    items = items.filter(
-      (s) => s.name.toLowerCase().includes(q) || s.description.toLowerCase().includes(q),
-    );
-  }
-
-  return { items, total: all.length, countByFunction, countByOrigin };
+  // 分面计数与过滤：各维度排除自身筛选、随其余筛选与搜索联动；total 保持全集
+  const { items, countByFunction, countByProvenance, countByStatus } = filterAndCountSkills(
+    all,
+    params,
+    SKILL_FUNCTIONS,
+  );
+  return { items, total: all.length, countByFunction, countByProvenance, countByStatus };
 }
 
 // ============ 手动覆盖 ============
