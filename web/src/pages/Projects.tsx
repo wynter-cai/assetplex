@@ -1,19 +1,19 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Search, FolderGit2 } from 'lucide-react';
-import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { api } from '@/lib/api';
 import { ProjectCard } from '@/components/projects/ProjectCard';
+import { ErrorState } from '@/components/common/ErrorState';
 
 /** AI-Coding 项目可视化页（顶级菜单 /projects） */
 export default function Projects(): JSX.Element {
   const [existingOnly, setExistingOnly] = useState(false);
   const [search, setSearch] = useState('');
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['projects', existingOnly, search],
     queryFn: () => api.listProjects({ existingOnly, search: search || undefined }),
   });
@@ -56,9 +56,10 @@ export default function Projects(): JSX.Element {
       </div>
 
       {error && (
-        <Card className="p-6 text-center text-red-500">
-          加载失败: {error instanceof Error ? error.message : String(error)}
-        </Card>
+        <ErrorState
+          title="项目列表加载失败"
+          onRetry={() => void refetch()}
+        />
       )}
 
       {isLoading && (

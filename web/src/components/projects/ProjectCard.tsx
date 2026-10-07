@@ -3,6 +3,8 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
+import { toast } from '@/lib/toast-store';
+import { errorMessage } from '@/lib/error-message';
 import { cn } from '@/lib/utils';
 import type { ProjectInfo, ProjectOpenTarget } from '@/types/api';
 
@@ -25,7 +27,7 @@ function formatTime(iso: string | null): string {
 export function ProjectCard({ project }: { project: ProjectInfo }): JSX.Element {
   const open = (target: ProjectOpenTarget): void => {
     api.openProject(project.id, target).catch((err: unknown) => {
-      alert(err instanceof Error ? err.message : '打开失败');
+      toast.error('打开失败', { description: errorMessage(err) });
     });
   };
 

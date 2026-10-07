@@ -7,6 +7,8 @@
  */
 
 import { useEffect, useState } from 'react';
+import { toast } from '@/lib/toast-store';
+import { errorMessage } from '@/lib/error-message';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -47,7 +49,7 @@ export function AiConfigDialog({
         setApiKey('');
       })
       .catch((err: unknown) => {
-        alert(err instanceof Error ? err.message : '读取 AI 分类配置失败');
+        toast.error('读取 AI 分类配置失败', { description: errorMessage(err) });
       })
       .finally(() => setLoading(false));
   }, [open]);
@@ -66,7 +68,7 @@ export function AiConfigDialog({
         onSaved();
       })
       .catch((err: unknown) => {
-        alert(err instanceof Error ? err.message : '保存 AI 分类配置失败');
+        toast.error('保存 AI 分类配置失败', { description: errorMessage(err) });
       })
       .finally(() => setSaving(false));
   };

@@ -10,23 +10,36 @@
 import { useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { toast } from '@/lib/toast-store';
+import { errorMessage } from '@/lib/error-message';
 import type { AiClassifyResult } from '@/types/api';
 
-/** 汇总部分成功结果为用户可读提示 */
-function formatResult(result: AiClassifyResult): string {
-  const parts: string[] = [];
+/** 将分类结果以 toast 汇报：计数进描述，失败项进可折叠明细 */
+function notifyResult(result: AiClassifyResult): void {
+  const failedDetails = result.failed.map((f) => `${f.name}：${f.error}`);
+  const summary: string[] = [];
   if (result.classified.length > 0) {
-    parts.push(`成功 ${result.classified.length} 个（缓存命中 ${result.cacheHits} 个）`);
+    summary.push(`成功 ${result.classified.length} 个（缓存命中 ${result.cacheHits} 个）`);
   }
   if (result.skipped.length > 0) {
-    parts.push(`跳过 ${result.skipped.length} 个（已手动分类）`);
+    summary.push(`跳过 ${result.skipped.length} 个（已手动分类）`);
   }
   if (result.failed.length > 0) {
-    const details = result.failed.map((f) => `${f.name}：${f.error}`).join('、');
-    parts.push(`失败 ${result.failed.length} 个（${details}）`);
+    summary.push(`失败 ${result.failed.length} 个`);
   }
-  if (parts.length === 0) return 'AI 分类完成：没有可分类的技能';
-  return `AI 分类完成：${parts.join('；')}`;
+
+  if (result.classified.length === 0 && result.failed.length > 0) {
+    toast.error('AI 分类失败', { description: summary.join('；'), details: failedDetails });
+    return;
+  }
+  if (summary.length === 0) {
+    toast.info('AI 分类完成', { description: '没有可分类的技能' });
+    return;
+  }
+  toast.success('AI 分类完成', {
+    description: summary.join('；'),
+    details: failedDetails.length > 0 ? failedDetails : undefined,
+  });
 }
 
 export function useAiClassify(onRefresh?: () => void): {
@@ -55,11 +68,11 @@ export function useAiClassify(onRefresh?: () => void): {
     api
       .aiClassifySkills(ids)
       .then((result) => {
-        alert(formatResult(result));
+        notifyResult(result);
         refresh();
       })
       .catch((err: unknown) => {
-        alert(err instanceof Error ? err.message : 'AI 分类失败');
+        toast.error('AI 分类失败', { description: errorMessage(err) });
       })
       .finally(() => {
         runningRef.current = false;
@@ -78,7 +91,7 @@ export function useAiClassify(onRefresh?: () => void): {
         else setConfigOpen(true);
       })
       .catch((err: unknown) => {
-        alert(err instanceof Error ? err.message : '读取 AI 分类配置失败');
+        toast.error('读取 AI 分类配置失败', { description: errorMessage(err) });
       });
   };
 

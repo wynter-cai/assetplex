@@ -9,7 +9,13 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SkillDetail } from './SkillDetail';
 import { api } from '@/lib/api';
+import { Toaster } from '@/components/ui/toast';
+import { useToastStore } from '@/lib/toast-store';
 import type { SkillInfo } from '@/types/api';
+
+beforeEach(() => {
+  useToastStore.getState().reset();
+});
 
 function skill(partial: Partial<SkillInfo> & { id: string; name: string; functionCategory: SkillInfo['functionCategory']; provenance: SkillInfo['provenance'] }): SkillInfo {
   return {
@@ -58,6 +64,7 @@ function renderDetail(s: SkillInfo, onCurated: (skill: SkillInfo) => void = vi.f
   render(
     <QueryClientProvider client={queryClient}>
       <SkillDetail skill={s} onClose={vi.fn()} onCurated={onCurated} />
+      <Toaster />
     </QueryClientProvider>,
   );
 }
@@ -110,13 +117,13 @@ describe('SkillDetail 收藏到我的库', () => {
   });
 
   it('同名冲突提示错误且对话框保持打开', async () => {
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
     vi.spyOn(api, 'curateSkill').mockRejectedValue(new Error('同名技能已存在：airbnb（来源：marketplace）'));
     renderDetail(marketSkill);
     fireEvent.click(await screen.findByRole('button', { name: '收藏到我的库' }));
     fireEvent.click(await screen.findByRole('button', { name: '确认收藏' }));
     await waitFor(() => {
-      expect(alertSpy).toHaveBeenCalledWith('同名技能已存在：airbnb（来源：marketplace）');
+      expect(screen.getByText('收藏失败')).toBeInTheDocument();
+      expect(screen.getByText('同名技能已存在：airbnb（来源：marketplace）')).toBeInTheDocument();
     });
     expect(screen.getByLabelText('收藏技能名称')).toBeInTheDocument();
   });
@@ -157,7 +164,6 @@ describe('SkillDetail AI 智能分类', () => {
 
   beforeEach(() => {
     vi.spyOn(api, 'getSkill').mockResolvedValue({ skill: marketSkill, rawContent: '# airbnb\n内容' });
-    vi.spyOn(window, 'alert').mockImplementation(() => {});
   });
 
   it('详情面板显示分类来源徽章（AI 源）', async () => {

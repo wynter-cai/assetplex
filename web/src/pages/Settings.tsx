@@ -11,6 +11,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Save } from 'lucide-react';
 import { WorkspaceSettingsCard } from '@/components/settings/WorkspaceSettingsCard';
+import { toast } from '@/lib/toast-store';
+import { errorMessage } from '@/lib/error-message';
 
 export default function Settings() {
   const queryClient = useQueryClient();
@@ -30,6 +32,10 @@ export default function Settings() {
     onSuccess: () => {
       setDirty(false);
       queryClient.invalidateQueries({ queryKey: ['hub-config'] });
+      toast.success('配置已保存');
+    },
+    onError: (err: unknown) => {
+      toast.error('配置保存失败', { description: errorMessage(err) });
     },
   });
 

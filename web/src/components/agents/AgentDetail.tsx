@@ -22,6 +22,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { api } from '@/lib/api';
+import { toast } from '@/lib/toast-store';
+import { errorMessage } from '@/lib/error-message';
 import { useEscapeKey } from '@/lib/use-escape-key';
 import { Markdown, stripFrontmatter } from '@/components/common/Markdown';
 import { SyncDistribute } from '@/components/common/SyncDistribute';
@@ -96,7 +98,7 @@ export function AgentDetail({ agent, onClose }: AgentDetailProps): JSX.Element {
       })
       .catch((err: unknown) => {
         // 404（智能体已不存在）等错误：提示并刷新列表
-        alert(err instanceof Error ? err.message : '保存失败');
+        toast.error('保存失败', { description: errorMessage(err) });
         refresh();
       });
   };
@@ -109,7 +111,7 @@ export function AgentDetail({ agent, onClose }: AgentDetailProps): JSX.Element {
         onClose();
       })
       .catch((err: unknown) => {
-        alert(err instanceof Error ? err.message : '删除失败');
+        toast.error('删除失败', { description: errorMessage(err) });
         setConfirmDelete(false);
       });
   };

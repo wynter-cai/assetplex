@@ -9,6 +9,8 @@ import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WorkspaceSettingsCard } from './WorkspaceSettingsCard';
 import { api } from '@/lib/api';
+import { Toaster } from '@/components/ui/toast';
+import { useToastStore } from '@/lib/toast-store';
 import type { WorkspacesResponse } from '@/types/api';
 
 function overview(partial?: Partial<WorkspacesResponse>): WorkspacesResponse {
@@ -30,6 +32,7 @@ function renderCard(): void {
   render(
     <QueryClientProvider client={queryClient}>
       <WorkspaceSettingsCard />
+      <Toaster />
     </QueryClientProvider>,
   );
 }
@@ -37,6 +40,7 @@ function renderCard(): void {
 describe('WorkspaceSettingsCard', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    useToastStore.getState().reset();
   });
 
   it('展示工作区列表、来源与技能计数，自动发现开关为开', async () => {
@@ -126,13 +130,13 @@ describe('WorkspaceSettingsCard', () => {
   it('更新失败（如相对路径 400）弹出错误且不清空输入', async () => {
     vi.spyOn(api, 'getWorkspaces').mockResolvedValue(overview());
     vi.spyOn(api, 'updateWorkspaces').mockRejectedValue(new Error('工作区路径必须是绝对路径：relative/x'));
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
     renderCard();
     const input = await screen.findByPlaceholderText('工作区或其父目录的绝对路径');
     fireEvent.change(input, { target: { value: 'relative/x' } });
     fireEvent.click(screen.getByRole('button', { name: '添加工作区根' }));
     await waitFor(() => {
-      expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('绝对路径'));
+      expect(screen.getByText('工作区设置保存失败')).toBeInTheDocument();
+      expect(screen.getByText(/绝对路径/)).toBeInTheDocument();
     });
     expect((input as HTMLInputElement).value).toBe('relative/x');
   });

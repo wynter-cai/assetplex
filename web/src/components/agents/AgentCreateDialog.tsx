@@ -6,6 +6,8 @@
 
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { toast } from '@/lib/toast-store';
+import { errorMessage } from '@/lib/error-message';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -58,7 +60,7 @@ export function AgentCreateDialog({ open, onOpenChange, onCreated }: AgentCreate
       })
       .catch((err: unknown) => {
         // 重名（400）/ 非法名称（400）等后端校验错误直接提示
-        alert(err instanceof Error ? err.message : '创建智能体失败');
+        toast.error('创建智能体失败', { description: errorMessage(err) });
       })
       .finally(() => setSubmitting(false));
   };

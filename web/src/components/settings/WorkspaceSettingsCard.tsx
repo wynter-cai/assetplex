@@ -20,10 +20,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-
-function errorMessage(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
-}
+import { toast } from '@/lib/toast-store';
+import { errorMessage } from '@/lib/error-message';
 
 function WorkspaceRow({
   workspace,
@@ -90,7 +88,7 @@ export function WorkspaceSettingsCard(): JSX.Element {
       void queryClient.invalidateQueries({ queryKey: ['skills'] });
     },
     onError: (err: unknown) => {
-      window.alert(errorMessage(err));
+      toast.error('工作区设置保存失败', { description: errorMessage(err) });
     },
   });
 

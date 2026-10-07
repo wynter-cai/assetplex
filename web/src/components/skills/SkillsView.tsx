@@ -4,6 +4,8 @@ import { Sparkles } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { api } from '@/lib/api';
+import { toast } from '@/lib/toast-store';
+import { errorMessage } from '@/lib/error-message';
 import { SkillCard } from './SkillCard';
 import { SkillDetail } from './SkillDetail';
 import { SkillCreateDialog } from './SkillCreateDialog';
@@ -86,13 +88,16 @@ export function SkillsView(): JSX.Element {
       .batchSetSkillFunction(ids, batchFunction)
       .then((result) => {
         if (result.missing.length > 0) {
-          alert(`以下技能未找到（可能已被删除）：${result.missing.join('、')}`);
+          toast.info('部分技能未应用修改', {
+            description: `${result.missing.length} 个技能未找到，可能已被删除`,
+            details: result.missing,
+          });
         }
         setCheckedIds(new Set());
         void queryClient.invalidateQueries({ queryKey: ['skills'] });
       })
       .catch((err: unknown) => {
-        alert(err instanceof Error ? err.message : '批量修改失败');
+        toast.error('批量修改失败', { description: errorMessage(err) });
       })
       .finally(() => setApplying(false));
   };
@@ -108,19 +113,26 @@ export function SkillsView(): JSX.Element {
     api
       .curateSkillsBatch(targets.map((s) => s.id))
       .then((result) => {
-        const parts: string[] = [];
-        if (result.created.length > 0) parts.push(`成功 ${result.created.length} 个`);
         const skipParts = [
           ...skipped.map((s) => `${s.name}：已在我的库`),
           ...result.failed.map((f) => `${f.name}：${f.error}`),
         ];
-        if (skipParts.length > 0) parts.push(`跳过 ${skipParts.length} 个（${skipParts.join('、')}）`);
-        if (parts.length > 0) alert(`收藏完成：${parts.join('；')}`);
+        if (result.created.length > 0) {
+          toast.success(`收藏完成：成功 ${result.created.length} 个`, {
+            description: skipParts.length > 0 ? `跳过 ${skipParts.length} 个` : undefined,
+            details: skipParts.length > 0 ? skipParts : undefined,
+          });
+        } else {
+          toast.error('收藏失败', {
+            description: `${skipParts.length} 个技能未能收藏`,
+            details: skipParts,
+          });
+        }
         setCheckedIds(new Set());
         void queryClient.invalidateQueries({ queryKey: ['skills'] });
       })
       .catch((err: unknown) => {
-        alert(err instanceof Error ? err.message : '批量收藏失败');
+        toast.error('批量收藏失败', { description: errorMessage(err) });
       })
       .finally(() => setCurating(false));
   };

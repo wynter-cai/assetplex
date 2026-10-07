@@ -8,6 +8,8 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
+import { toast } from '@/lib/toast-store';
+import { errorMessage } from '@/lib/error-message';
 import { cn } from '@/lib/utils';
 import { FUNCTION_LABELS, FUNCTION_SOURCE_LABELS, FUNCTION_ORDER, provenanceBadgeLabel } from './skill-labels';
 import type { SkillInfo, SkillFunction } from '@/types/api';
@@ -35,8 +37,8 @@ export function SkillCard({
         void queryClient.invalidateQueries({ queryKey: ['skills'] });
       })
       .catch((err: unknown) => {
-        // 简单提示：失败时刷新回真实状态
-        alert(err instanceof Error ? err.message : '修改分类失败');
+        // 失败提示并刷新，受控 Select 随查询数据回到真实分类
+        toast.error('修改分类失败', { description: errorMessage(err) });
         void queryClient.invalidateQueries({ queryKey: ['skills'] });
       });
   };

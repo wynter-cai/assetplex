@@ -3,7 +3,13 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AgentsView } from './AgentsView';
 import { api } from '@/lib/api';
+import { Toaster } from '@/components/ui/toast';
+import { useToastStore } from '@/lib/toast-store';
 import type { AgentListResult, AgentDetailResult, AgentInfo, ToolStatus } from '@/types/api';
+
+beforeEach(() => {
+  useToastStore.getState().reset();
+});
 
 const listResult: AgentListResult = {
   total: 2,
@@ -43,6 +49,7 @@ function renderView(): ReturnType<typeof render> {
   return render(
     <QueryClientProvider client={queryClient}>
       <AgentsView />
+      <Toaster />
     </QueryClientProvider>,
   );
 }
@@ -217,14 +224,14 @@ describe('AgentsView 我的库写管理', () => {
   });
 
   it('保存时智能体不存在则提示错误并刷新列表', async () => {
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
     vi.spyOn(api, 'updateAgent').mockRejectedValue(new Error('智能体不存在：hub:custom-subagent:测试专家'));
     renderView();
     fireEvent.click(await screen.findByText('测试专家'));
     fireEvent.click(await screen.findByRole('button', { name: '编辑' }));
     fireEvent.click(screen.getByRole('button', { name: '保存' }));
     await waitFor(() => {
-      expect(alertSpy).toHaveBeenCalledWith('智能体不存在：hub:custom-subagent:测试专家');
+      expect(screen.getByText('保存失败')).toBeInTheDocument();
+      expect(screen.getByText('智能体不存在：hub:custom-subagent:测试专家')).toBeInTheDocument();
     });
     await waitFor(() => {
       expect(api.listAgents).toHaveBeenCalledTimes(2);

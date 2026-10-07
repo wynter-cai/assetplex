@@ -12,6 +12,8 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { api } from '@/lib/api';
+import { toast } from '@/lib/toast-store';
+import { errorMessage } from '@/lib/error-message';
 import { useEscapeKey } from '@/lib/use-escape-key';
 import { Markdown, stripFrontmatter } from '@/components/common/Markdown';
 import { SyncDistribute } from '@/components/common/SyncDistribute';
@@ -67,7 +69,7 @@ export function SkillDetail({ skill, onClose, onCurated }: SkillDetailProps): JS
       })
       .catch((err: unknown) => {
         // 404（技能已不存在）等错误：提示并刷新列表
-        alert(err instanceof Error ? err.message : '保存失败');
+        toast.error('保存失败', { description: errorMessage(err) });
         refresh();
       });
   };
@@ -80,7 +82,7 @@ export function SkillDetail({ skill, onClose, onCurated }: SkillDetailProps): JS
         onClose();
       })
       .catch((err: unknown) => {
-        alert(err instanceof Error ? err.message : '删除失败');
+        toast.error('删除失败', { description: errorMessage(err) });
         setConfirmDelete(false);
       });
   };

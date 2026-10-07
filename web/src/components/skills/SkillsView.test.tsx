@@ -3,7 +3,13 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SkillsView } from './SkillsView';
 import { api } from '@/lib/api';
+import { Toaster } from '@/components/ui/toast';
+import { useToastStore } from '@/lib/toast-store';
 import type { SkillInfo, SkillListResult, ToolStatus, SyncResult } from '@/types/api';
+
+beforeEach(() => {
+  useToastStore.getState().reset();
+});
 
 function skill(partial: Partial<SkillInfo> & { id: string; name: string; functionCategory: SkillInfo['functionCategory']; provenance: SkillInfo['provenance'] }): SkillInfo {
   return {
@@ -37,6 +43,7 @@ function renderView(): ReturnType<typeof render> {
   return render(
     <QueryClientProvider client={queryClient}>
       <SkillsView />
+      <Toaster />
     </QueryClientProvider>,
   );
 }
@@ -155,12 +162,12 @@ describe('SkillsView 批量调整职能', () => {
 
   it('部分 id 缺失时提示未找到的技能', async () => {
     vi.spyOn(api, 'batchSetSkillFunction').mockResolvedValue({ updated: [], missing: ['ghost'] });
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
     renderView();
     fireEvent.click(await screen.findByLabelText('选择技能 mycode'));
     fireEvent.click(screen.getByRole('button', { name: '应用' }));
     await waitFor(() => {
-      expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('ghost'));
+      expect(screen.getByText('部分技能未应用修改')).toBeInTheDocument();
+      expect(screen.getByText('ghost')).toBeInTheDocument();
     });
   });
 
@@ -239,14 +246,14 @@ describe('SkillsView 我的库写管理', () => {
   });
 
   it('创建重名技能时提示后端错误信息', async () => {
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
     vi.spyOn(api, 'createSkill').mockRejectedValue(new Error('同名技能已存在：pdf（来源：官方内置）'));
     renderView();
     fireEvent.click(await screen.findByRole('button', { name: '新建技能' }));
     fireEvent.change(screen.getByLabelText('技能名称'), { target: { value: 'PDF' } });
     fireEvent.click(screen.getByRole('button', { name: '创建' }));
     await waitFor(() => {
-      expect(alertSpy).toHaveBeenCalledWith('同名技能已存在：pdf（来源：官方内置）');
+      expect(screen.getByText('创建技能失败')).toBeInTheDocument();
+      expect(screen.getByText('同名技能已存在：pdf（来源：官方内置）')).toBeInTheDocument();
     });
   });
 
@@ -280,14 +287,14 @@ describe('SkillsView 我的库写管理', () => {
   });
 
   it('保存时技能不存在则提示错误并刷新列表', async () => {
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
     vi.spyOn(api, 'updateSkill').mockRejectedValue(new Error('技能不存在：周报助手'));
     renderView();
     fireEvent.click(await screen.findByRole('button', { name: '查看 周报助手 详情' }));
     fireEvent.click(await screen.findByRole('button', { name: '编辑' }));
     fireEvent.click(screen.getByRole('button', { name: '保存' }));
     await waitFor(() => {
-      expect(alertSpy).toHaveBeenCalledWith('技能不存在：周报助手');
+      expect(screen.getByText('保存失败')).toBeInTheDocument();
+      expect(screen.getByText('技能不存在：周报助手')).toBeInTheDocument();
     });
     await waitFor(() => {
       expect(api.listSkills).toHaveBeenCalledTimes(2);
@@ -356,7 +363,6 @@ describe('SkillsView 批量收藏', () => {
   });
 
   it('勾选含未入库技能时批量条显示收藏按钮，点击仅收藏未入库项', async () => {
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
     vi.spyOn(api, 'curateSkillsBatch').mockResolvedValue({ created: [createdSkill], failed: [] });
     renderView();
     fireEvent.click(await screen.findByLabelText('选择技能 周报助手'));
@@ -367,15 +373,13 @@ describe('SkillsView 批量收藏', () => {
       expect(api.curateSkillsBatch).toHaveBeenCalledWith(['pdf']);
     });
     await waitFor(() => {
-      expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('成功 1 个'));
-    });
-    await waitFor(() => {
-      expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('已在我的库'));
+      expect(screen.getByText('收藏完成：成功 1 个')).toBeInTheDocument();
+      // 周报助手已在库 → 进入跳过明细
+      expect(screen.getByText('周报助手：已在我的库')).toBeInTheDocument();
     });
   });
 
   it('服务端冲突跳过时结果提示失败原因且已成功不回滚', async () => {
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
     vi.spyOn(api, 'curateSkillsBatch').mockResolvedValue({
       created: [createdSkill],
       failed: [{ id: 'ghost', name: 'ghost', error: '同名技能已存在' }],
@@ -385,7 +389,8 @@ describe('SkillsView 批量收藏', () => {
     fireEvent.click(screen.getByRole('button', { name: '收藏到我的库' }));
 
     await waitFor(() => {
-      expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('同名技能已存在'));
+      expect(screen.getByText('收藏完成：成功 1 个')).toBeInTheDocument();
+      expect(screen.getByText('ghost：同名技能已存在')).toBeInTheDocument();
     });
   });
 
@@ -405,7 +410,6 @@ describe('SkillsView AI 智能分类', () => {
   beforeEach(() => {
     vi.spyOn(api, 'listSkills').mockResolvedValue(result);
     vi.spyOn(api, 'getSkill').mockResolvedValue({ skill: result.items[0], rawContent: '# mycode\n原始内容' });
-    vi.spyOn(window, 'alert').mockImplementation(() => {});
   });
 
   it('卡片显示分类来源徽章三态，工具栏展示待分类数量', async () => {
@@ -439,7 +443,8 @@ describe('SkillsView AI 智能分类', () => {
       expect(api.aiClassifySkills).toHaveBeenCalledWith(undefined);
     });
     await waitFor(() => {
-      expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('成功 1 个（缓存命中 0 个）'));
+      expect(screen.getByText('AI 分类完成')).toBeInTheDocument();
+      expect(screen.getByText(/成功 1 个（缓存命中 0 个）/)).toBeInTheDocument();
     });
   });
 
@@ -514,7 +519,8 @@ describe('SkillsView AI 智能分类', () => {
       expect(api.aiClassifySkills).toHaveBeenCalledWith(['mycode', 'pdf']);
     });
     await waitFor(() => {
-      expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('跳过 1 个（已手动分类）'));
+      expect(screen.getByText('AI 分类完成')).toBeInTheDocument();
+      expect(screen.getByText(/跳过 1 个（已手动分类）/)).toBeInTheDocument();
     });
   });
 
@@ -529,10 +535,11 @@ describe('SkillsView AI 智能分类', () => {
     renderView();
     fireEvent.click(await screen.findByRole('button', { name: /全部 AI 分类/ }));
     await waitFor(() => {
-      expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('失败 1 个（pdf：输出分类不合法）'));
-    });
-    await waitFor(() => {
-      expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('成功 1 个（缓存命中 1 个）'));
+      expect(screen.getByText('AI 分类完成')).toBeInTheDocument();
+      // 失败项进入可折叠明细，计数进入描述
+      expect(screen.getByText(/失败 1 个/)).toBeInTheDocument();
+      expect(screen.getByText('pdf：输出分类不合法')).toBeInTheDocument();
+      expect(screen.getByText(/成功 1 个（缓存命中 1 个）/)).toBeInTheDocument();
     });
   });
 });

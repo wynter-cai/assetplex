@@ -5,6 +5,8 @@
 
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { toast } from '@/lib/toast-store';
+import { errorMessage } from '@/lib/error-message';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -75,7 +77,7 @@ export function CurateDialog({
       })
       .catch((err: unknown) => {
         // 同名冲突（400）/ 名称非法（400）等后端校验错误直接提示，对话框保持打开
-        alert(err instanceof Error ? err.message : '收藏失败');
+        toast.error('收藏失败', { description: errorMessage(err) });
       })
       .finally(() => setSubmitting(false));
   };
