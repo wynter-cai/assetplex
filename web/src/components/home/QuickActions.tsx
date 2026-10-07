@@ -13,7 +13,7 @@ export function QuickActions({ hubInitialized, onImport }: QuickActionsProps): J
   const actions = hubInitialized
     ? [
         { label: '导入资产', icon: Download, onClick: onImport ?? (() => navigate('/import')), primary: true },
-        { label: '分发同步', icon: RefreshCw, onClick: () => navigate('/sync') },
+        { label: '同步', icon: RefreshCw, onClick: () => navigate('/sync') },
         { label: '新建技能', icon: Plus, onClick: () => navigate('/vault/skill') },
       ]
     : [

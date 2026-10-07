@@ -49,12 +49,12 @@ export const TOOL_LABELS: Record<string, string> = {
   trae: 'TRAE',
   codebuddy: 'CodeBuddy',
   workbuddy: 'WorkBuddy',
-  hub: '保险箱',
+  hub: '我的库',
 };
 
 /**
- * 出处徽章文案：
- * - 项目技能优先显示工作区名（项目 · ××）
+ * 出处徽章文案（spec refactor-design-system terminology：出处轴统一叫「自建」）：
+ * - 自建技能优先显示工作区名（自建 · ××）
  * - 官方内置追加来源工具后缀（官方内置 · TRAE / WorkBuddy）
  * - 其余维持纯出处标签
  */
@@ -64,7 +64,7 @@ export function provenanceBadgeLabel(skill: {
   workspaceName?: string;
 }): string {
   if (skill.provenance === 'self' && skill.workspaceName) {
-    return `项目 · ${skill.workspaceName}`;
+    return `自建 · ${skill.workspaceName}`;
   }
   if (skill.provenance === 'builtin') {
     return `${PROVENANCE_LABELS.builtin} · ${TOOL_LABELS[skill.tool] ?? skill.tool}`;

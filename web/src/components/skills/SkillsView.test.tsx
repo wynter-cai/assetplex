@@ -571,9 +571,9 @@ describe('SkillsView 项目技能', () => {
     vi.spyOn(api, 'getSkill').mockResolvedValue({ skill: projectSkill, rawContent: '# douyin-x' });
   });
 
-  it('卡片徽章显示「项目 · 工作区名」，默认出处维度下归入自建分组', async () => {
+  it('卡片徽章显示「自建 · 工作区名」，默认出处维度下归入自建分组', async () => {
     renderView();
-    expect(await screen.findByText('项目 · Zhihu')).toBeInTheDocument();
+    expect(await screen.findByText('自建 · Zhihu')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '自建 1' })).toBeInTheDocument();
   });
 

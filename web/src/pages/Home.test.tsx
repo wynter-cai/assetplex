@@ -79,7 +79,7 @@ describe('Home 页面', () => {
     renderHome();
     expect(await screen.findByText('快速动作')).toBeInTheDocument();
     expect(screen.getByText('导入资产')).toBeInTheDocument();
-    expect(screen.getByText('分发同步')).toBeInTheDocument();
+    expect(screen.getByText('同步')).toBeInTheDocument();
     expect(screen.getByText('新建技能')).toBeInTheDocument();
   });
 

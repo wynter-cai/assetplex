@@ -45,15 +45,15 @@ export default function Settings() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Hub 设置</h1>
-          <p className="text-muted-foreground mt-1">编辑 hub.toml 配置</p>
+          <h1 className="text-3xl font-bold">设置</h1>
+          <p className="text-muted-foreground mt-1">管理工作区与全局配置</p>
         </div>
         {dirty && <Badge variant="warning">未保存</Badge>}
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Hub 主配置</CardTitle>
+          <CardTitle className="text-base">核心配置</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div>
