@@ -86,6 +86,8 @@ export interface SkillOverrideStore {
 export interface SkillSources {
   /** ~/.trae-cn/skills（个人自建） */
   userSkillsDir: string;
+  /** ~/.workbuddy/skills（WorkBuddy 个人技能，可选；origin=personal, tool=workbuddy） */
+  workbuddySkillsDir?: string;
   /** ~/.trae-cn/builtin（global + code/work/design persona 包） */
   builtinRoot: string;
   /** ~/.trae-cn/builtin_skills */
@@ -239,6 +241,7 @@ export function classifyOrigin(absolutePath: string, sources: SkillSources): Ski
 
   if (under(sources.vaultSkillsDir)) return 'vault';
   if (under(sources.userSkillsDir)) return 'personal';
+  if (sources.workbuddySkillsDir && under(sources.workbuddySkillsDir)) return 'personal';
   // 项目工作区：限定到 <workspace>/.trae/skills 前缀，避免同前缀兄弟目录误判
   if (sources.workspaceDirs.some((dir) => under(dir, '/.trae/skills'))) return 'project';
   if (under(sources.marketplaceSkillsDir)) return 'marketplace';
@@ -323,6 +326,11 @@ export function discoverSkillFiles(fs: SkillFs, sources: SkillSources): RawSkill
 
   // 个人自建（~/.trae-cn/skills）
   out.push(...scanSkillDir(fs, sources.userSkillsDir, 'personal', 'trae'));
+
+  // WorkBuddy 个人技能（~/.workbuddy/skills，可选来源）
+  if (sources.workbuddySkillsDir) {
+    out.push(...scanSkillDir(fs, sources.workbuddySkillsDir, 'personal', 'workbuddy'));
+  }
 
   // 项目级技能（各 TRAE 工作区 <workspace>/.trae/skills）
   for (const workspaceDir of sources.workspaceDirs) {

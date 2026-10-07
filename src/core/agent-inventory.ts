@@ -58,7 +58,11 @@ export interface ListAgentsResult {
 
 /** 各来源根目录配置 */
 export interface AgentSources {
-  trae: { builtinRoot: string };
+  trae: {
+    builtinRoot: string;
+    /** TRAE 自定义智能体约定目录 ~/.trae-cn/agents（Claude 子代理格式；可选，云端 agent 的本地纳管入口） */
+    customAgentsDir?: string;
+  };
   claude: { claudeDir: string };
   codebuddy: { codebuddyDir: string };
   codex: { codexDir: string };
@@ -172,6 +176,46 @@ export function parseTraePersonas(input: { builtinRoot: string; fs: AgentFs }): 
 
 // ============ 用户自建子代理 ============
 
+/** 解析目录下 agents/*.md（Claude 子代理格式），供 Claude / TRAE 约定目录共用 */
+function parseAgentMdDir(input: { agentsDir: string; tool: AgentTool; fs: AgentFs }): AgentInfo[] {
+  const { agentsDir, tool, fs } = input;
+  const agents: AgentInfo[] = [];
+
+  for (const entry of fs.listDir(agentsDir)) {
+    if (!entry.endsWith('.md')) continue;
+    const fullPath = `${agentsDir}/${entry}`;
+    const content = fs.read(fullPath);
+    if (content === null) continue;
+
+    const { data } = parseFrontmatter(content);
+    const fallbackName = entry.replace(/\.md$/, '');
+    const extra: Record<string, string> = {};
+    for (const [k, v] of Object.entries(data)) {
+      if (k !== 'name' && k !== 'description') extra[k] = v;
+    }
+
+    agents.push({
+      id: makeAgentId(tool, 'custom-subagent', data.name ?? fallbackName),
+      name: data.name ?? fallbackName,
+      description: data.description ?? '',
+      tool,
+      kind: 'custom-subagent',
+      sourcePath: fullPath,
+      lastModifiedAt: fs.dirMtime(fullPath),
+      userCreated: true,
+      ...(Object.keys(extra).length > 0 ? { extra } : {}),
+    });
+  }
+
+  return agents;
+}
+
+/** 解析 TRAE 自定义智能体约定目录（~/.trae-cn/agents/*.md） */
+export function parseTraeCustomAgents(input: { agentsDir?: string; fs: AgentFs }): AgentInfo[] {
+  if (!input.agentsDir) return [];
+  return parseAgentMdDir({ agentsDir: input.agentsDir, tool: 'trae', fs: input.fs });
+}
+
 /** 解析 Claude agents/*.md 与 Codex config.toml 内嵌 agents */
 export function parseCustomAgentFiles(input: {
   claudeDir?: string;
@@ -183,32 +227,7 @@ export function parseCustomAgentFiles(input: {
 
   // Claude Code: agents/*.md
   if (input.claudeDir) {
-    const agentsDir = `${input.claudeDir}/agents`;
-    for (const entry of fs.listDir(agentsDir)) {
-      if (!entry.endsWith('.md')) continue;
-      const fullPath = `${agentsDir}/${entry}`;
-      const content = fs.read(fullPath);
-      if (content === null) continue;
-
-      const { data } = parseFrontmatter(content);
-      const fallbackName = entry.replace(/\.md$/, '');
-      const extra: Record<string, string> = {};
-      for (const [k, v] of Object.entries(data)) {
-        if (k !== 'name' && k !== 'description') extra[k] = v;
-      }
-
-      agents.push({
-        id: makeAgentId('claude', 'custom-subagent', data.name ?? fallbackName),
-        name: data.name ?? fallbackName,
-        description: data.description ?? '',
-        tool: 'claude',
-        kind: 'custom-subagent',
-        sourcePath: fullPath,
-        lastModifiedAt: fs.dirMtime(fullPath),
-        userCreated: true,
-        ...(Object.keys(extra).length > 0 ? { extra } : {}),
-      });
-    }
+    agents.push(...parseAgentMdDir({ agentsDir: `${input.claudeDir}/agents`, tool: 'claude', fs }));
   }
 
   // Codex: config.toml [agents.*]
@@ -381,6 +400,7 @@ const ALL_TOOLS: AgentTool[] = ['trae', 'codebuddy', 'claude', 'codex', 'hub'];
 function collectAll(fs: AgentFs, sources: AgentSources): AgentInfo[] {
   return [
     ...parseTraePersonas({ builtinRoot: sources.trae.builtinRoot, fs }),
+    ...parseTraeCustomAgents({ agentsDir: sources.trae.customAgentsDir, fs }),
     ...parseCustomAgentFiles({ claudeDir: sources.claude.claudeDir, codexDir: sources.codex.codexDir, fs }),
     ...parseCodeBuddyExperts({ codebuddyDir: sources.codebuddy.codebuddyDir, fs }),
     ...parsePluginAgents({ pluginsRoot: sources.pluginsRoot, fs }),

@@ -79,6 +79,33 @@ const SOURCES: SkillSources = {
   workspaceDirs: [],
 };
 
+describe('WorkBuddy 个人技能来源（spec: fix-scan-count-gaps）', () => {
+  const WB_SOURCES: SkillSources = {
+    ...SOURCES,
+    workbuddySkillsDir: '/home/u/.workbuddy/skills',
+  };
+
+  it('发现 ~/.workbuddy/skills 下的技能并标记 origin=personal / tool=workbuddy', () => {
+    const fs = makeFs({
+      [`${WB_SOURCES.workbuddySkillsDir}/demo-assistant/SKILL.md`]: SKILL('demo-assistant', '示例助手'),
+    });
+
+    const result = discoverSkillFiles(fs, WB_SOURCES);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].origin).toBe('personal');
+    expect(result[0].tool).toBe('workbuddy');
+  });
+
+  it('workbuddy 目录缺失时贡献零条目', () => {
+    expect(discoverSkillFiles(makeFs({}), WB_SOURCES)).toHaveLength(0);
+  });
+
+  it('classifyOrigin 将 workbuddy 前缀判为 personal（重扫防御性再分类不丢来源）', () => {
+    expect(classifyOrigin('/home/u/.workbuddy/skills/x/SKILL.md', WB_SOURCES)).toBe('personal');
+  });
+});
+
 describe('discoverSkillFiles 跨来源发现', () => {
   it('发现用户/builtin global/builtin_skills/persona/插件/市场五类来源', () => {
     const fs = makeFs({

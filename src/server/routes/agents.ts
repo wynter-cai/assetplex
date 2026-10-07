@@ -41,7 +41,7 @@ export interface AgentsRouteDeps {
 export function defaultSources(): AgentSources {
   const home = homedir();
   return {
-    trae: { builtinRoot: join(home, '.trae-cn', 'builtin') },
+    trae: { builtinRoot: join(home, '.trae-cn', 'builtin'), customAgentsDir: join(home, '.trae-cn', 'agents') },
     claude: { claudeDir: join(home, '.claude') },
     codebuddy: { codebuddyDir: join(home, '.codebuddy') },
     codex: { codexDir: join(home, '.codex') },

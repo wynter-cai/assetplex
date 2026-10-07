@@ -82,6 +82,7 @@ export function defaultSkillSources(): SkillSources {
   const home = homedir();
   return {
     userSkillsDir: join(home, '.trae-cn', 'skills'),
+    workbuddySkillsDir: join(home, '.workbuddy', 'skills'),
     builtinRoot: join(home, '.trae-cn', 'builtin'),
     builtinSkillsDir: join(home, '.trae-cn', 'builtin_skills'),
     pluginsRoot: join(home, '.trae-cn', 'plugins'),

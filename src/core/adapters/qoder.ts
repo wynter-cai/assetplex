@@ -1,8 +1,8 @@
 /**
  * Qoder 适配器
  *
- * Qoder 是项目级工具，配置围绕 .qoder/ 目录展开，
- * 没有独立的用户级配置目录。
+ * 用户级配置目录：~/.qoder-cn（国行版）优先，回退 ~/.qoder（国际版）；
+ * 项目级配置围绕各项目 .qoder/ 目录展开。
  *
  * 同步策略：per-project
  * - 按用户在 hub.toml 中配置的 project_targets 列表分发
@@ -53,29 +53,51 @@ export class QoderAdapter extends BaseAdapter {
   readonly displayName = 'Qoder';
   readonly homepage = 'https://docs.qoder.com/';
 
-  protected defaultConfigDir = ''; // Qoder 无统一用户级目录
-  protected signatureFiles: string[] = []; // 由项目级 .qoder/ 判定
+  protected defaultConfigDir = ''; // 不用基类单目录检测，改走 configDirCandidates
+  protected signatureFiles: string[] = []; // 由 configDirCandidates + detect 内部标志文件判定
   protected supportedTargets = ['rules/', 'skills/', 'quests/', 'knowledge/'];
 
+  /** 用户级配置目录候选（顺序即优先级）：国行版优先，回退国际版 */
+  protected configDirCandidates = ['~/.qoder-cn', '~/.qoder'];
+  /** 用户级目录标志性文件（任一存在即视为已安装） */
+  private static readonly QODER_SIGNATURE_FILES = ['argv.json', 'mcp.json', 'settings.json'];
+
   /**
-   * 重写 detect：Qoder 无用户级目录，detect 永远返回未安装
-   * sync 时会通过 resolveHubItems 返回的 targets 处理 per-project
+   * 重写 detect：按候选目录顺序检测国行/国际版安装
    */
   async detect() {
+    const existing = this.configDirCandidates
+      .map((c) => this.expandHome(c))
+      .filter((dir) => existsSync(dir));
+    const configDir = existing[0] ?? '';
+    const installed =
+      configDir !== '' &&
+      QoderAdapter.QODER_SIGNATURE_FILES.some((f) => existsSync(resolve(configDir, f)));
+
     return {
       name: this.name,
-      installed: false,
-      configDirExists: false,
-      configDir: '',
-      error: 'Qoder 是项目级工具，无用户级目录；请在项目根目录扫描 .qoder/',
+      installed,
+      configDirExists: existing.length > 0,
+      configDir,
+      ...(installed
+        ? {}
+        : {
+            error: configDir
+              ? '目录存在但缺少标志性文件（argv.json / mcp.json / settings.json）'
+              : '未检测到 Qoder 配置目录（~/.qoder-cn 或 ~/.qoder）',
+          }),
     };
   }
 
   /**
-   * 获取配置目录（Qoder 不适用，返回空）
+   * 获取配置目录：返回首个存在的候选目录；都不存在时回退首选候选
    */
   override getConfigDir(): string {
-    return '';
+    for (const candidate of this.configDirCandidates) {
+      const dir = this.expandHome(candidate);
+      if (existsSync(dir)) return dir;
+    }
+    return this.configDirCandidates.length > 0 ? this.expandHome(this.configDirCandidates[0]) : '';
   }
 
   /**

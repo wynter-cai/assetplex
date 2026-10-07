@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { parseTraePersonas, parseCustomAgentFiles, parseCodeBuddyExperts, parsePluginAgents, parseHubAgents, listAgents, getAgentRawContent } from '../../../src/core/agent-inventory.js';
+import { parseTraePersonas, parseCustomAgentFiles, parseTraeCustomAgents, parseCodeBuddyExperts, parsePluginAgents, parseHubAgents, listAgents, getAgentRawContent } from '../../../src/core/agent-inventory.js';
 import type { AgentFs } from '../../../src/core/agent-inventory.js';
 
 /** 构造内存文件系统 */
@@ -133,6 +133,54 @@ describe('parseCustomAgentFiles', () => {
   it('目录缺失时返回空数组', () => {
     const fs = makeFs({});
     expect(parseCustomAgentFiles({ claudeDir: '/nope', fs })).toEqual([]);
+  });
+});
+
+describe('parseTraeCustomAgents 约定目录（spec: fix-scan-count-gaps）', () => {
+  it('解析 ~/.trae-cn/agents/*.md 为 tool=trae 的 custom-subagent', () => {
+    const agentsDir = '/home/u/.trae-cn/agents';
+    const md = '---\nname: ui-designer\ndescription: UI 设计专家\n---\n# UI Designer\n提示词正文';
+    const fs = makeFs({ [`${agentsDir}/ui-designer.md`]: md });
+
+    const agents = parseTraeCustomAgents({ agentsDir, fs });
+
+    expect(agents).toHaveLength(1);
+    expect(agents[0].name).toBe('ui-designer');
+    expect(agents[0].description).toBe('UI 设计专家');
+    expect(agents[0].tool).toBe('trae');
+    expect(agents[0].kind).toBe('custom-subagent');
+    expect(agents[0].userCreated).toBe(true);
+  });
+
+  it('未配置目录或目录缺失时返回空数组', () => {
+    expect(parseTraeCustomAgents({ agentsDir: '/nope', fs: makeFs({}) })).toEqual([]);
+    expect(parseTraeCustomAgents({ fs: makeFs({}) })).toEqual([]);
+  });
+
+  it('listAgents 聚合纳入 TRAE 约定目录智能体并计入 countByTool.trae', () => {
+    const fs = makeFs({
+      '/h/.trae-cn/builtin/manifests/solo.json': JSON.stringify({
+        agent_types: [{ name: 'work', models: [{ name: 'hebe' }] }],
+      }),
+      '/h/.trae-cn/agents/ui-designer.md': '---\nname: ui-designer\ndescription: UI 设计\n---',
+    });
+    const result = listAgents({
+      fs,
+      sources: {
+        trae: { builtinRoot: '/h/.trae-cn/builtin', customAgentsDir: '/h/.trae-cn/agents' },
+        claude: { claudeDir: '/h/.claude' },
+        codebuddy: { codebuddyDir: '/h/.codebuddy' },
+        codex: { codexDir: '/h/.codex' },
+        pluginsRoot: '/h/.trae-cn/plugins',
+        hub: { agentsDir: '/h/hub/agents' },
+      },
+    });
+
+    const designer = result.items.find((a) => a.name === 'ui-designer');
+    expect(designer).toBeDefined();
+    expect(designer?.tool).toBe('trae');
+    expect(designer?.kind).toBe('custom-subagent');
+    expect(result.countByTool.trae).toBe(2);
   });
 });
 

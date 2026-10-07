@@ -20,8 +20,7 @@ export async function scanAll(): Promise<ToolInventory[]> {
       const status = await adapter.detect();
 
       let items: DiscoveredItem[] = [];
-      // Qoder 始终可扫描（项目级，detect 返回 installed=false）
-      if (status.installed || adapter.name === 'qoder') {
+      if (status.installed) {
         try {
           items = await adapter.scan();
         } catch (scanErr) {
