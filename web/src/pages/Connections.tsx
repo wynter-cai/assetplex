@@ -227,9 +227,9 @@ export default function Connections(): JSX.Element {
     <div className="flex h-full flex-col gap-4">
       {/* 页头（spec refactor-design-system page-headers；出血清理在 T7） */}
       <PageHeader title="连接" subtitle="管理各 AI 工具的连接与同步状态" />
-      <div className="flex min-h-0 flex-1 -mx-4">
-      {/* 左侧工具列表 */}
-      <div className="w-56 shrink-0 border-r bg-muted/20 flex flex-col">
+      <div className="flex min-h-0 flex-1">
+      {/* 左侧工具列表（随视口自适应宽度，不写死单一像素宽） */}
+      <div className="w-44 shrink-0 border-r bg-muted/20 flex flex-col sm:w-52 lg:w-56">
         <div className="p-3 border-b">
           <h2 className="text-sm font-semibold">已连接工具</h2>
         </div>

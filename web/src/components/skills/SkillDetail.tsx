@@ -88,7 +88,10 @@ export function SkillDetail({ skill, onClose, onCurated }: SkillDetailProps): JS
   };
 
   return (
-    <div className="flex min-w-0 flex-1 flex-col rounded-lg border bg-card lg:max-w-xl">
+    <div
+      data-testid="detail-overlay"
+      className="fixed inset-0 z-50 flex min-w-0 flex-col overflow-y-auto bg-background p-4 lg:static lg:inset-auto lg:z-auto lg:max-w-xl lg:flex-1 lg:overflow-visible lg:rounded-lg lg:border lg:bg-card lg:p-0"
+    >
       <div className="flex items-center justify-between px-4 py-3 border-b">
         <div className="flex items-center gap-2 min-w-0">
           <Sparkles className="h-4 w-4 text-muted-foreground shrink-0" />

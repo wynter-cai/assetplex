@@ -635,4 +635,24 @@ describe('SkillsView 页头（spec refactor-design-system page-headers）', () =
     renderView();
     expect(await screen.findByRole('heading', { level: 1, name: '技能' })).toBeInTheDocument();
   });
+
+  it('详情打开时列表保持渲染，详情面板具备窄屏 overlay 钩子（fixed + lg:static）', async () => {
+    vi.spyOn(api, 'listSkills').mockResolvedValue({
+      total: 1,
+      items: [skill({ id: 's1', name: '示例技能', functionCategory: 'coding', provenance: 'self' })],
+      countByFunction: {
+        coding: 1, writing: 0, browser: 0, data: 0, devops: 0,
+        'ai-integration': 0, design: 0, workflow: 0, other: 0,
+      },
+      countByProvenance: { self: 1, marketplace: 0, plugin: 0, builtin: 0 },
+      countByStatus: { in: 0, out: 1 },
+    });
+    renderView();
+    fireEvent.click(await screen.findByText('示例技能'));
+    const overlay = await screen.findByTestId('detail-overlay');
+    expect(overlay.className).toContain('fixed');
+    expect(overlay.className).toContain('lg:static');
+    // 列表卡片仍在（不与详情互斥渲染，关闭可返回）
+    expect(screen.getAllByText('示例技能').length).toBeGreaterThan(0);
+  });
 });

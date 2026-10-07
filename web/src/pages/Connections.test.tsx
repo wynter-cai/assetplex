@@ -182,4 +182,11 @@ describe('Connections 页面', () => {
       expect(screen.getByText('IMPORT PAGE MARKER')).toBeInTheDocument();
     });
   });
+
+  it('页面容器与全局对齐，无负 margin 出血（spec refactor-design-system navigation-consolidation）', async () => {
+    const { container } = renderConnections();
+    expect(await screen.findByText('TRAE 中国版')).toBeInTheDocument();
+    expect(container.querySelector('.-mx-4')).toBeNull();
+    expect(container.querySelector('.-mt-4')).toBeNull();
+  });
 });

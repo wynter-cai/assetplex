@@ -80,13 +80,6 @@ export default function Vault(): JSX.Element {
     }
   };
 
-  const handleCategoryClick = (code: string): void => {
-    setSearch('');
-    setViewMode('list');
-    setSelectedAsset(null);
-    navigate(`/vault/${code}`);
-  };
-
   /** 点击卡片切换详情：再点同一张卡片收起右侧面板 */
   const handleView = (asset: Asset): void => {
     if (selectedAsset?.id === asset.id && viewMode !== 'list') {
@@ -152,53 +145,18 @@ export default function Vault(): JSX.Element {
   });
 
   return (
-    <div className="flex h-full">
-      {/* 左侧类别导航 */}
-      <div className="w-48 shrink-0 border-r pr-3 py-2 space-y-0.5">
-        <button
-          type="button"
-          onClick={() => {
-            setSearch('');
-            setViewMode('list');
-            setSelectedAsset(null);
-            navigate('/vault');
-          }}
-          className={`w-full flex items-center gap-2 rounded-md px-3 py-2 text-sm text-left transition-colors ${
-            !selectedCategory ? 'bg-accent font-medium' : 'hover:bg-accent/50 text-muted-foreground'
-          }`}
-        >
-          <Package className="h-4 w-4" />
-          全部资产
-          {!selectedCategory && data && <span className="ml-auto text-xs text-muted-foreground">{data.total}</span>}
-        </button>
-        {ASSET_CATEGORIES.map((cat) => {
-          const Icon = cat.icon;
-          const isActive = selectedCategory === cat.code;
-          return (
-            <button
-              key={cat.code}
-              type="button"
-              onClick={() => handleCategoryClick(cat.code)}
-              className={`w-full flex items-center gap-2 rounded-md px-3 py-2 text-sm text-left transition-colors ${
-                isActive ? 'bg-accent font-medium' : 'hover:bg-accent/50 text-muted-foreground'
-              }`}
-            >
-              <Icon className="h-4 w-4" />
-              {cat.label}
-              {isActive && data && <span className="ml-auto text-xs text-muted-foreground">{data.total}</span>}
-            </button>
-          );
-        })}
-      </div>
+    <div className="flex h-full min-w-0">
+      {/* 类别导航单轨化（spec refactor-design-system navigation-consolidation）：
+          Vault 内类别栏已撤，切换类别唯一途径是全局侧栏，当前类别由页头 H1 标识 */}
 
       {/* 右侧内容区 */}
       {isExternalCategory ? (
-        <div className="flex min-w-0 flex-1 pl-4">
+        <div className="flex min-w-0 flex-1">
           {selectedCategory === 'agent' && <AgentsView />}
           {selectedCategory === 'skill' && <SkillsView />}
         </div>
       ) : (
-      <div className="flex min-w-0 flex-1 flex-col gap-4 pl-4">
+      <div className="flex min-w-0 flex-1 flex-col gap-4">
         {/* 页头（spec refactor-design-system page-headers：类别名 H1 + 描述 + 主操作） */}
         <PageHeader
           title={selectedCategory
@@ -228,7 +186,7 @@ export default function Vault(): JSX.Element {
         />
 
         <div className="flex min-h-0 min-w-0 flex-1 gap-4">
-        <div className={`flex min-w-0 flex-1 flex-col ${showDetail ? 'hidden lg:flex' : 'flex'}`}>
+        <div className="flex min-w-0 flex-1 flex-col">
         <div className="min-h-0 flex-1 overflow-y-auto pr-1">
         {/* 工具栏 */}
         <div className="flex items-center gap-2">
@@ -286,9 +244,12 @@ export default function Vault(): JSX.Element {
         </div>
         </div>
 
-        {/* 详情/编辑面板 */}
+        {/* 详情/编辑面板：<1024px 全屏 overlay，≥1024px 主从侧栏（spec navigation-consolidation） */}
         {showDetail && (
-          <div className="flex min-w-0 flex-1 flex-col rounded-lg border bg-card lg:max-w-xl">
+          <div
+            data-testid="detail-overlay"
+            className="fixed inset-0 z-50 flex min-w-0 flex-col overflow-y-auto bg-background p-4 lg:static lg:inset-auto lg:z-auto lg:max-w-xl lg:flex-1 lg:overflow-visible lg:rounded-lg lg:border lg:bg-card lg:p-0"
+          >
             <AssetEditor
               asset={assetDetail ?? selectedAsset}
               category={selectedCategory ?? 'skill'}
