@@ -55,3 +55,6 @@ agent-hub/
 
 # 本机双击启动器（含本机 node 路径，不入库）
 AssetPlex.cmd
+
+# 百度网盘上传临时文件
+*.baiduyun.uploading.cfg
