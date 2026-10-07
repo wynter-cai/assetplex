@@ -5,7 +5,6 @@ import {
   Package,
   Plug,
   RefreshCw,
-  Activity as ActivityIcon,
   Settings,
   Boxes,
   ChevronDown,
@@ -29,7 +28,6 @@ const MAIN_NAV: MainNavItem[] = [
   { to: '/projects', label: '项目', icon: FolderGit2 },
   { to: '/connections', label: '连接', icon: Plug },
   { to: '/sync', label: '同步', icon: RefreshCw },
-  { to: '/activities', label: '活动', icon: ActivityIcon },
   { to: '/settings', label: '设置', icon: Settings },
 ];
 

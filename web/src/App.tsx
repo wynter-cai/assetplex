@@ -1,6 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AppLayout } from './components/layout/AppLayout';
-import { PlaceholderPage } from './pages/Placeholder';
 import Home from './pages/Home';
 import Vault from './pages/Vault';
 import Connections from './pages/Connections';
@@ -26,15 +25,8 @@ export default function App(): JSX.Element {
         <Route path="/vault/:category" element={<Vault />} />
         <Route path="/projects" element={<Projects />} />
         <Route path="/connections" element={<Connections />} />
-        <Route
-          path="/activities"
-          element={
-            <PlaceholderPage
-              title="活动记录"
-              description="导入、分发、编辑等操作历史"
-            />
-          }
-        />
+        {/* 活动页未上线：旧入口直达首页（P1 评估是否做操作时间线） */}
+        <Route path="/activities" element={<Navigate to="/" replace />} />
 
         {/* 旧版路由 */}
         <Route path="/legacy/dashboard" element={<Dashboard />} />
