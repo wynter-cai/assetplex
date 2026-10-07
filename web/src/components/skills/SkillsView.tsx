@@ -3,6 +3,8 @@ import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-quer
 import { Sparkles } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { api } from '@/lib/api';
 import { toast } from '@/lib/toast-store';
 import { errorMessage } from '@/lib/error-message';
@@ -167,6 +169,17 @@ export function SkillsView(): JSX.Element {
   return (
     <div className="flex min-w-0 flex-1 gap-4">
       <div className="flex min-w-0 flex-1 flex-col">
+      {/* 页头（spec refactor-design-system page-headers：类别 H1 + 主操作） */}
+      <PageHeader
+        title="技能"
+        subtitle="盘点各工具安装的技能，收藏到我的库后统一同步分发"
+        actions={
+          <Button size="sm" onClick={() => setCreateOpen(true)}>
+            <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+            新建技能
+          </Button>
+        }
+      />
       <SkillsToolbar
         dimension={dimension}
         statusFilter={statusFilter}
@@ -191,7 +204,6 @@ export function SkillsView(): JSX.Element {
         }}
         onSearchChange={setSearch}
         onClearFilter={clearFilter}
-        onCreate={() => setCreateOpen(true)}
       />
 
       {/* 批量操作条（有勾选时出现） */}

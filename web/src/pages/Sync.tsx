@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PageHeader } from '@/components/layout/PageHeader';
 import {
   Play,
   RefreshCw,
@@ -256,28 +257,26 @@ export default function Sync(): JSX.Element {
   return (
     <div className="flex h-full flex-col gap-4">
       {/* 标题 + 全局操作 */}
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">同步中心</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            选择要同步到的目标工具，预览变更后再执行
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 rounded-md border px-3 py-1.5">
-            <span className="text-xs text-muted-foreground">预览模式</span>
-            <Switch checked={dryRun} onCheckedChange={setDryRun} />
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => queryClient.invalidateQueries({ queryKey: ['sync-plan'] })}
-          >
-            <RefreshCw className="h-4 w-4 mr-1" />
-            刷新
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="同步中心"
+        subtitle="选择要同步到的目标工具，预览变更后再执行"
+        actions={
+          <>
+            <div className="flex items-center gap-2 rounded-md border px-3 py-1.5">
+              <span className="text-xs text-muted-foreground">预览模式</span>
+              <Switch checked={dryRun} onCheckedChange={setDryRun} />
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => queryClient.invalidateQueries({ queryKey: ['sync-plan'] })}
+            >
+              <RefreshCw className="h-4 w-4 mr-1" />
+              刷新
+            </Button>
+          </>
+        }
+      />
 
       <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[300px_1fr]">
         {/* 左栏：目标工具选择 */}

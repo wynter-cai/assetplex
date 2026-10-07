@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ASSET_CATEGORIES } from '@/config/asset-categories';
 import { api } from '@/lib/api';
 import { useEscapeKey } from '@/lib/use-escape-key';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { AssetCard } from '@/components/vault/AssetCard';
 import { AssetEditor } from '@/components/vault/AssetEditor';
 import { DistributionDialog } from '@/components/vault/DistributionDialog';
@@ -197,11 +198,40 @@ export default function Vault(): JSX.Element {
           {selectedCategory === 'skill' && <SkillsView />}
         </div>
       ) : (
-      <div className="flex min-w-0 flex-1 gap-4 pl-4">
+      <div className="flex min-w-0 flex-1 flex-col gap-4 pl-4">
+        {/* 页头（spec refactor-design-system page-headers：类别名 H1 + 描述 + 主操作） */}
+        <PageHeader
+          title={selectedCategory
+            ? ASSET_CATEGORIES.find((c) => c.code === selectedCategory)?.label ?? '全部资产'
+            : '全部资产'}
+          subtitle={selectedCategory
+            ? ASSET_CATEGORIES.find((c) => c.code === selectedCategory)?.description
+            : '统一管理你的身份、技能、规则与 MCP 配置'}
+          actions={
+            <>
+              <Button variant="outline" size="sm" onClick={() => navigate('/import')}>
+                <Download className="h-3.5 w-3.5 mr-1.5" />
+                导入
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => {
+                  setSelectedAsset(null);
+                  setViewMode('create');
+                }}
+              >
+                <Plus className="h-3.5 w-3.5 mr-1.5" />
+                新建
+              </Button>
+            </>
+          }
+        />
+
+        <div className="flex min-h-0 min-w-0 flex-1 gap-4">
         <div className={`flex min-w-0 flex-1 flex-col ${showDetail ? 'hidden lg:flex' : 'flex'}`}>
         <div className="min-h-0 flex-1 overflow-y-auto pr-1">
         {/* 工具栏 */}
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex items-center gap-2">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -211,20 +241,6 @@ export default function Vault(): JSX.Element {
               className="pl-8 h-9"
             />
           </div>
-          <Button variant="outline" size="sm" onClick={() => navigate('/import')}>
-            <Download className="h-3.5 w-3.5 mr-1.5" />
-            导入
-          </Button>
-          <Button
-            size="sm"
-            onClick={() => {
-              setSelectedAsset(null);
-              setViewMode('create');
-            }}
-          >
-            <Plus className="h-3.5 w-3.5 mr-1.5" />
-            新建
-          </Button>
         </div>
 
         {/* 错误 */}
@@ -286,6 +302,7 @@ export default function Vault(): JSX.Element {
             />
           </div>
         )}
+        </div>
       </div>
       )}
 

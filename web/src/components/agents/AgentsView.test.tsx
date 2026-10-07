@@ -271,3 +271,15 @@ describe('AgentsView 我的库写管理', () => {
     });
   });
 });
+
+describe('AgentsView 页头（spec refactor-design-system page-headers）', () => {
+  beforeEach(() => {
+    vi.spyOn(api, 'listAgents').mockResolvedValue(listResult);
+    vi.spyOn(api, 'getAgent').mockResolvedValue(detailResult);
+  });
+
+  it('呈现类别 H1「智能体」', async () => {
+    renderView();
+    expect(await screen.findByRole('heading', { level: 1, name: '智能体' })).toBeInTheDocument();
+  });
+});

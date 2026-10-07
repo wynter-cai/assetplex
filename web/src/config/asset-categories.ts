@@ -14,6 +14,8 @@ export interface AssetCategoryConfig {
   code: string;
   /** 中文显示名 */
   label: string;
+  /** 一句话描述（类别页页头副标题，spec refactor-design-system page-headers） */
+  description: string;
   /** 图标组件 */
   icon: LucideIcon;
   /** 在资产库列表中的排序权重，数字越小越靠前 */
@@ -32,11 +34,11 @@ export interface AssetCategoryConfig {
  * 外部数据类别设置 external: true，由 Vault 渲染专用视图。
  */
 export const ASSET_CATEGORIES: AssetCategoryConfig[] = [
-  { code: 'identity', label: '身份', icon: User, order: 10 },
-  { code: 'skill', label: '技能', icon: Sparkles, order: 20, external: true },
-  { code: 'rule', label: '规则', icon: BookOpen, order: 30 },
-  { code: 'mcp', label: 'MCP', icon: Server, order: 40 },
-  { code: 'agent', label: '智能体', icon: Bot, order: 50, external: true },
+  { code: 'identity', label: '身份', description: '你的人设、背景与身份资料', icon: User, order: 10 },
+  { code: 'skill', label: '技能', description: '盘点各工具安装的技能，收藏到我的库后统一同步分发', icon: Sparkles, order: 20, external: true },
+  { code: 'rule', label: '规则', description: '约束 AI 行为的规则与约定', icon: BookOpen, order: 30 },
+  { code: 'mcp', label: 'MCP', description: 'MCP 服务器配置资产', icon: Server, order: 40 },
+  { code: 'agent', label: '智能体', description: '盘点各工具中的子智能体配置', icon: Bot, order: 50, external: true },
 ];
 
 /** 根据 code 获取类别配置 */

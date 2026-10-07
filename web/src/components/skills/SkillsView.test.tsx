@@ -616,3 +616,23 @@ describe('SkillsView 统计行与来源徽章（spec: fix-scan-count-gaps）', (
     expect(screen.getByText('官方内置 · WorkBuddy')).toBeInTheDocument();
   });
 });
+
+describe('SkillsView 页头（spec refactor-design-system page-headers）', () => {
+  beforeEach(() => {
+    vi.spyOn(api, 'listSkills').mockResolvedValue({
+      total: 0,
+      items: [],
+      countByFunction: {
+        coding: 0, writing: 0, browser: 0, data: 0, devops: 0,
+        'ai-integration': 0, design: 0, workflow: 0, other: 0,
+      },
+      countByProvenance: { self: 0, marketplace: 0, plugin: 0, builtin: 0 },
+      countByStatus: { in: 0, out: 0 },
+    });
+  });
+
+  it('呈现类别 H1「技能」与副标题', async () => {
+    renderView();
+    expect(await screen.findByRole('heading', { level: 1, name: '技能' })).toBeInTheDocument();
+  });
+});

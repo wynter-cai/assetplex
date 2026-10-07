@@ -3,7 +3,7 @@
  * 库状态与出处 chips 正交组合（spec refactor-skill-origin-taxonomy）
  */
 
-import { Search, Sparkles, Bot, Settings, Factory, Layers } from 'lucide-react';
+import { Search, Bot, Settings, Factory, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -51,7 +51,6 @@ interface SkillsToolbarProps {
   onFunctionChip: (f: SkillFunction) => void;
   onSearchChange: (v: string) => void;
   onClearFilter: () => void;
-  onCreate: () => void;
 }
 
 export function SkillsToolbar({
@@ -70,7 +69,6 @@ export function SkillsToolbar({
   onFunctionChip,
   onSearchChange,
   onClearFilter,
-  onCreate,
 }: SkillsToolbarProps): JSX.Element {
   const statusCounts: Record<LibraryStatusFilter, number> = {
     all: (counts?.countByStatus.in ?? 0) + (counts?.countByStatus.out ?? 0),
@@ -182,10 +180,6 @@ export function SkillsToolbar({
         >
           <Settings className="h-3.5 w-3.5 mr-1" />
           AI 配置
-        </Button>
-        <Button size="sm" className="h-9 px-3 text-xs" onClick={onCreate}>
-          <Sparkles className="h-3.5 w-3.5 mr-1" />
-          新建技能
         </Button>
       </div>
     </>

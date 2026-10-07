@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { api } from '@/lib/api';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { ASSET_CATEGORIES, getCategoryConfig } from '@/config/asset-categories';
 import { useToolActions } from '@/components/connections/useToolActions';
 
@@ -223,12 +224,14 @@ export default function Connections(): JSX.Element {
   };
 
   return (
-    <div className="flex h-full -mx-4 -mt-4">
+    <div className="flex h-full flex-col gap-4">
+      {/* 页头（spec refactor-design-system page-headers；出血清理在 T7） */}
+      <PageHeader title="连接" subtitle="管理各 AI 工具的连接与同步状态" />
+      <div className="flex min-h-0 flex-1 -mx-4">
       {/* 左侧工具列表 */}
       <div className="w-56 shrink-0 border-r bg-muted/20 flex flex-col">
         <div className="p-3 border-b">
           <h2 className="text-sm font-semibold">已连接工具</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">管理 AI 工具连接与同步</p>
         </div>
         <div className="flex-1 overflow-y-auto py-1">
           {isLoading ? (
@@ -291,6 +294,7 @@ export default function Connections(): JSX.Element {
             选择一个工具查看详情
           </div>
         )}
+      </div>
       </div>
     </div>
   );

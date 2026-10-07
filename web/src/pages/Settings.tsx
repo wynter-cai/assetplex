@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { Save } from 'lucide-react';
 import { WorkspaceSettingsCard } from '@/components/settings/WorkspaceSettingsCard';
 import { toast } from '@/lib/toast-store';
@@ -43,13 +44,11 @@ export default function Settings() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">设置</h1>
-          <p className="text-muted-foreground mt-1">管理工作区与全局配置</p>
-        </div>
-        {dirty && <Badge variant="warning">未保存</Badge>}
-      </div>
+      <PageHeader
+        title="设置"
+        subtitle="管理工作区与全局配置"
+        actions={dirty ? <Badge variant="warning">未保存</Badge> : undefined}
+      />
 
       <Card>
         <CardHeader>

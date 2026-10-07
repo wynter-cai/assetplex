@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Search, Bot, User as UserIcon } from 'lucide-react';
 import { Card } from '@/components/ui/card';
@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { AgentDetail } from './AgentDetail';
@@ -71,6 +72,18 @@ export function AgentsView(): JSX.Element {
   return (
     <div className="flex min-w-0 flex-1 gap-4">
       <div className="flex min-w-0 flex-1 flex-col">
+        {/* 页头（spec refactor-design-system page-headers：类别 H1 + 主操作） */}
+        <PageHeader
+          title="智能体"
+          subtitle="盘点各工具中的子智能体配置"
+          actions={
+            <Button size="sm" onClick={() => setCreateOpen(true)}>
+              <Bot className="h-3.5 w-3.5 mr-1.5" />
+              新建智能体
+            </Button>
+          }
+        />
+
         {/* 计数与筛选条 */}
         <div className="space-y-2 mb-4">
           <div className="flex flex-wrap gap-1.5">
@@ -112,11 +125,6 @@ export function AgentsView(): JSX.Element {
               className="pl-8 h-9"
             />
           </div>
-          <div className="flex-1" />
-          <Button size="sm" className="h-9 px-3 text-xs" onClick={() => setCreateOpen(true)}>
-            <Bot className="h-3.5 w-3.5 mr-1" />
-            新建智能体
-          </Button>
         </div>
 
         {error && (

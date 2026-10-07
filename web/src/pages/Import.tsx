@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -179,20 +180,18 @@ export default function Import() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">智能导入</h1>
-          <p className="text-muted-foreground mt-2">
-            从已安装的 AI 编码工具中自动发现身份、技能、规则和 MCP 配置，一键导入到 AssetPlex 统一管理
-          </p>
-        </div>
-        {step === 1 && (
-          <Button variant="outline" onClick={() => rescan()} disabled={scanLoading}>
-            <RefreshCw className={`h-4 w-4 mr-1 ${scanLoading ? 'animate-spin' : ''}`} />
-            重新检测
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        title="智能导入"
+        subtitle="从已安装的 AI 编码工具中自动发现身份、技能、规则和 MCP 配置，一键导入到 AssetPlex 统一管理"
+        actions={
+          step === 1 && (
+            <Button variant="outline" onClick={() => rescan()} disabled={scanLoading}>
+              <RefreshCw className={`h-4 w-4 mr-1 ${scanLoading ? 'animate-spin' : ''}`} />
+              重新检测
+            </Button>
+          )
+        }
+      />
 
       {/* 步骤指示器 */}
       <div className="flex items-center gap-2">

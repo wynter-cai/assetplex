@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { api } from '@/lib/api';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { ProjectCard } from '@/components/projects/ProjectCard';
 import { ErrorState } from '@/components/common/ErrorState';
 
@@ -21,22 +22,19 @@ export default function Projects(): JSX.Element {
   return (
     <div className="space-y-6">
       {/* 页头 */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <FolderGit2 className="h-6 w-6 text-primary" />
-            项目
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
+      <PageHeader
+        title="项目"
+        subtitle={
+          <>
             你用 AI 跑过的项目（数据源：TRAE）
             {data && (
               <span className="ml-2">
                 共 {data.total} 个，目录仍存在 {data.existingCount} 个
               </span>
             )}
-          </p>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {/* 工具栏 */}
       <div className="flex items-center gap-4 flex-wrap">
