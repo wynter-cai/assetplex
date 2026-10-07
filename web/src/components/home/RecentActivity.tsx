@@ -1,5 +1,4 @@
-import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Download, RefreshCw, Edit, Plus } from 'lucide-react';
+import { Download, RefreshCw, Edit, Plus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { ActivityItem } from '@/types/api';
 
@@ -37,21 +36,10 @@ function formatTime(isoString: string): string {
 }
 
 export function RecentActivity({ activities }: RecentActivityProps): JSX.Element {
-  const navigate = useNavigate();
-
   return (
     <Card>
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base">最近活动</CardTitle>
-          <button
-            type="button"
-            onClick={() => navigate('/activity')}
-            className="text-xs text-primary hover:underline flex items-center gap-1"
-          >
-            查看全部 <ArrowRight className="h-3 w-3" />
-          </button>
-        </div>
+        <CardTitle className="text-base">最近活动</CardTitle>
       </CardHeader>
       <CardContent>
         {activities.length === 0 ? (

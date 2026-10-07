@@ -17,7 +17,7 @@ import type { OverviewData } from '@/types/api';
 const overviewData: OverviewData = {
   hubInitialized: true,
   healthScore: 85,
-  assetStats: { identity: 1, skill: 3, rule: 5, mcp: 2 },
+  assetStats: { identity: 1, skill: 3, rule: 5, mcp: 2, agent: 4 },
   connections: [
     { toolId: 'trae-cn', toolName: 'TRAE 中国版', status: 'synced', assetCount: 3, pendingCount: 0 },
     { toolId: 'workbuddy', toolName: 'WorkBuddy', status: 'synced', assetCount: 2, pendingCount: 0 },
@@ -53,14 +53,17 @@ describe('Home 页面', () => {
     expect(screen.getByText(/你的AI资产安全存储在 AssetPlex/)).toBeInTheDocument();
   });
 
-  it('渲染资产快照区域（含 4 类资产数量）', async () => {
+  it('渲染资产快照区域（含 5 类资产数量与总数）', async () => {
     renderHome();
     expect(await screen.findByText('资产快照')).toBeInTheDocument();
-    // mock 数据中 identity=1, skill=3, rule=5, mcp=2
+    // mock 数据中 identity=1, skill=3, rule=5, mcp=2, agent=4 → 共 15 项
     expect(screen.getByText('身份')).toBeInTheDocument();
     expect(screen.getByText('技能')).toBeInTheDocument();
     expect(screen.getByText('规则')).toBeInTheDocument();
     expect(screen.getByText('MCP')).toBeInTheDocument();
+    expect(screen.getByText('智能体')).toBeInTheDocument();
+    expect(screen.getByText('4')).toBeInTheDocument();
+    expect(screen.getByText(/共 15 项/)).toBeInTheDocument();
   });
 
   it('渲染连接状态区域（含工具列表）', async () => {
@@ -80,11 +83,13 @@ describe('Home 页面', () => {
     expect(screen.getByText('新建技能')).toBeInTheDocument();
   });
 
-  it('渲染最近活动区域（含活动记录）', async () => {
+  it('渲染最近活动区域（含活动记录，不提供查看全部死链）', async () => {
     renderHome();
     expect(await screen.findByText('最近活动')).toBeInTheDocument();
     // mock 数据中的第一条活动
     expect(screen.getByText(/从 TRAE 导入 identity\/profile.md/)).toBeInTheDocument();
+    // 活动页尚未实现，P0 移除指向不存在页面的「查看全部」
+    expect(screen.queryByText('查看全部')).not.toBeInTheDocument();
   });
 
   it('渲染健康度分数', async () => {

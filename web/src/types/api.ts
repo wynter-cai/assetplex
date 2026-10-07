@@ -159,6 +159,8 @@ export interface DiffContent {
 // ========== 首页 Overview 类型 ==========
 
 export type FrontendCategory = 'identity' | 'skill' | 'rule' | 'mcp';
+/** 首页资产快照的类别口径：含走专用接口的智能体（external 类别） */
+export type OverviewCategory = FrontendCategory | 'agent';
 export type ConnectionStatus = 'synced' | 'pending' | 'not_connected' | 'not_installed';
 
 export interface ConnectionInfo {
@@ -178,7 +180,7 @@ export interface ActivityItem {
 }
 
 export interface OverviewData {
-  assetStats: Record<FrontendCategory, number>;
+  assetStats: Record<OverviewCategory, number>;
   connections: ConnectionInfo[];
   recentActivities: ActivityItem[];
   hubInitialized: boolean;

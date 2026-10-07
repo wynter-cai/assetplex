@@ -9,6 +9,7 @@ import { RecentActivity } from '@/components/home/RecentActivity';
 import { api } from '@/lib/api';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
+import { ASSET_CATEGORIES } from '@/config/asset-categories';
 
 /**
  * 首页 - 指挥中心
@@ -100,9 +101,9 @@ function HomeSkeleton(): JSX.Element {
       {/* Asset Snapshot */}
       <div className="rounded-lg border p-4">
         <Skeleton className="h-4 w-20 mb-4" />
-        <div className="grid grid-cols-4 gap-3">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-20 rounded-lg" />
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-3">
+          {ASSET_CATEGORIES.map((cat) => (
+            <Skeleton key={cat.code} className="h-20 rounded-lg" />
           ))}
         </div>
       </div>

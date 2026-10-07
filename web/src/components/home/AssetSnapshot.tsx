@@ -21,7 +21,7 @@ export function AssetSnapshot({ assetStats }: AssetSnapshotProps): JSX.Element {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-3">
           {ASSET_CATEGORIES.map((cat) => {
             const Icon = cat.icon;
             const count = assetStats[cat.code] ?? 0;
