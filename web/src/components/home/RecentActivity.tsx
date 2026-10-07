@@ -7,10 +7,10 @@ interface RecentActivityProps {
 }
 
 const ACTIVITY_ICONS = {
-  import: { icon: Download, color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-950/30' },
-  sync: { icon: RefreshCw, color: 'text-green-500', bg: 'bg-green-50 dark:bg-green-950/30' },
-  edit: { icon: Edit, color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-950/30' },
-  create: { icon: Plus, color: 'text-purple-500', bg: 'bg-purple-50 dark:bg-purple-950/30' },
+  import: { icon: Download, color: 'text-blue-500', bg: 'bg-blue-50' },
+  sync: { icon: RefreshCw, color: 'text-green-500', bg: 'bg-green-50' },
+  edit: { icon: Edit, color: 'text-amber-500', bg: 'bg-amber-50' },
+  create: { icon: Plus, color: 'text-purple-500', bg: 'bg-purple-50' },
 } as const;
 
 /** 将 ISO 时间或相对时间字符串格式化为"今天 HH:MM"或"昨天" */

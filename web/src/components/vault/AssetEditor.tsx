@@ -88,7 +88,7 @@ export function AssetEditor({
 
       <div className="flex-1 overflow-hidden">
         {isReadOnly ? (
-          <div className="h-full overflow-auto p-4 prose prose-sm dark:prose-invert max-w-none">
+          <div className="h-full overflow-auto p-4 prose prose-sm max-w-none">
             <pre className="whitespace-pre-wrap font-mono text-sm leading-relaxed bg-muted p-4 rounded-md">{content}</pre>
           </div>
         ) : (

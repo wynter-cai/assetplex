@@ -22,8 +22,8 @@ export function DistributionBadge({ distributions }: DistributionBadgeProps): JS
     synced: 'bg-green-500',
     pending: 'bg-amber-500',
     conflict: 'bg-red-500',
-    not_enabled: 'bg-slate-300 dark:bg-slate-600',
-    not_installed: 'bg-slate-200 dark:bg-slate-700',
+    not_enabled: 'bg-slate-300',
+    not_installed: 'bg-slate-200',
   };
 
   const statusTitle: Record<string, string> = {

@@ -10,7 +10,7 @@ interface HomeHeroProps {
 export function HomeHero({ hubInitialized, healthScore, onStartOnboarding }: HomeHeroProps): JSX.Element {
   if (!hubInitialized) {
     return (
-      <Card className="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950/40 dark:to-purple-950/40 border-indigo-200 dark:border-indigo-800">
+      <Card className="bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-200">
         <CardContent className="p-8 text-center">
           <Boxes className="h-12 w-12 mx-auto text-indigo-500 mb-4" />
           <h2 className="text-2xl font-bold mb-2">欢迎使用 AssetPlex</h2>
@@ -33,8 +33,8 @@ export function HomeHero({ hubInitialized, healthScore, onStartOnboarding }: Hom
     <Card>
       <CardContent className="p-6 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <div className="h-12 w-12 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center">
-            <ShieldCheck className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+          <div className="h-12 w-12 rounded-full bg-indigo-100 flex items-center justify-center">
+            <ShieldCheck className="h-6 w-6 text-indigo-600" />
           </div>
           <div>
             <h2 className="text-xl font-semibold">欢迎回来</h2>
@@ -44,7 +44,7 @@ export function HomeHero({ hubInitialized, healthScore, onStartOnboarding }: Hom
           </div>
         </div>
         <div className="text-right">
-          <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">{healthScore}</div>
+          <div className="text-2xl font-bold text-indigo-600">{healthScore}</div>
           <div className="text-xs text-muted-foreground">健康度</div>
         </div>
       </CardContent>

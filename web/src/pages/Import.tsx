@@ -207,7 +207,7 @@ export default function Import() {
                   active
                     ? 'bg-primary text-primary-foreground'
                     : done
-                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                      ? 'bg-green-100 text-green-700'
                       : 'bg-muted text-muted-foreground'
                 }`}
               >

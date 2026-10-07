@@ -21,7 +21,7 @@ const TOOL_DISPLAY_NAME: Record<string, string> = {
 /** 状态点 */
 function StatusDot({ installed, enabled }: { installed: boolean; enabled?: boolean }): JSX.Element {
   if (!installed) {
-    return <span className="inline-block h-2 w-2 rounded-full bg-slate-300 dark:bg-slate-600" />;
+    return <span className="inline-block h-2 w-2 rounded-full bg-slate-300" />;
   }
   if (enabled === false) {
     return <span className="inline-block h-2 w-2 rounded-full bg-slate-400" title="已安装但未启用" />;

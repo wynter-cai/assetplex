@@ -95,14 +95,14 @@ export function ConflictDialog({
   const activeSource = sources[activeSourceIdx] ?? sources[0];
 
   return (
-    <div className="border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-950/20 rounded-md overflow-hidden">
+    <div className="border border-amber-200 bg-amber-50 rounded-md overflow-hidden">
       <div className="flex items-center gap-3 px-4 py-3">
         {/* 文件信息 */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-medium truncate">{hubTargetPath}</span>
             {multiSource && (
-              <Badge variant="secondary" className="text-[10px] h-4 px-1 bg-amber-200 dark:bg-amber-800/50 text-amber-800 dark:text-amber-200">
+              <Badge variant="secondary" className="text-[10px] h-4 px-1 bg-amber-200 text-amber-800">
                 {sources.length} 个来源
               </Badge>
             )}
@@ -134,7 +134,7 @@ export function ConflictDialog({
           variant="ghost"
           size="sm"
           onClick={() => setExpanded(!expanded)}
-          className="h-7 px-2 text-xs text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30 shrink-0"
+          className="h-7 px-2 text-xs text-amber-700 hover:bg-amber-100 shrink-0"
         >
           {expanded ? (
             <>
@@ -173,7 +173,7 @@ export function ConflictDialog({
 
       {/* 当前策略说明 */}
       <div className="px-4 pb-2 -mt-1">
-        <div className="text-xs text-amber-700 dark:text-amber-400/80 flex items-center gap-1">
+        <div className="text-xs text-amber-700 flex items-center gap-1">
           <span className="font-medium">{selectedOption.label}：</span>
           <span className="text-muted-foreground">{getStrategyHint(strategy, category, multiSource)}</span>
         </div>

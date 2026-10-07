@@ -72,7 +72,7 @@ export function Sidebar(): JSX.Element {
                       e.stopPropagation();
                       setVaultExpanded((v) => !v);
                     }}
-                    className="p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10"
+                    className="p-0.5 rounded hover:bg-black/10"
                     aria-label={vaultExpanded ? '收起资产库' : '展开资产库'}
                     aria-expanded={vaultExpanded}
                   >

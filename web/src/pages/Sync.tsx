@@ -101,7 +101,7 @@ function TargetToolCard({
                 <span className="text-muted-foreground">已是最新</span>
               )}
               {warnings > 0 && (
-                <span className="flex items-center gap-0.5 text-amber-600 dark:text-amber-400">
+                <span className="flex items-center gap-0.5 text-amber-600">
                   <AlertTriangle className="h-3 w-3" />
                   {warnings}
                 </span>
@@ -150,7 +150,7 @@ function ToolPlanDetail({ plan }: { plan: SyncPlan }): JSX.Element | null {
                 <div className="font-mono truncate">{item.item.relativePath || '(根)'}</div>
                 {item.reason && <div className="text-muted-foreground">→ {item.reason}</div>}
                 {item.warning && (
-                  <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                  <div className="flex items-center gap-1 text-amber-600">
                     <AlertTriangle className="h-3 w-3 shrink-0" />
                     {item.warning}
                   </div>
@@ -182,7 +182,7 @@ function ResultCard({ result }: { result: SyncResult }): JSX.Element {
         <div key={i} className="mt-1 text-xs text-destructive">错误：{e}</div>
       ))}
       {result.warnings.map((w, i) => (
-        <div key={i} className="mt-1 text-xs text-amber-600 dark:text-amber-400">警告：{w}</div>
+        <div key={i} className="mt-1 text-xs text-amber-600">警告：{w}</div>
       ))}
     </div>
   );

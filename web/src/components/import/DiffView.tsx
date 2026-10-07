@@ -106,12 +106,12 @@ function rowClass(type: DiffLine['type'], side: 'left' | 'right'): string {
   const isLeft = side === 'left';
   switch (type) {
     case 'added':
-      return isLeft ? 'bg-green-100 dark:bg-green-900/30' : 'bg-transparent';
+      return isLeft ? 'bg-green-100' : 'bg-transparent';
     case 'removed':
-      return isLeft ? 'bg-transparent' : 'bg-red-100 dark:bg-red-900/30';
+      return isLeft ? 'bg-transparent' : 'bg-red-100';
     case 'modified-old':
     case 'modified-new':
-      return 'bg-amber-100 dark:bg-amber-900/30';
+      return 'bg-amber-100';
     default:
       return '';
   }
@@ -121,12 +121,12 @@ function indicatorClass(type: DiffLine['type'], side: 'left' | 'right'): string 
   const isLeft = side === 'left';
   switch (type) {
     case 'added':
-      return isLeft ? 'text-green-600 dark:text-green-400 font-bold' : 'text-transparent';
+      return isLeft ? 'text-green-600 font-bold' : 'text-transparent';
     case 'removed':
-      return isLeft ? 'text-transparent' : 'text-red-600 dark:text-red-400 font-bold';
+      return isLeft ? 'text-transparent' : 'text-red-600 font-bold';
     case 'modified-old':
     case 'modified-new':
-      return 'text-amber-600 dark:text-amber-400 font-bold';
+      return 'text-amber-600 font-bold';
     default:
       return 'text-transparent';
   }
@@ -135,12 +135,12 @@ function indicatorClass(type: DiffLine['type'], side: 'left' | 'right'): string 
 function lineNumClass(type: DiffLine['type']): string {
   switch (type) {
     case 'added':
-      return 'text-green-700/60 dark:text-green-400/50';
+      return 'text-green-700/60';
     case 'removed':
-      return 'text-red-700/60 dark:text-red-400/50';
+      return 'text-red-700/60';
     case 'modified-old':
     case 'modified-new':
-      return 'text-amber-700/60 dark:text-amber-400/50';
+      return 'text-amber-700/60';
     default:
       return 'text-muted-foreground/40';
   }
@@ -201,20 +201,20 @@ export function DiffView({ sourcePath, hubTargetPath }: Props) {
     <div className="border rounded-md overflow-hidden text-xs font-mono select-text">
       {/* 统计栏 */}
       <div className="flex items-center gap-3 px-3 py-1.5 bg-muted/50 border-b text-xs">
-        {addedCount > 0 && <span className="text-green-600 dark:text-green-400">+{addedCount} 新增</span>}
-        {removedCount > 0 && <span className="text-red-600 dark:text-red-400">-{removedCount} 删除</span>}
-        {modifiedCount > 0 && <span className="text-amber-600 dark:text-amber-400">~{modifiedCount} 修改</span>}
+        {addedCount > 0 && <span className="text-green-600">+{addedCount} 新增</span>}
+        {removedCount > 0 && <span className="text-red-600">-{removedCount} 删除</span>}
+        {modifiedCount > 0 && <span className="text-amber-600">~{modifiedCount} 修改</span>}
         {addedCount === 0 && removedCount === 0 && modifiedCount === 0 && (
           <span className="text-muted-foreground">无差异</span>
         )}
       </div>
       {/* 表头 */}
       <div className="flex bg-muted">
-        <div className="flex-1 px-3 py-1.5 text-blue-600 dark:text-blue-400 font-medium border-r flex items-center gap-1.5">
+        <div className="flex-1 px-3 py-1.5 text-blue-600 font-medium border-r flex items-center gap-1.5">
           <span className="inline-block w-2 h-2 rounded-full bg-blue-500" />
           工具文件（新内容）
         </div>
-        <div className="flex-1 px-3 py-1.5 text-green-700 dark:text-green-400 font-medium flex items-center gap-1.5">
+        <div className="flex-1 px-3 py-1.5 text-green-700 font-medium flex items-center gap-1.5">
           <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
           Hub 文件（当前内容）
         </div>

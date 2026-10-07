@@ -24,9 +24,9 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 const STATUS_COLOR: Record<string, string> = {
-  synced: 'text-green-600 dark:text-green-400',
-  pending: 'text-amber-600 dark:text-amber-400',
-  conflict: 'text-red-600 dark:text-red-400',
+  synced: 'text-green-600',
+  pending: 'text-amber-600',
+  conflict: 'text-red-600',
   not_enabled: 'text-slate-400',
   not_installed: 'text-slate-400',
 };

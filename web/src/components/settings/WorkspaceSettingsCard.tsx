@@ -135,13 +135,13 @@ export function WorkspaceSettingsCard(): JSX.Element {
         </div>
 
         {data?.errors.map((message) => (
-          <p key={message} className="text-xs text-amber-600 dark:text-amber-400">
+          <p key={message} className="text-xs text-amber-600">
             {message}
           </p>
         ))}
 
         {data?.truncated && (
-          <p className="text-xs text-amber-600 dark:text-amber-400">
+          <p className="text-xs text-amber-600">
             工作区数量超过上限 {data.maxWorkspaces}，仅展示前 {data.maxWorkspaces} 个；可禁用不需要的自动工作区
           </p>
         )}

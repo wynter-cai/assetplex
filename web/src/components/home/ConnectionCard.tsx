@@ -11,25 +11,25 @@ const STATUS_CONFIG = {
   synced: {
     icon: CheckCircle2,
     color: 'text-green-500',
-    bg: 'bg-green-50 dark:bg-green-950/30',
+    bg: 'bg-green-50',
     label: '已同步',
   },
   pending: {
     icon: AlertCircle,
     color: 'text-amber-500',
-    bg: 'bg-amber-50 dark:bg-amber-950/30',
+    bg: 'bg-amber-50',
     label: '待同步',
   },
   not_connected: {
     icon: MinusCircle,
     color: 'text-slate-400',
-    bg: 'bg-slate-50 dark:bg-slate-900/30',
+    bg: 'bg-slate-50',
     label: '未连接',
   },
   not_installed: {
     icon: XCircle,
-    color: 'text-slate-300 dark:text-slate-600',
-    bg: 'bg-slate-50/50 dark:bg-slate-900/20',
+    color: 'text-slate-300',
+    bg: 'bg-slate-50/50',
     label: '未安装',
   },
 } as const;
