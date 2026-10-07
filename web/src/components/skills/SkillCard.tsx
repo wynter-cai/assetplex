@@ -1,17 +1,18 @@
 /**
- * 技能卡：复选框 + 职能/出处/版本/副本数 + 职能覆盖下拉 + 查看详情按钮
+ * 技能卡：复选框 + 职能/出处徽章 + 职能覆盖下拉；整卡可点开详情
+ * （spec refactor-design-system skill-card-badges：卡面常驻徽章 ≤2，
+ *   版本/副本/分类来源等低频信息移入详情面板）
  */
 
 import { useQueryClient } from '@tanstack/react-query';
 import { Sparkles } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
 import { toast } from '@/lib/toast-store';
 import { errorMessage } from '@/lib/error-message';
 import { cn } from '@/lib/utils';
-import { FUNCTION_LABELS, FUNCTION_SOURCE_LABELS, FUNCTION_ORDER, provenanceBadgeLabel } from './skill-labels';
+import { FUNCTION_LABELS, FUNCTION_ORDER, provenanceBadgeLabel } from './skill-labels';
 import type { SkillInfo, SkillFunction } from '@/types/api';
 
 export function SkillCard({
@@ -72,28 +73,19 @@ export function SkillCard({
         />
         <Sparkles className="h-4 w-4 text-muted-foreground shrink-0" />
         <span className="text-sm font-medium truncate">{skill.name}</span>
-        {skill.version && (
-          <Badge variant="outline" className="text-xs h-5 px-1 shrink-0">v{skill.version}</Badge>
-        )}
-        {skill.variants > 0 && (
-          <Badge variant="secondary" className="text-xs h-5 px-1 shrink-0">
-            {skill.variants + 1} 副本
-          </Badge>
-        )}
       </div>
       {skill.description && (
         <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{skill.description}</p>
       )}
       <div className="flex flex-wrap items-center gap-1 mb-3">
-        <Badge variant="outline" className="text-xs h-5 px-1">{FUNCTION_LABELS[skill.functionCategory]}</Badge>
-        <Badge variant="outline" className="text-xs h-5 px-1">
-          {provenanceBadgeLabel(skill)}
-        </Badge>
-        <Badge variant="secondary" className="text-xs h-5 px-1">
-          {FUNCTION_SOURCE_LABELS[skill.functionSource]}
-        </Badge>
+        {FUNCTION_LABELS[skill.functionCategory] && (
+          <Badge variant="outline" className="text-xs h-5 px-1">{FUNCTION_LABELS[skill.functionCategory]}</Badge>
+        )}
+        {provenanceBadgeLabel(skill) && (
+          <Badge variant="outline" className="text-xs h-5 px-1">{provenanceBadgeLabel(skill)}</Badge>
+        )}
       </div>
-      <div className="flex items-center justify-between gap-2 pt-2 border-t">
+      <div className="pt-2 border-t">
         <label
           className="flex items-center gap-1.5 text-xs text-muted-foreground"
           onClick={(e) => e.stopPropagation()}
@@ -111,18 +103,6 @@ export function SkillCard({
             ))}
           </select>
         </label>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-7 px-2.5 text-xs shrink-0"
-          onClick={(e) => {
-            e.stopPropagation();
-            onSelect(skill);
-          }}
-          aria-label={`查看 ${skill.name} 详情`}
-        >
-          查看详情
-        </Button>
       </div>
     </Card>
   );

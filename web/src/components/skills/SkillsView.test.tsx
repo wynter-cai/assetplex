@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SkillsView } from './SkillsView';
 import { api } from '@/lib/api';
@@ -55,13 +55,23 @@ describe('SkillsView 技能分类全貌', () => {
     vi.spyOn(api, 'getSkill').mockResolvedValue({ skill: result.items[0], rawContent: '# mycode\n原始内容' });
   });
 
-  it('默认按出处分组，显示总数、版本与副本数', async () => {
+  it('默认按出处分组显示总数；版本与副本不再常驻卡面', async () => {
     renderView();
     expect(await screen.findByText(/去重后共 2 个技能/)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '自建 1' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '官方内置 1' })).toBeInTheDocument();
-    expect(screen.getByText('v1.2.0')).toBeInTheDocument();
-    expect(screen.getByText('3 副本')).toBeInTheDocument();
+    // 卡面减负（spec skill-card-badges）：低频信息移入详情
+    expect(screen.queryByText('v1.2.0')).not.toBeInTheDocument();
+    expect(screen.queryByText('3 副本')).not.toBeInTheDocument();
+  });
+
+  it('低频元信息在详情面板可见：版本、副本数、分类来源', async () => {
+    renderView();
+    fireEvent.click(await screen.findByRole('button', { name: '展开 mycode 卡片' }));
+    const overlay = await screen.findByTestId('detail-overlay');
+    expect(within(overlay).getByText('v1.2.0')).toBeInTheDocument();
+    expect(within(overlay).getByText('关键词')).toBeInTheDocument();
+    expect(within(overlay).getByText(/共 1 个副本/)).toBeInTheDocument();
   });
 
   it('维度切换时子选项卡跟随切换：出处维度显示出处计数条，职能维度显示职能计数条', async () => {
@@ -105,7 +115,7 @@ describe('SkillsView 技能分类全貌', () => {
 
   it('点击技能名打开详情，显示副本位置与 Markdown 渲染的 SKILL.md 内容，可关闭', async () => {
     renderView();
-    const link = await screen.findByRole('button', { name: '查看 pdf 详情' });
+    const link = await screen.findByRole('button', { name: '展开 pdf 卡片' });
     fireEvent.click(link);
     await waitFor(() => {
       expect(api.getSkill).toHaveBeenCalledWith('pdf');
@@ -259,7 +269,7 @@ describe('SkillsView 我的库写管理', () => {
 
   it('库内技能详情提供编辑/删除/同步分发', async () => {
     renderView();
-    fireEvent.click(await screen.findByRole('button', { name: '查看 周报助手 详情' }));
+    fireEvent.click(await screen.findByRole('button', { name: '展开 周报助手 卡片' }));
     expect(await screen.findByRole('button', { name: '编辑' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '删除' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '同步分发' })).toBeInTheDocument();
@@ -267,7 +277,7 @@ describe('SkillsView 我的库写管理', () => {
 
   it('未入库技能详情只读，仅提供同步分发', async () => {
     renderView();
-    fireEvent.click(await screen.findByRole('button', { name: '查看 pdf 详情' }));
+    fireEvent.click(await screen.findByRole('button', { name: '展开 pdf 卡片' }));
     expect(await screen.findByRole('button', { name: '同步分发' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '编辑' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '删除' })).not.toBeInTheDocument();
@@ -275,7 +285,7 @@ describe('SkillsView 我的库写管理', () => {
 
   it('编辑保存调用更新接口并传入修改后的全文', async () => {
     renderView();
-    fireEvent.click(await screen.findByRole('button', { name: '查看 周报助手 详情' }));
+    fireEvent.click(await screen.findByRole('button', { name: '展开 周报助手 卡片' }));
     fireEvent.click(await screen.findByRole('button', { name: '编辑' }));
     const textarea = screen.getByLabelText('编辑 SKILL.md 内容') as HTMLTextAreaElement;
     expect(textarea.value).toContain('# 周报正文');
@@ -289,7 +299,7 @@ describe('SkillsView 我的库写管理', () => {
   it('保存时技能不存在则提示错误并刷新列表', async () => {
     vi.spyOn(api, 'updateSkill').mockRejectedValue(new Error('技能不存在：周报助手'));
     renderView();
-    fireEvent.click(await screen.findByRole('button', { name: '查看 周报助手 详情' }));
+    fireEvent.click(await screen.findByRole('button', { name: '展开 周报助手 卡片' }));
     fireEvent.click(await screen.findByRole('button', { name: '编辑' }));
     fireEvent.click(screen.getByRole('button', { name: '保存' }));
     await waitFor(() => {
@@ -303,7 +313,7 @@ describe('SkillsView 我的库写管理', () => {
 
   it('删除时确认对话框警示影响范围，确认后调用删除接口', async () => {
     renderView();
-    fireEvent.click(await screen.findByRole('button', { name: '查看 周报助手 详情' }));
+    fireEvent.click(await screen.findByRole('button', { name: '展开 周报助手 卡片' }));
     fireEvent.click(await screen.findByRole('button', { name: '删除' }));
     expect(await screen.findByText(/将从我的库及所有已分发工具中删除/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '确认删除' }));
@@ -319,7 +329,7 @@ describe('SkillsView 我的库写管理', () => {
     ];
     vi.spyOn(api, 'runSync').mockResolvedValue({ results });
     renderView();
-    fireEvent.click(await screen.findByRole('button', { name: '查看 周报助手 详情' }));
+    fireEvent.click(await screen.findByRole('button', { name: '展开 周报助手 卡片' }));
     fireEvent.click(await screen.findByRole('button', { name: '同步分发' }));
     fireEvent.click(await screen.findByLabelText('选择同步目标 trae'));
     fireEvent.click(screen.getByLabelText('选择同步目标 codex'));
@@ -412,7 +422,7 @@ describe('SkillsView AI 智能分类', () => {
     vi.spyOn(api, 'getSkill').mockResolvedValue({ skill: result.items[0], rawContent: '# mycode\n原始内容' });
   });
 
-  it('卡片显示分类来源徽章三态，工具栏展示待分类数量', async () => {
+  it('分类来源徽章三态在详情面板可见，卡面不再常驻', async () => {
     vi.spyOn(api, 'listSkills').mockResolvedValue({
       ...result,
       items: [
@@ -422,11 +432,20 @@ describe('SkillsView AI 智能分类', () => {
       ],
     });
     renderView();
+    // 卡面减负：分类来源不上卡面
+    await screen.findByRole('button', { name: '展开 a 卡片' });
+    expect(screen.queryByText('AI')).not.toBeInTheDocument();
+    expect(screen.queryByText('手动')).not.toBeInTheDocument();
+    expect(screen.queryByText('关键词')).not.toBeInTheDocument();
+    // 详情面板可见三态
+    fireEvent.click(screen.getByRole('button', { name: '展开 a 卡片' }));
     expect(await screen.findByText('AI')).toBeInTheDocument();
-    expect(screen.getByText('手动')).toBeInTheDocument();
-    expect(screen.getByText('关键词')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '展开 b 卡片' }));
+    expect(await screen.findByText('手动')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '展开 c 卡片' }));
+    expect(await screen.findByText('关键词')).toBeInTheDocument();
     // 待分类数量 = 关键词源数量（手动跳过、AI 源为缓存命中不占调用）
-    expect(await screen.findByText(/全部 AI 分类（待分类 1）/)).toBeInTheDocument();
+    expect(screen.getByText(/全部 AI 分类（待分类 1）/)).toBeInTheDocument();
   });
 
   it('配置完整时点击全部 AI 分类调用分类接口并汇总结果', async () => {
@@ -579,7 +598,7 @@ describe('SkillsView 项目技能', () => {
 
   it('详情展示所属工作区路径，且提供收藏到我的库入口', async () => {
     renderView();
-    fireEvent.click(await screen.findByRole('button', { name: '查看 douyin-x 详情' }));
+    fireEvent.click(await screen.findByRole('button', { name: '展开 douyin-x 卡片' }));
     expect(await screen.findByText('所属工作区')).toBeInTheDocument();
     expect(screen.getByText('Zhihu')).toBeInTheDocument();
     expect(screen.getByText('~/projects/Zhihu')).toBeInTheDocument();

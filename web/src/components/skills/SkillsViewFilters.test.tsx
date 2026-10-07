@@ -111,7 +111,7 @@ describe('SkillsView 出处与库状态组合筛选', () => {
   it('术语走查：页面无「保险箱」「沉淀」，未入库详情提供「收藏到我的库」', async () => {
     renderView();
     await screen.findByText(/去重后共 442 个技能/);
-    fireEvent.click(await screen.findByRole('button', { name: '查看 airbnb 详情' }));
+    fireEvent.click(await screen.findByRole('button', { name: '展开 airbnb 卡片' }));
     expect(await screen.findByRole('button', { name: '收藏到我的库' })).toBeInTheDocument();
     expect(document.body.textContent).not.toContain('保险箱');
     expect(document.body.textContent).not.toContain('沉淀');
