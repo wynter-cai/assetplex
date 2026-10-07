@@ -14,9 +14,11 @@ import Rules from './pages/Rules';
 import Mcp from './pages/Mcp';
 import Settings from './pages/Settings';
 import Projects from './pages/Projects';
+import { Toaster } from './components/ui/toast';
 
 export default function App(): JSX.Element {
   return (
+    <>
     <Routes>
       <Route element={<AppLayout />}>
         <Route path="/" element={<Home />} />
@@ -48,5 +50,7 @@ export default function App(): JSX.Element {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
+    <Toaster />
+    </>
   );
 }
