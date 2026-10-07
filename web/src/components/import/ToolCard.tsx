@@ -29,7 +29,7 @@ export function ToolCard({ tool, selected, onToggle }: Props) {
           <div className="flex items-center gap-2">
             <span className="font-medium text-sm truncate">{tool.displayName}</span>
             {tool.installed ? (
-              <Badge variant="outline" className="text-green-600 border-green-300 text-xs">
+              <Badge variant="outline" className="text-success border-success/40 text-xs">
                 <CheckCircle className="h-3 w-3 mr-1" />
                 已安装
               </Badge>

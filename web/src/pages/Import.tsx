@@ -207,7 +207,7 @@ export default function Import() {
                   active
                     ? 'bg-primary text-primary-foreground'
                     : done
-                      ? 'bg-green-100 text-green-700'
+                      ? 'bg-success-soft text-success'
                       : 'bg-muted text-muted-foreground'
                 }`}
               >
@@ -342,7 +342,7 @@ export default function Import() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-amber-500" />
+                <AlertTriangle className="h-4 w-4 text-warning" />
                 {groupedConflicts.length} 个文件存在冲突
                 {groupedConflicts.some((g) => g.sources.length > 1) && (
                   <Badge variant="outline" className="text-xs ml-1">含多来源</Badge>
@@ -396,19 +396,19 @@ export default function Import() {
             <div className="grid gap-4 md:grid-cols-5">
               <Card>
                 <CardContent className="pt-4 text-center">
-                  <div className="text-2xl font-bold text-green-600">{result.created}</div>
+                  <div className="text-2xl font-bold text-success">{result.created}</div>
                   <div className="text-xs text-muted-foreground">新增</div>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="pt-4 text-center">
-                  <div className="text-2xl font-bold text-blue-600">{result.merged}</div>
+                  <div className="text-2xl font-bold text-info">{result.merged}</div>
                   <div className="text-xs text-muted-foreground">合并</div>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="pt-4 text-center">
-                  <div className="text-2xl font-bold text-amber-600">{result.overwritten}</div>
+                  <div className="text-2xl font-bold text-warning">{result.overwritten}</div>
                   <div className="text-xs text-muted-foreground">覆盖</div>
                 </CardContent>
               </Card>
@@ -420,7 +420,7 @@ export default function Import() {
               </Card>
               <Card>
                 <CardContent className="pt-4 text-center">
-                  <div className={`text-2xl font-bold ${result.errors > 0 ? 'text-red-600' : 'text-muted-foreground'}`}>
+                  <div className={`text-2xl font-bold ${result.errors > 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
                     {result.errors}
                   </div>
                   <div className="text-xs text-muted-foreground">错误</div>
@@ -432,11 +432,11 @@ export default function Import() {
             <div className="space-y-1 max-h-64 overflow-y-auto">
               {result.items.map((item, idx) => (
                 <div key={idx} className="flex items-center gap-2 px-3 py-2 rounded text-sm">
-                  {item.status === 'created' && <CheckCircle className="h-3.5 w-3.5 text-green-500" />}
-                  {item.status === 'merged' && <CheckCircle className="h-3.5 w-3.5 text-blue-500" />}
-                  {item.status === 'overwritten' && <CheckCircle className="h-3.5 w-3.5 text-amber-500" />}
+                  {item.status === 'created' && <CheckCircle className="h-3.5 w-3.5 text-success" />}
+                  {item.status === 'merged' && <CheckCircle className="h-3.5 w-3.5 text-info" />}
+                  {item.status === 'overwritten' && <CheckCircle className="h-3.5 w-3.5 text-warning" />}
                   {item.status === 'skipped' && <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
-                  {item.status === 'error' && <XCircle className="h-3.5 w-3.5 text-red-500" />}
+                  {item.status === 'error' && <XCircle className="h-3.5 w-3.5 text-destructive" />}
                   <span className="truncate">{item.hubTargetPath}</span>
                   <span className="text-xs text-muted-foreground ml-auto shrink-0">
                     {item.status === 'created' && '新增'}

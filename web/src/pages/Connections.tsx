@@ -26,7 +26,7 @@ function StatusDot({ installed, enabled }: { installed: boolean; enabled?: boole
   if (enabled === false) {
     return <span className="inline-block h-2 w-2 rounded-full bg-slate-400" title="已安装但未启用" />;
   }
-  return <span className="inline-block h-2 w-2 rounded-full bg-green-500" title="已连接" />;
+  return <span className="inline-block h-2 w-2 rounded-full bg-success" title="已连接" />;
 }
 
 /** 格式化文件大小 */
@@ -121,7 +121,7 @@ function ToolDetailPanel({ toolName }: { toolName: string }): JSX.Element {
       {/* 资产分发概览 */}
       <div className="p-4 border-b">
         <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
-          <CheckCircle2 className="h-4 w-4 text-green-600" />
+          <CheckCircle2 className="h-4 w-4 text-success" />
           已同步资产
         </h3>
         {!tool.installed ? (
@@ -154,7 +154,7 @@ function ToolDetailPanel({ toolName }: { toolName: string }): JSX.Element {
       {tool.installed && (
         <div className="p-4">
           <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 text-amber-600" />
+            <AlertCircle className="h-4 w-4 text-warning" />
             可导入资产
           </h3>
           {(['identity', 'skill', 'rule', 'mcp'] as const).map((catCode) => {

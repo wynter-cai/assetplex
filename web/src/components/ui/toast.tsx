@@ -2,7 +2,7 @@
  * 全局 Toaster（fix-ui-trust-gaps T4）
  *
  * 基于 @radix-ui/react-toast；白底卡片 + 语义色图标/左条，
- * 文字保持近黑，不依赖语义色背景承载对比度（P1 令牌化前的稳妥方案）。
+ * 文字保持近黑，不依赖语义色背景承载对比度（P1 已令牌化：success→--success，error→--destructive）。
  * 批量明细 >3 条折叠；自动关闭时长由 store 按 success/error 区分。
  */
 
@@ -21,14 +21,14 @@ const VARIANT_META: Record<
 > = {
   success: {
     icon: CheckCircle2,
-    iconClass: 'text-green-600',
-    barClass: 'bg-green-600',
+    iconClass: 'text-success',
+    barClass: 'bg-success',
     ariaLabel: '成功',
   },
   error: {
     icon: AlertTriangle,
-    iconClass: 'text-red-600',
-    barClass: 'bg-red-600',
+    iconClass: 'text-destructive',
+    barClass: 'bg-destructive',
     ariaLabel: '错误',
   },
   info: {

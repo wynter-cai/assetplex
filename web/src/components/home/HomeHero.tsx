@@ -10,9 +10,9 @@ interface HomeHeroProps {
 export function HomeHero({ hubInitialized, healthScore, onStartOnboarding }: HomeHeroProps): JSX.Element {
   if (!hubInitialized) {
     return (
-      <Card className="bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-200">
+      <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
         <CardContent className="p-8 text-center">
-          <Boxes className="h-12 w-12 mx-auto text-indigo-500 mb-4" />
+          <Boxes className="h-12 w-12 mx-auto text-primary mb-4" />
           <h2 className="text-2xl font-bold mb-2">欢迎使用 AssetPlex</h2>
           <p className="text-muted-foreground mb-6">
             你的 AI 资产库 — 掌控身份、技能、规则、MCP，换工具不丢东西
@@ -20,7 +20,7 @@ export function HomeHero({ hubInitialized, healthScore, onStartOnboarding }: Hom
           <button
             type="button"
             onClick={onStartOnboarding}
-            className="inline-flex items-center gap-2 rounded-md bg-indigo-600 text-white px-6 py-3 text-sm font-medium hover:bg-indigo-700 transition-colors"
+            className="inline-flex items-center gap-2 rounded-md bg-primary text-primary-foreground px-6 py-3 text-sm font-medium hover:bg-primary/90 transition-colors"
           >
             开始盘点你的 AI 资产
           </button>
@@ -33,8 +33,8 @@ export function HomeHero({ hubInitialized, healthScore, onStartOnboarding }: Hom
     <Card>
       <CardContent className="p-6 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <div className="h-12 w-12 rounded-full bg-indigo-100 flex items-center justify-center">
-            <ShieldCheck className="h-6 w-6 text-indigo-600" />
+          <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+            <ShieldCheck className="h-6 w-6 text-primary" />
           </div>
           <div>
             <h2 className="text-xl font-semibold">欢迎回来</h2>
@@ -44,7 +44,7 @@ export function HomeHero({ hubInitialized, healthScore, onStartOnboarding }: Hom
           </div>
         </div>
         <div className="text-right">
-          <div className="text-2xl font-bold text-indigo-600">{healthScore}</div>
+          <div className="text-2xl font-bold text-primary">{healthScore}</div>
           <div className="text-xs text-muted-foreground">健康度</div>
         </div>
       </CardContent>

@@ -39,7 +39,7 @@ export default function Home(): JSX.Element {
   if (isError || !data) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-        <AlertTriangle className="h-12 w-12 text-red-400 mb-4" />
+        <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
         <h2 className="text-lg font-semibold mb-2">无法连接到 AssetPlex 服务</h2>
         <p className="text-sm text-muted-foreground mb-4">
           请确认服务正在运行，然后重试。

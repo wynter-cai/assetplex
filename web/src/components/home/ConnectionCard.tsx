@@ -10,14 +10,14 @@ interface ConnectionCardProps {
 const STATUS_CONFIG = {
   synced: {
     icon: CheckCircle2,
-    color: 'text-green-500',
-    bg: 'bg-green-50',
+    color: 'text-success',
+    bg: 'bg-success-soft',
     label: '已同步',
   },
   pending: {
     icon: AlertCircle,
-    color: 'text-amber-500',
-    bg: 'bg-amber-50',
+    color: 'text-warning',
+    bg: 'bg-warning-soft',
     label: '待同步',
   },
   not_connected: {

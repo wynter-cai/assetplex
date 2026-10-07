@@ -95,21 +95,21 @@ export function ConflictDialog({
   const activeSource = sources[activeSourceIdx] ?? sources[0];
 
   return (
-    <div className="border border-amber-200 bg-amber-50 rounded-md overflow-hidden">
+    <div className="border border-warning/30 bg-warning-soft rounded-md overflow-hidden">
       <div className="flex items-center gap-3 px-4 py-3">
         {/* 文件信息 */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-medium truncate">{hubTargetPath}</span>
             {multiSource && (
-              <Badge variant="secondary" className="text-[10px] h-4 px-1 bg-amber-200 text-amber-800">
+              <Badge variant="secondary" className="text-[10px] h-4 px-1 bg-warning-soft text-warning">
                 {sources.length} 个来源
               </Badge>
             )}
           </div>
           <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground flex-wrap gap-y-0.5">
             <span>Hub: <span className="text-foreground/70">{existingSize ? formatSize(existingSize) : 'N/A'}</span></span>
-            <span className="text-amber-500">→</span>
+            <span className="text-warning">→</span>
             {sources.length === 1 ? (
               <span>
                 {TOOL_DISPLAY[sources[0].tool] ?? sources[0].tool}:{' '}
@@ -121,7 +121,7 @@ export function ConflictDialog({
                   <span key={`${s.tool}:${s.sourcePath}`} className="inline-flex items-center gap-0.5">
                     {TOOL_DISPLAY[s.tool] ?? s.tool}
                     <span className="text-foreground/70">({formatSize(s.size)})</span>
-                    {i < sources.length - 1 && <span className="text-amber-500/60 mx-0.5">·</span>}
+                    {i < sources.length - 1 && <span className="text-warning/60 mx-0.5">·</span>}
                   </span>
                 ))}
               </div>
@@ -134,7 +134,7 @@ export function ConflictDialog({
           variant="ghost"
           size="sm"
           onClick={() => setExpanded(!expanded)}
-          className="h-7 px-2 text-xs text-amber-700 hover:bg-amber-100 shrink-0"
+          className="h-7 px-2 text-xs text-warning hover:bg-warning-soft shrink-0"
         >
           {expanded ? (
             <>
@@ -173,7 +173,7 @@ export function ConflictDialog({
 
       {/* 当前策略说明 */}
       <div className="px-4 pb-2 -mt-1">
-        <div className="text-xs text-amber-700 flex items-center gap-1">
+        <div className="text-xs text-warning flex items-center gap-1">
           <span className="font-medium">{selectedOption.label}：</span>
           <span className="text-muted-foreground">{getStrategyHint(strategy, category, multiSource)}</span>
         </div>

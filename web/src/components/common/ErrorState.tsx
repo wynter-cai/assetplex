@@ -37,7 +37,7 @@ export function ErrorState({
         className,
       )}
     >
-      <AlertTriangle className="mb-3 h-8 w-8 text-amber-500" aria-hidden="true" />
+      <AlertTriangle className="mb-3 h-8 w-8 text-warning" aria-hidden="true" />
       <h3 className="mb-1 text-sm font-semibold">{title}</h3>
       <p className="mb-4 max-w-sm text-xs text-muted-foreground">{description}</p>
       {onRetry && (

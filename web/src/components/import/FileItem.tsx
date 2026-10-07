@@ -56,18 +56,18 @@ export function FileItem({ item, selected, onToggle }: Props) {
         </div>
       </div>
       {item.conflict === 'differs' && (
-        <Badge variant="outline" className="text-amber-600 border-amber-300 text-xs shrink-0">
+        <Badge variant="outline" className="text-warning border-warning/40 text-xs shrink-0">
           <AlertTriangle className="h-3 w-3 mr-1" />
           冲突
         </Badge>
       )}
       {item.conflict === 'exists' && (
-        <Badge variant="outline" className="text-blue-600 border-blue-300 text-xs shrink-0">
+        <Badge variant="outline" className="text-info border-info/40 text-xs shrink-0">
           已存在
         </Badge>
       )}
       {item.conflict === 'none' && (
-        <Badge variant="outline" className="text-green-600 border-green-300 text-xs shrink-0">
+        <Badge variant="outline" className="text-success border-success/40 text-xs shrink-0">
           新文件
         </Badge>
       )}

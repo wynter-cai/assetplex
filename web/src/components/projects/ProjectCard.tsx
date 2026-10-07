@@ -79,7 +79,7 @@ export function ProjectCard({ project }: { project: ProjectInfo }): JSX.Element 
             <GitBranch className="h-3 w-3" />
             <span>{project.git.branch ?? '未知分支'}</span>
             {project.git.hasUncommittedChanges && (
-              <span className="text-amber-600">有未提交变更</span>
+              <span className="text-warning">有未提交变更</span>
             )}
           </>
         ) : (

@@ -106,12 +106,12 @@ function rowClass(type: DiffLine['type'], side: 'left' | 'right'): string {
   const isLeft = side === 'left';
   switch (type) {
     case 'added':
-      return isLeft ? 'bg-green-100' : 'bg-transparent';
+      return isLeft ? 'bg-success-soft' : 'bg-transparent';
     case 'removed':
-      return isLeft ? 'bg-transparent' : 'bg-red-100';
+      return isLeft ? 'bg-transparent' : 'bg-destructive/10';
     case 'modified-old':
     case 'modified-new':
-      return 'bg-amber-100';
+      return 'bg-warning-soft';
     default:
       return '';
   }
@@ -121,12 +121,12 @@ function indicatorClass(type: DiffLine['type'], side: 'left' | 'right'): string 
   const isLeft = side === 'left';
   switch (type) {
     case 'added':
-      return isLeft ? 'text-green-600 font-bold' : 'text-transparent';
+      return isLeft ? 'text-success font-bold' : 'text-transparent';
     case 'removed':
-      return isLeft ? 'text-transparent' : 'text-red-600 font-bold';
+      return isLeft ? 'text-transparent' : 'text-destructive font-bold';
     case 'modified-old':
     case 'modified-new':
-      return 'text-amber-600 font-bold';
+      return 'text-warning font-bold';
     default:
       return 'text-transparent';
   }
@@ -135,12 +135,12 @@ function indicatorClass(type: DiffLine['type'], side: 'left' | 'right'): string 
 function lineNumClass(type: DiffLine['type']): string {
   switch (type) {
     case 'added':
-      return 'text-green-700/60';
+      return 'text-success/60';
     case 'removed':
-      return 'text-red-700/60';
+      return 'text-destructive/60';
     case 'modified-old':
     case 'modified-new':
-      return 'text-amber-700/60';
+      return 'text-warning/60';
     default:
       return 'text-muted-foreground/40';
   }
@@ -164,7 +164,7 @@ export function DiffView({ sourcePath, hubTargetPath }: Props) {
 
   if (error) {
     return (
-      <div className="flex items-center gap-2 text-red-500 py-2 text-sm">
+      <div className="flex items-center gap-2 text-destructive py-2 text-sm">
         <AlertCircle className="h-4 w-4" />
         加载失败: {(error as Error).message}
       </div>
@@ -185,7 +185,7 @@ export function DiffView({ sourcePath, hubTargetPath }: Props) {
   if (allSame && hubLines.length > 0) {
     return (
       <div className="text-sm text-muted-foreground py-2 flex items-center gap-2">
-        <span className="text-green-600">✓</span>
+        <span className="text-success">✓</span>
         内容完全相同，无需合并
       </div>
     );
@@ -201,21 +201,21 @@ export function DiffView({ sourcePath, hubTargetPath }: Props) {
     <div className="border rounded-md overflow-hidden text-xs font-mono select-text">
       {/* 统计栏 */}
       <div className="flex items-center gap-3 px-3 py-1.5 bg-muted/50 border-b text-xs">
-        {addedCount > 0 && <span className="text-green-600">+{addedCount} 新增</span>}
-        {removedCount > 0 && <span className="text-red-600">-{removedCount} 删除</span>}
-        {modifiedCount > 0 && <span className="text-amber-600">~{modifiedCount} 修改</span>}
+        {addedCount > 0 && <span className="text-success">+{addedCount} 新增</span>}
+        {removedCount > 0 && <span className="text-destructive">-{removedCount} 删除</span>}
+        {modifiedCount > 0 && <span className="text-warning">~{modifiedCount} 修改</span>}
         {addedCount === 0 && removedCount === 0 && modifiedCount === 0 && (
           <span className="text-muted-foreground">无差异</span>
         )}
       </div>
       {/* 表头 */}
       <div className="flex bg-muted">
-        <div className="flex-1 px-3 py-1.5 text-blue-600 font-medium border-r flex items-center gap-1.5">
-          <span className="inline-block w-2 h-2 rounded-full bg-blue-500" />
+        <div className="flex-1 px-3 py-1.5 text-info font-medium border-r flex items-center gap-1.5">
+          <span className="inline-block w-2 h-2 rounded-full bg-info" />
           工具文件（新内容）
         </div>
-        <div className="flex-1 px-3 py-1.5 text-green-700 font-medium flex items-center gap-1.5">
-          <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
+        <div className="flex-1 px-3 py-1.5 text-success font-medium flex items-center gap-1.5">
+          <span className="inline-block w-2 h-2 rounded-full bg-success" />
           Hub 文件（当前内容）
         </div>
       </div>

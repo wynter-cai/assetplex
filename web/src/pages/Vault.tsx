@@ -229,7 +229,7 @@ export default function Vault(): JSX.Element {
 
         {/* 错误 */}
         {error && (
-          <Card className="p-6 text-center text-red-500">
+          <Card className="p-6 text-center text-destructive">
             加载失败: {error instanceof Error ? error.message : String(error)}
           </Card>
         )}

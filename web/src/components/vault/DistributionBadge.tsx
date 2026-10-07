@@ -19,9 +19,9 @@ export function DistributionBadge({ distributions }: DistributionBadgeProps): JS
   }
 
   const statusColor: Record<string, string> = {
-    synced: 'bg-green-500',
-    pending: 'bg-amber-500',
-    conflict: 'bg-red-500',
+    synced: 'bg-success',
+    pending: 'bg-warning',
+    conflict: 'bg-destructive',
     not_enabled: 'bg-slate-300',
     not_installed: 'bg-slate-200',
   };
