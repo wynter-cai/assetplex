@@ -11,8 +11,8 @@ import { checkHubHealth, HUB_CATEGORIES } from './hub-files.js';
 import { hubContext } from '../server/lib/hub-context.js';
 import type { ToolAdapter } from './adapters/base.js';
 
-/** 前端资产类别（单数形式） */
-export type FrontendCategory = 'identity' | 'skill' | 'rule' | 'mcp';
+/** 前端资产类别（单数形式，5 类与前端 ASSET_CATEGORIES 对齐） */
+export type FrontendCategory = 'identity' | 'skill' | 'rule' | 'mcp' | 'agent';
 
 /** 后端类别到前端类别的映射 */
 const CATEGORY_MAP: Record<string, FrontendCategory> = {
@@ -20,6 +20,7 @@ const CATEGORY_MAP: Record<string, FrontendCategory> = {
   skills: 'skill',
   rules: 'rule',
   mcp: 'mcp',
+  agents: 'agent',
 };
 
 /** 工具连接状态（前端用） */
@@ -64,6 +65,7 @@ export async function getOverview(): Promise<OverviewData> {
     skill: 0,
     rule: 0,
     mcp: 0,
+    agent: 0,
   } as Record<FrontendCategory, number>;
 
   for (const cat of HUB_CATEGORIES) {
@@ -74,7 +76,9 @@ export async function getOverview(): Promise<OverviewData> {
   }
 
   const totalAssets = Object.values(assetStats).reduce((s, n) => s + n, 0);
-  const hubInitialized = health.hubExists && health.hubTomlExists && totalAssets > 0;
+  // 有资产即视为已开始使用：hub.toml 缺失属于可自愈的配置缺口（getConfig 有默认值），
+  // 不应把保险箱中已有资产的用户挡在指挥中心之外（fix-ui-trust-gaps T1）
+  const hubInitialized = health.hubExists && totalAssets > 0;
 
   // 2. 健康度计算（简单算法）
   const healthScore = computeHealthScore(totalAssets);
