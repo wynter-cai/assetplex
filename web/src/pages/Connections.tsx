@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useSearchParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { RefreshCw, HardDrive, AlertCircle, CheckCircle2, Download, Folder, Box } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { api } from '@/lib/api';
 import { ASSET_CATEGORIES, getCategoryConfig } from '@/config/asset-categories';
+import { useToolActions } from '@/components/connections/useToolActions';
 
 const TOOL_DISPLAY_NAME: Record<string, string> = {
   'trae-cn': 'TRAE 中国版',
@@ -45,6 +46,10 @@ function ToolDetailPanel({ toolName }: { toolName: string }): JSX.Element {
     queryKey: ['assets'],
     queryFn: () => api.listAssets(),
   });
+  const { toggle, detect } = useToolActions(
+    toolName,
+    TOOL_DISPLAY_NAME[toolName] ?? toolName,
+  );
 
   if (isLoading || !detail) {
     return (
@@ -57,6 +62,11 @@ function ToolDetailPanel({ toolName }: { toolName: string }): JSX.Element {
   }
 
   const tool = detail.tool;
+  const displayName = TOOL_DISPLAY_NAME[tool.name] ?? tool.name;
+  // 请求进行中显示期望值；settle 后（成功/失败）回到服务端实际值
+  const switchChecked = toggle.isPending
+    ? (toggle.variables ?? tool.enabled ?? false)
+    : (tool.enabled ?? false);
   const discovered = detail.discovered ?? { identities: [], rules: [], skills: [], mcps: [] };
   const unimportedByCategory = {
     identity: discovered.identities,
@@ -88,11 +98,22 @@ function ToolDetailPanel({ toolName }: { toolName: string }): JSX.Element {
           </div>
         )}
         <div className="flex items-center gap-2 mt-3">
-          <Switch checked={tool.enabled ?? false} disabled={!tool.installed} />
+          <Switch
+            checked={switchChecked}
+            disabled={!tool.installed || toggle.isPending}
+            onCheckedChange={(checked) => toggle.mutate(checked)}
+            aria-label={`开启或关闭「${displayName}」同步`}
+          />
           <span className="text-sm">启用同步</span>
-          <Button variant="ghost" size="sm" className="ml-auto h-7 px-2 text-xs">
-            <RefreshCw className="h-3 w-3 mr-1" />
-            重新检测
+          <Button
+            variant="ghost"
+            size="sm"
+            className="ml-auto h-7 px-2 text-xs"
+            disabled={detect.isPending}
+            onClick={() => detect.mutate()}
+          >
+            <RefreshCw className={`h-3 w-3 mr-1 ${detect.isPending ? 'animate-spin' : ''}`} />
+            {detect.isPending ? '检测中…' : '重新检测'}
           </Button>
         </div>
       </div>
@@ -170,10 +191,10 @@ function ToolDetailPanel({ toolName }: { toolName: string }): JSX.Element {
           )}
           {(discovered.identities.length + discovered.rules.length + discovered.skills.length + discovered.mcps.length) > 0 && (
             <Button size="sm" className="w-full mt-2" asChild>
-              <a href="/import">
+              <Link to="/import">
                 <Download className="h-3.5 w-3.5 mr-1.5" />
                 导入到 Hub
-              </a>
+              </Link>
             </Button>
           )}
         </div>
@@ -183,16 +204,23 @@ function ToolDetailPanel({ toolName }: { toolName: string }): JSX.Element {
 }
 
 export default function Connections(): JSX.Element {
-  const [selectedTool, setSelectedTool] = useState<string | null>(null);
-  const { data, isLoading } = useQuery({
+  const [searchParams, setSearchParams] = useSearchParams();
+  const selectedTool = searchParams.get('tool');
+  const toolsQuery = useQuery({
     queryKey: ['tools'],
     queryFn: api.getTools,
   });
+  const { isLoading, refetch, isFetching } = toolsQuery;
 
-  const tools = data?.tools ?? [];
+  const tools = toolsQuery.data?.tools ?? [];
+  // ?tool=<name> 深链；名字无效（已卸载/拼错）时回退第一个
   const currentTool = selectedTool
     ? tools.find((t) => t.name === selectedTool) ?? tools[0]
     : tools[0];
+
+  const selectTool = (name: string): void => {
+    setSearchParams({ tool: name }, { replace: true });
+  };
 
   return (
     <div className="flex h-full -mx-4 -mt-4">
@@ -216,7 +244,7 @@ export default function Connections(): JSX.Element {
                 <button
                   key={tool.name}
                   type="button"
-                  onClick={() => setSelectedTool(tool.name)}
+                  onClick={() => selectTool(tool.name)}
                   className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-colors ${
                     isActive ? 'bg-accent' : 'hover:bg-accent/40'
                   }`}
@@ -241,9 +269,15 @@ export default function Connections(): JSX.Element {
           )}
         </div>
         <div className="p-3 border-t">
-          <Button variant="outline" size="sm" className="w-full text-xs" disabled={isLoading}>
-            <HardDrive className="h-3 w-3 mr-1.5" />
-            扫描新工具
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full text-xs"
+            disabled={isLoading || isFetching}
+            onClick={() => void refetch()}
+          >
+            <HardDrive className={`h-3 w-3 mr-1.5 ${isFetching ? 'animate-spin' : ''}`} />
+            {isFetching ? '扫描中…' : '重新扫描'}
           </Button>
         </div>
       </div>
