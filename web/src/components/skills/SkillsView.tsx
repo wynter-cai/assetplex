@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { Sparkles } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -42,6 +42,8 @@ export function SkillsView(): JSX.Element {
         status: statusParam,
         search: search || undefined,
       }),
+    // 切 tab/筛选时沿用上一份数据渲染，数字不闪 0（spec fix-scan-count-gaps）
+    placeholderData: keepPreviousData,
   });
 
   // 筛选/维度/搜索变化时清空勾选（勾选集合只对当前结果有意义）
@@ -123,11 +125,16 @@ export function SkillsView(): JSX.Element {
       .finally(() => setCurating(false));
   };
 
-  const hasActiveFilter = functionFilter !== null || provenanceFilter !== null || statusFilter !== 'all';
+  const hasActiveFilter =
+    functionFilter !== null ||
+    provenanceFilter !== null ||
+    statusFilter !== 'all' ||
+    search.trim() !== '';
   const clearFilter = (): void => {
     setFunctionFilter(null);
     setProvenanceFilter(null);
     setStatusFilter('all');
+    setSearch('');
   };
 
   // 按当前维度分组（仅展示有技能的分组）
@@ -194,7 +201,9 @@ export function SkillsView(): JSX.Element {
       )}
 
       <p className="text-xs text-muted-foreground mb-3">
-        去重后共 {data?.total ?? 0} 个技能（同名副本已合并）
+        {hasActiveFilter
+          ? `当前视图 ${data?.items.length ?? 0} 个技能`
+          : `去重后共 ${data?.total ?? 0} 个技能（同名副本已合并）`}
       </p>
 
       {error && (

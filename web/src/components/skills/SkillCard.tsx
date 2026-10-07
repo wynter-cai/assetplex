@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
-import { FUNCTION_LABELS, PROVENANCE_LABELS, FUNCTION_SOURCE_LABELS, FUNCTION_ORDER } from './skill-labels';
+import { FUNCTION_LABELS, FUNCTION_SOURCE_LABELS, FUNCTION_ORDER, provenanceBadgeLabel } from './skill-labels';
 import type { SkillInfo, SkillFunction } from '@/types/api';
 
 export function SkillCard({
@@ -85,9 +85,7 @@ export function SkillCard({
       <div className="flex flex-wrap items-center gap-1 mb-3">
         <Badge variant="outline" className="text-[10px] h-4 px-1">{FUNCTION_LABELS[skill.functionCategory]}</Badge>
         <Badge variant="outline" className="text-[10px] h-4 px-1">
-          {skill.provenance === 'self' && skill.workspaceName
-            ? `项目 · ${skill.workspaceName}`
-            : PROVENANCE_LABELS[skill.provenance]}
+          {provenanceBadgeLabel(skill)}
         </Badge>
         <Badge variant="secondary" className="text-[10px] h-4 px-1">
           {FUNCTION_SOURCE_LABELS[skill.functionSource]}

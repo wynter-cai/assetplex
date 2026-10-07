@@ -93,11 +93,12 @@ describe('SkillsView 出处与库状态组合筛选', () => {
     });
   });
 
-  it('我的库视图：出处 chips 计数联动重算（31/0/0/0）', async () => {
+  it('我的库视图：统计行显示当前视图卡片数，出处 chips 计数联动重算（31/0/0/0）', async () => {
     renderView();
     await screen.findByText(/去重后共 442 个技能/);
     fireEvent.click(screen.getByRole('button', { name: '我的库 31' }));
-    expect(await screen.findByText(/去重后共 31 个技能/)).toBeInTheDocument();
+    // spec fix-scan-count-gaps：有筛选时统计行用当前视图卡片数（libraryResult.items 共 1 条）
+    expect(await screen.findByText('当前视图 1 个技能')).toBeInTheDocument();
     expect(await screen.findByRole('button', { name: '自建 31' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '市场安装 0' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '插件自带 0' })).toBeInTheDocument();

@@ -44,6 +44,34 @@ export const FUNCTION_ORDER: SkillFunction[] = [
 
 export const PROVENANCE_ORDER: SkillProvenance[] = ['self', 'marketplace', 'plugin', 'builtin'];
 
+/** 来源工具标注（spec fix-scan-count-gaps：官方内置徽章区分 TRAE / WorkBuddy 官方） */
+export const TOOL_LABELS: Record<string, string> = {
+  trae: 'TRAE',
+  codebuddy: 'CodeBuddy',
+  workbuddy: 'WorkBuddy',
+  hub: '保险箱',
+};
+
+/**
+ * 出处徽章文案：
+ * - 项目技能优先显示工作区名（项目 · ××）
+ * - 官方内置追加来源工具后缀（官方内置 · TRAE / WorkBuddy）
+ * - 其余维持纯出处标签
+ */
+export function provenanceBadgeLabel(skill: {
+  provenance: SkillProvenance;
+  tool: string;
+  workspaceName?: string;
+}): string {
+  if (skill.provenance === 'self' && skill.workspaceName) {
+    return `项目 · ${skill.workspaceName}`;
+  }
+  if (skill.provenance === 'builtin') {
+    return `${PROVENANCE_LABELS.builtin} · ${TOOL_LABELS[skill.tool] ?? skill.tool}`;
+  }
+  return PROVENANCE_LABELS[skill.provenance];
+}
+
 /**
  * 收藏溯源内部 origin → 纯出处映射（source frontmatter `${origin}:${path}` 格式不变，仅内部使用）；
  * personal/project/vault 无外部出处记 self，marketplace/plugin/builtin 保留原出处

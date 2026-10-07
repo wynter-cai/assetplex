@@ -15,7 +15,7 @@ import { api } from '@/lib/api';
 import { useEscapeKey } from '@/lib/use-escape-key';
 import { Markdown, stripFrontmatter } from '@/components/common/Markdown';
 import { SyncDistribute } from '@/components/common/SyncDistribute';
-import { FUNCTION_LABELS, PROVENANCE_LABELS, FUNCTION_SOURCE_LABELS, parseCurateSource } from './skill-labels';
+import { FUNCTION_LABELS, PROVENANCE_LABELS, FUNCTION_SOURCE_LABELS, parseCurateSource, provenanceBadgeLabel } from './skill-labels';
 import { DeleteConfirmDialog, CurateDialog } from './SkillDialogs';
 import { useAiClassify } from './use-ai-classify';
 import { AiConfigDialog } from './AiConfigDialog';
@@ -98,11 +98,7 @@ export function SkillDetail({ skill, onClose, onCurated }: SkillDetailProps): JS
       <div className="p-4 space-y-4 overflow-y-auto min-h-0 flex-1 flex flex-col">
         <div className="flex flex-wrap gap-1.5">
           <Badge variant="outline">{FUNCTION_LABELS[skill.functionCategory]}</Badge>
-          <Badge variant="outline">
-            {skill.provenance === 'self' && skill.workspaceName
-              ? `项目 · ${skill.workspaceName}`
-              : PROVENANCE_LABELS[skill.provenance]}
-          </Badge>
+          <Badge variant="outline">{provenanceBadgeLabel(skill)}</Badge>
           <Badge variant="secondary">{FUNCTION_SOURCE_LABELS[skill.functionSource]}</Badge>
           {isLibrary && sourceInfo && sourceInfo.provenance !== 'self' && (
             <Badge variant="secondary">来自 {PROVENANCE_LABELS[sourceInfo.provenance]}</Badge>

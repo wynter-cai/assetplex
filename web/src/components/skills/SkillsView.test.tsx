@@ -579,3 +579,33 @@ describe('SkillsView 项目技能', () => {
     expect(await screen.findByRole('button', { name: /收藏到我的库/ })).toBeInTheDocument();
   });
 });
+
+describe('SkillsView 统计行与来源徽章（spec: fix-scan-count-gaps）', () => {
+  it('无筛选显示全集 total，筛选「我的库」后显示当前视图卡片数', async () => {
+    const librarySkill = skill({
+      id: 'a', name: 'a', functionCategory: 'coding', provenance: 'self', inLibrary: true, tool: 'hub',
+    });
+    vi.spyOn(api, 'listSkills').mockImplementation((params) =>
+      Promise.resolve(
+        params?.status === 'in' ? { ...result, items: [librarySkill] } : result,
+      ),
+    );
+    renderView();
+    expect(await screen.findByText(/去重后共 2 个技能/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /我的库/ }));
+    expect(await screen.findByText('当前视图 1 个技能')).toBeInTheDocument();
+  });
+
+  it('官方内置徽章标注来源工具：TRAE / WorkBuddy', async () => {
+    vi.spyOn(api, 'listSkills').mockResolvedValue({
+      ...result,
+      items: [
+        skill({ id: 't', name: 't', functionCategory: 'coding', provenance: 'builtin', tool: 'trae' }),
+        skill({ id: 'w', name: 'w', functionCategory: 'writing', provenance: 'builtin', tool: 'workbuddy' }),
+      ],
+    });
+    renderView();
+    expect(await screen.findByText('官方内置 · TRAE')).toBeInTheDocument();
+    expect(screen.getByText('官方内置 · WorkBuddy')).toBeInTheDocument();
+  });
+});
