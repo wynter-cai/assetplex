@@ -41,24 +41,24 @@ export function ProjectCard({ project }: { project: ProjectInfo }): JSX.Element 
           <div className="flex items-center gap-2 mb-0.5">
             <h3 className="text-sm font-medium truncate">{project.name}</h3>
             {!project.exists && (
-              <Badge variant="secondary" className="text-[10px] h-4 px-1 shrink-0">
+              <Badge variant="secondary" className="text-xs h-5 px-1 shrink-0">
                 <AlertTriangle className="h-2.5 w-2.5 mr-0.5" />
                 已不在原位置
               </Badge>
             )}
           </div>
-          <p className="text-[11px] text-muted-foreground break-all">{project.path}</p>
-          <p className="text-[11px] text-muted-foreground mt-0.5">最近访问：{formatTime(project.lastAccessedAt)}</p>
+          <p className="text-xs text-muted-foreground break-all">{project.path}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">最近访问：{formatTime(project.lastAccessedAt)}</p>
         </div>
       </div>
 
       {/* AI 工具标记 */}
       <div className="flex flex-wrap gap-1 mb-2">
         {project.tools.length === 0 ? (
-          <span className="text-[11px] text-muted-foreground">无明显 AI 标记</span>
+          <span className="text-xs text-muted-foreground">无明显 AI 标记</span>
         ) : (
           project.tools.map((m) => (
-            <Badge key={`${m.tool}:${m.path}`} variant="outline" className="text-[10px] h-4 px-1">
+            <Badge key={`${m.tool}:${m.path}`} variant="outline" className="text-xs h-5 px-1">
               {TOOL_LABELS[m.tool] ?? m.tool} · {m.path}
             </Badge>
           ))
@@ -66,14 +66,14 @@ export function ProjectCard({ project }: { project: ProjectInfo }): JSX.Element 
       </div>
 
       {/* 资产统计 */}
-      <div className="flex flex-wrap gap-1.5 mb-2 text-[11px]">
+      <div className="flex flex-wrap gap-1.5 mb-2 text-xs">
         <Badge variant="secondary" className="h-5">规则 {project.assetStats.rules}</Badge>
         <Badge variant="secondary" className="h-5">技能 {project.assetStats.skills}</Badge>
         <Badge variant="secondary" className="h-5">文档 {project.assetStats.docs}</Badge>
       </div>
 
       {/* Git */}
-      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mb-3">
+      <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-3">
         {project.git.isGitRepo ? (
           <>
             <GitBranch className="h-3 w-3" />

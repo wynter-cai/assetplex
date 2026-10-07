@@ -225,7 +225,7 @@ export function DiffView({ sourcePath, hubTargetPath }: Props) {
           <div key={idx} className="flex leading-5">
             {/* 左侧：工具文件 */}
             <div className={`flex-1 flex min-w-0 ${rowClass(line.type, 'left')}`}>
-              <span className={`w-10 shrink-0 text-right pr-1.5 select-none text-[10px] ${lineNumClass(line.type)}`}>
+              <span className={`w-10 shrink-0 text-right pr-1.5 select-none text-xs ${lineNumClass(line.type)}`}>
                 {line.leftNum ?? ''}
               </span>
               <span className={`w-5 shrink-0 text-center select-none ${indicatorClass(line.type, 'left')}`}>
@@ -235,7 +235,7 @@ export function DiffView({ sourcePath, hubTargetPath }: Props) {
             </div>
             {/* 右侧：Hub 文件 */}
             <div className={`flex-1 flex min-w-0 border-l ${rowClass(line.type, 'right')}`}>
-              <span className={`w-10 shrink-0 text-right pr-1.5 select-none text-[10px] ${lineNumClass(line.type)}`}>
+              <span className={`w-10 shrink-0 text-right pr-1.5 select-none text-xs ${lineNumClass(line.type)}`}>
                 {line.rightNum ?? ''}
               </span>
               <span className={`w-5 shrink-0 text-center select-none ${indicatorClass(line.type, 'right')}`}>

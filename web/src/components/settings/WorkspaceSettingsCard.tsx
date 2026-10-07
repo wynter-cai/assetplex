@@ -38,15 +38,15 @@ function WorkspaceRow({
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="text-sm font-medium">{workspace.name}</span>
-          <Badge variant="outline" className="text-[10px] h-4 px-1">
+          <Badge variant="outline" className="text-xs h-5 px-1">
             {workspace.source === 'manual' ? '手动' : '自动'}
           </Badge>
-          {isDisabled && <Badge variant="secondary" className="text-[10px] h-4 px-1">已禁用</Badge>}
-          <Badge variant="secondary" className="text-[10px] h-4 px-1">
+          {isDisabled && <Badge variant="secondary" className="text-xs h-5 px-1">已禁用</Badge>}
+          <Badge variant="secondary" className="text-xs h-5 px-1">
             {workspace.skillsDirExists ? `${workspace.skillCount} 个技能` : '未发现技能目录'}
           </Badge>
         </div>
-        <code className="block mt-1 text-[11px] text-muted-foreground break-all">{workspace.path}</code>
+        <code className="block mt-1 text-xs text-muted-foreground break-all">{workspace.path}</code>
       </div>
       <div className="flex shrink-0 items-center gap-1">
         {workspace.source === 'auto' || isDisabled ? (
@@ -124,7 +124,7 @@ export function WorkspaceSettingsCard(): JSX.Element {
         <div className="flex items-center justify-between">
           <div>
             <Label htmlFor="workspace-auto-discover">从 TRAE 自动发现工作区</Label>
-            <p className="text-[11px] text-muted-foreground">读取 TRAE 最近打开的工作区，扫描其中 .trae/skills 下的项目技能</p>
+            <p className="text-xs text-muted-foreground">读取 TRAE 最近打开的工作区，扫描其中 .trae/skills 下的项目技能</p>
           </div>
           <Switch
             id="workspace-auto-discover"

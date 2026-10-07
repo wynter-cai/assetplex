@@ -259,7 +259,7 @@ export default function Connections(): JSX.Element {
                     </div>
                   </div>
                   {tool.installed && tool.version && (
-                    <span className="text-[10px] text-muted-foreground font-mono shrink-0">
+                    <span className="text-xs text-muted-foreground font-mono shrink-0">
                       {tool.version.split('.')[0]}
                     </span>
                   )}

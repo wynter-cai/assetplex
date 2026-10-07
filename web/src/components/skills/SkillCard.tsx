@@ -73,10 +73,10 @@ export function SkillCard({
         <Sparkles className="h-4 w-4 text-muted-foreground shrink-0" />
         <span className="text-sm font-medium truncate">{skill.name}</span>
         {skill.version && (
-          <Badge variant="outline" className="text-[10px] h-4 px-1 shrink-0">v{skill.version}</Badge>
+          <Badge variant="outline" className="text-xs h-5 px-1 shrink-0">v{skill.version}</Badge>
         )}
         {skill.variants > 0 && (
-          <Badge variant="secondary" className="text-[10px] h-4 px-1 shrink-0">
+          <Badge variant="secondary" className="text-xs h-5 px-1 shrink-0">
             {skill.variants + 1} 副本
           </Badge>
         )}
@@ -85,17 +85,17 @@ export function SkillCard({
         <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{skill.description}</p>
       )}
       <div className="flex flex-wrap items-center gap-1 mb-3">
-        <Badge variant="outline" className="text-[10px] h-4 px-1">{FUNCTION_LABELS[skill.functionCategory]}</Badge>
-        <Badge variant="outline" className="text-[10px] h-4 px-1">
+        <Badge variant="outline" className="text-xs h-5 px-1">{FUNCTION_LABELS[skill.functionCategory]}</Badge>
+        <Badge variant="outline" className="text-xs h-5 px-1">
           {provenanceBadgeLabel(skill)}
         </Badge>
-        <Badge variant="secondary" className="text-[10px] h-4 px-1">
+        <Badge variant="secondary" className="text-xs h-5 px-1">
           {FUNCTION_SOURCE_LABELS[skill.functionSource]}
         </Badge>
       </div>
       <div className="flex items-center justify-between gap-2 pt-2 border-t">
         <label
-          className="flex items-center gap-1.5 text-[11px] text-muted-foreground"
+          className="flex items-center gap-1.5 text-xs text-muted-foreground"
           onClick={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
         >

@@ -28,7 +28,7 @@ function AgentCard({ agent, active, onSelect }: { agent: AgentInfo; active: bool
         <Bot className="h-4 w-4 text-muted-foreground shrink-0" />
         <span className="text-sm font-medium truncate">{agent.name}</span>
         {agent.userCreated && (
-          <Badge variant="secondary" className="text-[10px] h-4 px-1 shrink-0">
+          <Badge variant="secondary" className="text-xs h-5 px-1 shrink-0">
             <UserIcon className="h-2.5 w-2.5 mr-0.5" />
             自建
           </Badge>
@@ -38,8 +38,8 @@ function AgentCard({ agent, active, onSelect }: { agent: AgentInfo; active: bool
         <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{agent.description}</p>
       )}
       <div className="flex flex-wrap gap-1">
-        <Badge variant="outline" className="text-[10px] h-4 px-1">{KIND_LABELS[agent.kind]}</Badge>
-        <Badge variant="outline" className="text-[10px] h-4 px-1">{TOOL_LABELS[agent.tool]}</Badge>
+        <Badge variant="outline" className="text-xs h-5 px-1">{KIND_LABELS[agent.kind]}</Badge>
+        <Badge variant="outline" className="text-xs h-5 px-1">{TOOL_LABELS[agent.tool]}</Badge>
       </div>
     </button>
   );

@@ -1,7 +1,15 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
-  theme: {
+    theme: {
+    fontSize: {
+      '12': ['0.75rem', { lineHeight: '1rem' }],
+      '13': ['0.8125rem', { lineHeight: '1.25rem' }],
+      '14': ['0.875rem', { lineHeight: '1.4rem' }],
+      '16': ['1rem', { lineHeight: '1.6rem' }],
+      '20': ['1.25rem', { lineHeight: '1.75rem' }],
+      '24': ['1.5rem', { lineHeight: '1.9rem' }],
+    },
     container: {
       center: true,
       padding: '2rem',

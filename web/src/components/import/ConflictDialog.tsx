@@ -102,7 +102,7 @@ export function ConflictDialog({
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-medium truncate">{hubTargetPath}</span>
             {multiSource && (
-              <Badge variant="secondary" className="text-[10px] h-4 px-1 bg-warning-soft text-warning">
+              <Badge variant="secondary" className="text-xs h-5 px-1 bg-warning-soft text-warning">
                 {sources.length} 个来源
               </Badge>
             )}

@@ -86,15 +86,15 @@ function TargetToolCard({
           <div className="flex items-center justify-between gap-2">
             <span className="text-sm font-medium truncate">{display}</span>
             {!installed ? (
-              <Badge variant="outline" className="text-[10px] shrink-0">未安装</Badge>
+              <Badge variant="outline" className="text-xs shrink-0">未安装</Badge>
             ) : enabled === false ? (
-              <Badge variant="secondary" className="text-[10px] shrink-0">未启用</Badge>
+              <Badge variant="secondary" className="text-xs shrink-0">未启用</Badge>
             ) : (
-              <Badge variant="success" className="text-[10px] shrink-0">就绪</Badge>
+              <Badge variant="success" className="text-xs shrink-0">就绪</Badge>
             )}
           </div>
           {plan && installed && (
-            <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px]">
+            <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
               {actionable > 0 ? (
                 <span className="font-medium text-primary">{actionable} 项待同步</span>
               ) : (
@@ -110,7 +110,7 @@ function TargetToolCard({
                 const meta = ACTION_META[action];
                 if (!meta || action === 'skip') return null;
                 return (
-                  <Badge key={action} variant={meta.variant} className="text-[10px] px-1 py-0">
+                  <Badge key={action} variant={meta.variant} className="text-xs px-1 py-0">
                     {meta.label} {n}
                   </Badge>
                 );

@@ -50,7 +50,7 @@ function SourceBadge({ source }: { source: Asset['source'] }): JSX.Element | nul
     merged: '合并',
   };
   return (
-    <Badge variant="secondary" className="text-[10px] h-4 px-1">
+    <Badge variant="secondary" className="text-xs h-5 px-1">
       {labels[source] ?? source}
     </Badge>
   );
