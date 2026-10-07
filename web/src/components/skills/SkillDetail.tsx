@@ -111,7 +111,7 @@ export function SkillDetail({ skill, onClose, onCurated }: SkillDetailProps): JS
         {skill.description && (
           <div>
             <h3 className="text-xs font-medium text-muted-foreground mb-1">描述</h3>
-            <p className="text-sm">{skill.description}</p>
+            <p className="text-14">{skill.description}</p>
           </div>
         )}
 

@@ -21,15 +21,19 @@ function styled(Tag: string, className: string) {
   };
 }
 
-/** 技能/智能体文档通用的紧凑样式（13px 正文，适配侧栏详情面板） */
+/**
+ * 技能/智能体文档通用样式（spec refactor-design-system markdown-typography）：
+ * H1 18px bold / H2 16px semibold / H3-H4 14px semibold / 正文与列表 14px、行高 1.6（text-14 自带 1.4rem），
+ * 字号+字重双通道区分标题层级，适配详情面板阅读场景
+ */
 const tagStyles: Record<string, (props: MdTagProps) => JSX.Element> = {
-  h1: styled('h1', 'text-sm font-semibold mt-3 mb-1.5'),
-  h2: styled('h2', 'text-sm font-semibold mt-3 mb-1.5'),
-  h3: styled('h3', 'text-[13px] font-semibold mt-2.5 mb-1'),
-  h4: styled('h4', 'text-[13px] font-semibold mt-2 mb-1'),
-  p: styled('p', 'text-[13px] leading-relaxed my-1.5'),
-  ul: styled('ul', 'list-disc pl-5 my-1.5 space-y-0.5 text-[13px]'),
-  ol: styled('ol', 'list-decimal pl-5 my-1.5 space-y-0.5 text-[13px]'),
+  h1: styled('h1', 'text-18 font-bold mt-4 mb-2'),
+  h2: styled('h2', 'text-16 font-semibold mt-3.5 mb-1.5'),
+  h3: styled('h3', 'text-14 font-semibold mt-3 mb-1.5'),
+  h4: styled('h4', 'text-14 font-semibold mt-2.5 mb-1'),
+  p: styled('p', 'text-14 my-1.5'),
+  ul: styled('ul', 'list-disc pl-5 my-1.5 space-y-0.5 text-14'),
+  ol: styled('ol', 'list-decimal pl-5 my-1.5 space-y-0.5 text-14'),
   li: styled('li', 'leading-relaxed'),
   a: styled('a', 'text-primary underline break-all'),
   blockquote: styled('blockquote', 'border-l-2 border-muted-foreground/40 pl-3 text-muted-foreground my-2'),

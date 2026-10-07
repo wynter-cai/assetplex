@@ -42,3 +42,27 @@ describe('Markdown 组件', () => {
     expect(stripFrontmatter('# 直接正文')).toBe('# 直接正文');
   });
 });
+
+describe('Markdown 排版层级（spec refactor-design-system markdown-typography）', () => {
+  const doc = '# 文档标题\n\n## 二级标题\n\n### 三级标题\n\n正文段落。';
+
+  it('标题层级字号递减：H1 18px > H2 16px > H3 14px，正文 14px', () => {
+    render(<Markdown content={doc} />);
+    expect(screen.getByRole('heading', { level: 1 })).toHaveClass('text-18');
+    expect(screen.getByRole('heading', { level: 2 })).toHaveClass('text-16');
+    expect(screen.getByRole('heading', { level: 3 })).toHaveClass('text-14');
+    expect(screen.getByText('正文段落。')).toHaveClass('text-14');
+  });
+
+  it('H1 与 H2 字号+字重双通道区分：H1 bold、H2 semibold', () => {
+    render(<Markdown content={doc} />);
+    expect(screen.getByRole('heading', { level: 1 })).toHaveClass('font-bold');
+    expect(screen.getByRole('heading', { level: 2 })).toHaveClass('font-semibold');
+  });
+
+  it('列表沿用正文字号档（14px）', () => {
+    render(<Markdown content={'- 项目一\n- 项目二'} />);
+    const list = screen.getByRole('list');
+    expect(list).toHaveClass('text-14');
+  });
+});

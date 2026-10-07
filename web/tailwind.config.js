@@ -7,6 +7,7 @@ export default {
       '13': ['0.8125rem', { lineHeight: '1.25rem' }],
       '14': ['0.875rem', { lineHeight: '1.4rem' }],
       '16': ['1rem', { lineHeight: '1.6rem' }],
+      '18': ['1.125rem', { lineHeight: '1.8rem' }],
       '20': ['1.25rem', { lineHeight: '1.75rem' }],
       '24': ['1.5rem', { lineHeight: '1.9rem' }],
     },
