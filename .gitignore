@@ -60,4 +60,6 @@ AssetPlex.cmd
 *.baiduyun*
 .baidu*
 *baidu*
+# 本机私有交接快照，不入库
+HANDOFF.md
 *百度网盘*
