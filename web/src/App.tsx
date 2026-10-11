@@ -6,6 +6,7 @@ import Connections from './pages/Connections';
 import Tools from './pages/Tools';
 import Dashboard from './pages/Dashboard';
 import Sync from './pages/Sync';
+import Swap from './pages/Swap';
 import Import from './pages/Import';
 import Identity from './pages/Identity';
 import Skills from './pages/Skills';
@@ -32,6 +33,7 @@ export default function App(): JSX.Element {
         <Route path="/legacy/dashboard" element={<Dashboard />} />
         <Route path="/tools" element={<Tools />} />
         <Route path="/sync" element={<Sync />} />
+        <Route path="/swap" element={<Swap />} />
         <Route path="/import" element={<Import />} />
         <Route path="/identity" element={<Identity />} />
         <Route path="/skills" element={<Skills />} />

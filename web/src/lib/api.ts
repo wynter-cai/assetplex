@@ -37,6 +37,12 @@ import type {
   ProjectOpenTarget,
   WorkspacesResponse,
   UpdateWorkspacesInput,
+  SwapToolCandidate,
+  SwapPreview,
+  SwapOverwriteDecision,
+  SwapExecuteResult,
+  SwapRollbackResult,
+  SwapHistoryEntry,
 } from '@/types/api';
 
 const BASE = '/api';
@@ -264,4 +270,23 @@ export const api = {
         mcps: Array<{ path: string; size: number }>;
       };
     }>(`/tools/${encodeURIComponent(toolName)}/detail`),
+
+  // Swap（工具热切换 enable-tool-hot-swap）
+  getSwapTools: () => request<{ tools: SwapToolCandidate[] }>('/swap/tools'),
+  swapPreview: (tool: string) =>
+    request<SwapPreview>('/swap/preview', {
+      method: 'POST',
+      body: JSON.stringify({ tool }),
+    }),
+  swapExecute: (tool: string, previewGeneratedAt: string, overwriteDecisions: SwapOverwriteDecision[]) =>
+    request<SwapExecuteResult>('/swap/execute', {
+      method: 'POST',
+      body: JSON.stringify({ tool, previewGeneratedAt, overwriteDecisions }),
+    }),
+  swapRollback: (swapId: string) =>
+    request<SwapRollbackResult>('/swap/rollback', {
+      method: 'POST',
+      body: JSON.stringify({ swapId }),
+    }),
+  getSwapHistory: () => request<{ history: SwapHistoryEntry[] }>('/swap/history'),
 };

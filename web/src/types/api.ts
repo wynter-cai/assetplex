@@ -443,3 +443,108 @@ export interface ConnectionDetail {
     category: FrontendCategory;
   }>;
 }
+
+// ========== 工具热切换(enable-tool-hot-swap) ==========
+
+/** 切换包覆盖的六类资产(不含 preference) */
+export type SwapCategory = 'identity' | 'rule' | 'skill' | 'mcp' | 'memory' | 'agent';
+
+/** 单个投放项在预览中的冲突判定 */
+export type SwapConflictStatus = 'none' | 'exists' | 'differs';
+
+/** 目标工具对某类别的支持情况 */
+export type SwapCategorySupport =
+  | { supported: true }
+  | { supported: false; reason: string };
+
+/** 预览中的单个资产项 */
+export interface SwapPreviewItem {
+  category: SwapCategory;
+  hubRelativePath: string;
+  targetPath: string;
+  strategy: 'symlink' | 'copy' | 'native-import' | 'per-project';
+  conflict: SwapConflictStatus;
+  /** differs 项默认 false，需显式勾选覆盖 */
+  defaultOverwrite: boolean;
+  support: SwapCategorySupport;
+}
+
+/** 按类别分组的预览 */
+export interface SwapCategoryGroup {
+  category: SwapCategory;
+  support: SwapCategorySupport;
+  items: SwapPreviewItem[];
+  counts: { total: number; new: number; willOverwrite: number; unchanged: number; skipped: number };
+}
+
+/** 一次切换预览 */
+export interface SwapPreview {
+  tool: string;
+  toolInstalled: boolean;
+  groups: SwapCategoryGroup[];
+  /** 生成时间戳，执行时回传做 staleness 校验 */
+  generatedAt: string;
+}
+
+/** 覆盖决策 */
+export interface SwapOverwriteDecision {
+  hubRelativePath: string;
+  overwrite: boolean;
+}
+
+/** 切换候选目标 */
+export interface SwapToolCandidate {
+  name: string;
+  displayName: string;
+  installed: boolean;
+  supportMatrix: Record<SwapCategory, SwapCategorySupport>;
+}
+
+/** 回读验证结果(诚实边界:已写入并校验) */
+export interface SwapVerifyResult {
+  passed: boolean;
+  exists: boolean;
+  parseable: boolean;
+  matchesSource: boolean;
+  hubRelativePath: string;
+  failure?: string;
+}
+
+/** 执行结果单项 */
+export interface SwapItemResult {
+  hubRelativePath: string;
+  category: SwapCategory;
+  action: 'written' | 'skipped' | 'failed';
+  reason?: string;
+  verify?: SwapVerifyResult;
+}
+
+/** 执行结果 */
+export interface SwapExecuteResult {
+  tool: string;
+  swapId: string;
+  success: boolean;
+  counts: { written: number; skipped: number; failed: number };
+  items: SwapItemResult[];
+  rollbackAvailable: boolean;
+  createdAt: string;
+}
+
+/** 回滚结果 */
+export interface SwapRollbackResult {
+  swapId: string;
+  restored: number;
+  removed: number;
+  success: boolean;
+  error?: string;
+}
+
+/** 切换历史单条 */
+export interface SwapHistoryEntry {
+  swapId: string;
+  tool: string;
+  createdAt: string;
+  counts: { written: number; skipped: number; failed: number };
+  rolledBack: boolean;
+  rollbackAvailable: boolean;
+}
