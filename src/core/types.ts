@@ -21,7 +21,8 @@ export type HubItemType =
   | 'preference'
   | 'mcp'
   | 'command'
-  | 'agent';
+  | 'agent'
+  | 'memory';
 
 /** Hub 条目 */
 export interface HubItem {
@@ -130,7 +131,7 @@ export interface SyncOptions {
 // ========== 扫描/导入相关类型（智能导入向导 Phase A） ==========
 
 /** 扫描发现的文件类别 */
-export type DiscoveredCategory = 'identity' | 'skill' | 'rule' | 'mcp' | 'preference';
+export type DiscoveredCategory = 'identity' | 'skill' | 'rule' | 'mcp' | 'preference' | 'memory';
 
 /** 冲突状态 */
 export type ConflictStatus = 'none' | 'exists' | 'differs';

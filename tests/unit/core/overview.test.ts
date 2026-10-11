@@ -20,7 +20,7 @@ vi.mock('../../../src/server/lib/hub-context.js', () => ({
 
 vi.mock('../../../src/core/hub-files.js', () => ({
   checkHubHealth: vi.fn(),
-  HUB_CATEGORIES: ['identity', 'skills', 'rules', 'preferences', 'mcp', 'commands', 'agents'],
+  HUB_CATEGORIES: ['identity', 'skills', 'rules', 'preferences', 'mcp', 'commands', 'agents', 'memory'],
   listHubFiles: () => [],
 }));
 
@@ -74,6 +74,18 @@ describe('getOverview', () => {
     const result = await getOverview();
     expect(result.assetStats).toHaveProperty('agent');
     expect(result.assetStats.agent).toBe(4);
+  });
+
+  it('assetStats 纳入 memory 计数（enable-tool-hot-swap T1）', async () => {
+    vi.mocked(checkHubHealth).mockReturnValue(
+      makeHealth({
+        fileCountByCategory: { identity: 1, skills: 3, rules: 5, mcp: 2, preferences: 0, commands: 0, agents: 4, memory: 2 },
+        totalFiles: 17,
+      }),
+    );
+    const result = await getOverview();
+    expect(result.assetStats).toHaveProperty('memory');
+    expect(result.assetStats.memory).toBe(2);
   });
 
   it('hubInitialized 在有资产时为 true', async () => {

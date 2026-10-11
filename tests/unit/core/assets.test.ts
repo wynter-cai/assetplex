@@ -26,6 +26,10 @@ vi.mock('../../../src/core/hub-files.js', () => ({
       mcp: [
         { relativePath: 'mcp/servers.json', size: 500, modified: '2026-08-10T12:00:00Z', isDirectory: false, absolutePath: '/hub/mcp/servers.json' },
       ],
+      memory: [
+        { relativePath: 'memory/preferences.md', size: 600, modified: '2026-08-16T09:00:00Z', isDirectory: false, absolutePath: '/hub/memory/preferences.md' },
+        { relativePath: 'memory/pitfalls.md', size: 700, modified: '2026-08-16T10:00:00Z', isDirectory: false, absolutePath: '/hub/memory/pitfalls.md' },
+      ],
       preferences: [],
       commands: [],
       agents: [],
@@ -36,7 +40,7 @@ vi.mock('../../../src/core/hub-files.js', () => ({
     if (path === 'identity/profile.md') return { content: '# Profile\n我是开发者', size: 1200, modified: '2026-08-14T10:00:00Z' };
     return null;
   }),
-  HUB_CATEGORIES: ['identity', 'skills', 'rules', 'preferences', 'mcp', 'commands', 'agents'],
+  HUB_CATEGORIES: ['identity', 'skills', 'rules', 'preferences', 'mcp', 'commands', 'agents', 'memory'],
 }));
 
 vi.mock('../../../src/server/lib/hub-context.js', () => ({
@@ -69,9 +73,15 @@ describe('listAssets', () => {
 
   it('无 category 参数时返回所有类别的资产', async () => {
     const result = await listAssets();
-    // identity(1) + skills(3) + rules(1) + mcp(1) = 6
-    expect(result.total).toBe(6);
-    expect(result.items).toHaveLength(6);
+    // identity(1) + skills(3) + rules(1) + mcp(1) + memory(2) = 8
+    expect(result.total).toBe(8);
+    expect(result.items).toHaveLength(8);
+  });
+
+  it('memory 作为一等公民类别可被列出（enable-tool-hot-swap T1）', async () => {
+    const result = await listAssets({ category: 'memory' });
+    expect(result.total).toBe(2);
+    expect(result.items.every((a) => a.category === 'memory')).toBe(true);
   });
 
   it('搜索过滤：只返回名称匹配的资产', async () => {

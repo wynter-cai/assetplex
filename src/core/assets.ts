@@ -16,7 +16,19 @@ import {
 } from './hub-files.js';
 
 /** 前端资产类别 */
-export type AssetCategory = 'identity' | 'skill' | 'rule' | 'mcp';
+export type AssetCategory = 'identity' | 'skill' | 'rule' | 'mcp' | 'memory';
+
+/**
+ * 资产类别单一真相清单（taxonomy §六.1：新类别应"加配置"而非散落改代码）。
+ * 路由校验/目录映射均从此派生，避免多处 validCategories 漂移。
+ */
+export const ASSET_CATEGORIES: readonly AssetCategory[] = [
+  'identity',
+  'skill',
+  'rule',
+  'mcp',
+  'memory',
+] as const;
 
 /** 资产来源（Phase 1 统一为 manual，Phase 2 记录真实来源） */
 export type AssetSource = 'trae' | 'workbuddy' | 'claude' | 'codex' | 'qoder' | 'manual' | 'merged';
@@ -56,6 +68,7 @@ const DIR_TO_CATEGORY: Record<string, AssetCategory> = {
   skills: 'skill',
   rules: 'rule',
   mcp: 'mcp',
+  memory: 'memory',
 };
 
 /** 查询参数 */
@@ -85,6 +98,7 @@ export async function listAssets(params: ListAssetsParams = {}): Promise<ListAss
           skill: 'skills',
           rule: 'rules',
           mcp: 'mcp',
+          memory: 'memory',
         };
         return [reverse[category]];
       })()

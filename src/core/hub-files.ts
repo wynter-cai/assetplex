@@ -24,7 +24,8 @@ export type HubFileCategory =
   | 'preferences'
   | 'mcp'
   | 'commands'
-  | 'agents';
+  | 'agents'
+  | 'memory';
 
 /** Hub 文件信息 */
 export interface HubFileInfo {
@@ -49,6 +50,7 @@ export const HUB_CATEGORIES: HubFileCategory[] = [
   'mcp',
   'commands',
   'agents',
+  'memory',
 ];
 
 /**

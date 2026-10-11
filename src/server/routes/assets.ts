@@ -9,6 +9,7 @@ import { Hono } from 'hono';
 import { listAssets, getAsset } from '../../core/assets.js';
 import { createHubFile, writeHubFile } from '../../core/hub-files.js';
 import type { AssetCategory } from '../../core/assets.js';
+import { ASSET_CATEGORIES } from '../../core/assets.js';
 
 export const assetsRoutes = new Hono();
 
@@ -18,7 +19,7 @@ assetsRoutes.get('/', async (c) => {
   const search = c.req.query('search') as string | undefined;
 
   // 校验 category
-  const validCategories: AssetCategory[] = ['identity', 'skill', 'rule', 'mcp'];
+  const validCategories: readonly AssetCategory[] = ASSET_CATEGORIES;
   if (category && !validCategories.includes(category)) {
     return c.json({ error: `无效类别：${category}，支持：${validCategories.join(', ')}` }, 400);
   }
@@ -48,7 +49,7 @@ assetsRoutes.post('/', async (c) => {
     return c.json({ error: '必须提供 name、category、content 字段' }, 400);
   }
 
-  const validCategories: AssetCategory[] = ['identity', 'skill', 'rule', 'mcp'];
+  const validCategories: readonly AssetCategory[] = ASSET_CATEGORIES;
   if (!validCategories.includes(body.category)) {
     return c.json({ error: `无效类别：${body.category}` }, 400);
   }
@@ -59,6 +60,7 @@ assetsRoutes.post('/', async (c) => {
     skill: 'skills',
     rule: 'rules',
     mcp: 'mcp',
+    memory: 'memory',
   };
   const ext = body.category === 'mcp' ? '.json' : '.md';
   const hubPath = `${dirMap[body.category]}/${body.name}${ext}`;
