@@ -20,6 +20,7 @@ import { agentsRoutes } from './routes/agents.js';
 import { skillsRoutes } from './routes/skills.js';
 import { workspacesRoutes } from './routes/workspaces.js';
 import { projectsRoutes } from './routes/projects.js';
+import { swapRoutes } from './routes/swap.js';
 import { errorHandler } from './middleware/error.js';
 
 export interface ServerOptions {
@@ -60,6 +61,7 @@ export async function startServer(options: ServerOptions = {}): Promise<void> {
   app.route('/api/skills', skillsRoutes);
   app.route('/api/workspaces', workspacesRoutes);
   app.route('/api/projects', projectsRoutes);
+  app.route('/api/swap', swapRoutes);
 
   // 静态文件服务（前端构建产物）
   // 开发模式下前端跑在 5173 端口，这里只服务 API；

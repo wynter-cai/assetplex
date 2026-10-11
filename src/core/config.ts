@@ -101,6 +101,13 @@ export const HubConfigSchema = z.object({
       cacheTtlHours: z.number().int().positive().default(24),
     })
     .default({}),
+  /** 工具热切换(enable-tool-hot-swap) */
+  swap: z
+    .object({
+      /** 切换备份保留次数 */
+      backupRetain: z.number().int().positive().default(3),
+    })
+    .default({}),
 });
 
 /** Hub 配置类型 */

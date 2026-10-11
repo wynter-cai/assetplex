@@ -1,5 +1,6 @@
 import { loadHubConfig, saveHubConfig, type HubConfig } from '../../core/config.js';
 import { SyncEngine } from '../../core/sync-engine.js';
+import { SwapEngine } from '../../core/swap.js';
 import {
   registerBuiltinAdapters,
   getAllAdapters,
@@ -16,6 +17,7 @@ import type { ToolAdapter } from '../../core/adapters/base.js';
 class HubContext {
   private config: HubConfig | null = null;
   private engine: SyncEngine | null = null;
+  private swapEngine: SwapEngine | null = null;
   private adaptersRegistered = false;
 
   /** 获取当前 Hub 配置（懒加载） */
@@ -43,6 +45,17 @@ class HubContext {
     return this.engine;
   }
 
+  /** 获取 SwapEngine 实例（懒加载，备份保留次数读自 swap.backupRetain） */
+  getSwapEngine(): SwapEngine {
+    if (!this.swapEngine) {
+      const config = this.getConfig();
+      this.swapEngine = new SwapEngine(config, this.getAllAdapters(), {
+        backupRetain: config.swap?.backupRetain,
+      });
+    }
+    return this.swapEngine;
+  }
+
   /** 获取所有已注册的适配器 */
   getAllAdapters(): ToolAdapter[] {
     this.ensureAdaptersRegistered();
@@ -58,6 +71,7 @@ class HubContext {
   reloadConfig(): void {
     this.config = null;
     this.engine = null;
+    this.swapEngine = null;
   }
 
   /** 保存新配置并刷新缓存 */
@@ -65,6 +79,7 @@ class HubContext {
     saveHubConfig(config);
     this.config = config;
     this.engine = null; // 引擎依赖配置，需重建
+    this.swapEngine = null;
   }
 }
 
