@@ -34,7 +34,7 @@ export class WorkBuddyAdapter extends BaseAdapter {
 
   protected defaultConfigDir = '~/.workbuddy';
   protected signatureFiles = ['.mcp.json', 'mcp.json', 'models.json'];
-  protected supportedTargets = ['rules/', 'skills/', '.mcp.json'];
+  protected supportedTargets = ['rules/', 'skills/', '.mcp.json', 'IDENTITY.md', 'memory/'];
 
   /**
    * 重写 detect：同时检查 ~/.workbuddy 和 ~/.codebuddy
@@ -97,11 +97,39 @@ export class WorkBuddyAdapter extends BaseAdapter {
    * - Hub: rules/                       → WorkBuddy: rules       (symlink, dir)
    * - Hub: skills/                       → WorkBuddy: skills      (symlink, dir)
    * - Hub: mcp/mcp.sources.json          → WorkBuddy: .mcp.json   (copy, ${VAR} 插值)
+   * - Hub: identity/profile.md           → WorkBuddy: IDENTITY.md (symlink, file)
+   * - Hub: memory/                       → WorkBuddy: memory      (symlink, dir)
    */
   override resolveHubItems(_hubConfig: HubConfig, _hubRoot: string): Array<{ item: HubItem; target: SyncTarget }> {
     const base = this.getConfigDir();
 
     return [
+      {
+        item: {
+          type: 'identity',
+          relativePath: 'identity/profile.md',
+          absolutePath: hubPath('identity/profile.md'),
+        },
+        target: {
+          tool: this.name,
+          targetPath: resolve(base, 'IDENTITY.md'),
+          strategy: 'symlink',
+          isDirectory: false,
+        },
+      },
+      {
+        item: {
+          type: 'memory',
+          relativePath: 'memory',
+          absolutePath: hubPath('memory'),
+        },
+        target: {
+          tool: this.name,
+          targetPath: resolve(base, 'memory'),
+          strategy: 'symlink',
+          isDirectory: true,
+        },
+      },
       {
         item: {
           type: 'rule',
@@ -153,6 +181,18 @@ export class WorkBuddyAdapter extends BaseAdapter {
     const base = this.expandHome(configDir);
 
     return [
+      {
+        tool: this.name,
+        targetPath: resolve(base, 'IDENTITY.md'),
+        strategy: 'symlink',
+        isDirectory: false,
+      },
+      {
+        tool: this.name,
+        targetPath: resolve(base, 'memory'),
+        strategy: 'symlink',
+        isDirectory: true,
+      },
       {
         tool: this.name,
         targetPath: resolve(base, 'rules'),
@@ -218,6 +258,8 @@ export class WorkBuddyAdapter extends BaseAdapter {
 
     let type: HubItem['type'] = 'preference';
     if (targetPath.endsWith('.mcp.json')) type = 'mcp';
+    else if (targetPath.endsWith('IDENTITY.md')) type = 'identity';
+    else if (targetPath.includes('memory')) type = 'memory';
     else if (targetPath.includes('skills')) type = 'skill';
     else if (targetPath.includes('rules')) type = 'rule';
 
@@ -257,6 +299,14 @@ export class WorkBuddyAdapter extends BaseAdapter {
 
     // rules/ 目录
     items.push(...this.scanDirectory(resolve(base, 'rules'), base, 'rules', 'rule'));
+
+    // IDENTITY.md → identity/profile.md
+    const identityPath = resolve(base, 'IDENTITY.md');
+    const identityItem = this.makeDiscoveredItem(identityPath, base, 'identity/profile.md', 'identity');
+    if (identityItem) items.push(identityItem);
+
+    // memory/ 目录 → memory/
+    items.push(...this.scanDirectory(resolve(base, 'memory'), base, 'memory', 'memory'));
 
     // .mcp.json → mcp/mcp.sources.json（WorkBuddy 主 MCP 文件）
     const mcpDotPath = resolve(base, '.mcp.json');
