@@ -253,9 +253,9 @@ AgentHub 的核心价值是**让用户掌控自己的AI资产，换工具不丢�
 
 | 文档 | 关系 |
 |------|------|
-| [assetplex-constitution.md](file:///~/projects/my-project/设计文档/assetplex-constitution.md) | 宪法级原则，本文档是其下位文档，定义"管什么" |
-| [assetplex-ui-redesign-v2.md](file:///~/projects/my-project/设计文档/assetplex-ui-redesign-v2.md) | UI 设计方案，资产库导航要按本文档的分类设计 |
-| [AGENTS.md](file:///~/projects/my-project/AGENTS.md) | 项目级开发规则，本文档是其引用的资产分类标准 |
+| [assetplex-constitution.md](file:///d:/demo/my-project/设计文档/assetplex-constitution.md) | 宪法级原则，本文档是其下位文档，定义"管什么" |
+| [assetplex-ui-redesign-v2.md](file:///d:/demo/my-project/设计文档/assetplex-ui-redesign-v2.md) | UI 设计方案，资产库导航要按本文档的分类设计 |
+| [AGENTS.md](file:///d:/demo/my-project/AGENTS.md) | 项目级开发规则，本文档是其引用的资产分类标准 |
 
 ---
 

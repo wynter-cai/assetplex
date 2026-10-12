@@ -82,13 +82,13 @@ describe('readTraeWorkspaces 解析 workspaceStorage', () => {
       },
       [`${SOURCES.workspaceStorageDir}/bbb/workspace.json`]: {
         type: 'file',
-        content: JSON.stringify({ folder: 'file:///~/projects/Demo%20App' }),
+        content: JSON.stringify({ folder: 'file:///d:/demo/Demo%20App' }),
         mtime: '2026-09-10T00:00:00.000Z',
       },
       // 同路径旧记录：去重保留最新 mtime
       [`${SOURCES.workspaceStorageDir}/ccc/workspace.json`]: {
         type: 'file',
-        content: JSON.stringify({ folder: 'file:///~/projects/SampleProj' }),
+        content: JSON.stringify({ folder: 'file:///d:/demo/SampleProj' }),
         mtime: '2026-10-01T00:00:00.000Z',
       },
       // 损坏 JSON：跳过
@@ -99,9 +99,9 @@ describe('readTraeWorkspaces 解析 workspaceStorage', () => {
 
     const records = readTraeWorkspaces(fs, SOURCES.workspaceStorageDir);
     expect(records).toHaveLength(2);
-    const vol = records.find((r) => r.path === '~/projects/SampleProj');
+    const vol = records.find((r) => r.path === 'd:/demo/SampleProj');
     expect(vol?.lastAccessedAt).toBe('2026-10-01T00:00:00.000Z');
-    const douyin = records.find((r) => r.path === '~/projects/Demo App');
+    const douyin = records.find((r) => r.path === 'd:/demo/Demo App');
     expect(douyin?.name).toBe('Demo App');
   });
 
@@ -113,7 +113,7 @@ describe('readTraeWorkspaces 解析 workspaceStorage', () => {
 describe('mergeProjectRecords worktrees 历史补充', () => {
   it('同名 worktree 不重复，无对应路径的名称成为历史条目', () => {
     const workspaces: WorkspaceRecord[] = [
-      { path: '~/projects/SampleProj', name: 'SampleProj', lastAccessedAt: '2026-10-01T00:00:00.000Z' },
+      { path: 'd:/demo/SampleProj', name: 'SampleProj', lastAccessedAt: '2026-10-01T00:00:00.000Z' },
     ];
     const fs = makeFs({
       [`${SOURCES.worktreesDir}/SampleProj`]: { type: 'dir' }, // 与真实项目同名 → 不重复
@@ -123,7 +123,7 @@ describe('mergeProjectRecords worktrees 历史补充', () => {
     const merged = mergeProjectRecords(workspaces, fs, SOURCES.worktreesDir);
     expect(merged).toHaveLength(2);
     const real = merged.find((m) => m.name === 'SampleProj');
-    expect(real?.path).toBe('~/projects/SampleProj');
+    expect(real?.path).toBe('d:/demo/SampleProj');
     const historical = merged.find((m) => m.name === 'AI-Native SDLC');
     expect(historical?.path).toBe('AI-Native SDLC');
     expect(historical?.historical).toBe(true);
@@ -241,10 +241,10 @@ describe('项目 ID 生成（非 ASCII 路径）', () => {
     const fs = makeFs({
       [`${SOURCES.workspaceStorageDir}/a/workspace.json`]: {
         type: 'file',
-        content: JSON.stringify({ folder: 'file:///~/projects/sample-docs' }),
+        content: JSON.stringify({ folder: 'file:///d:/demo/sample-docs' }),
         mtime: '2026-10-01T00:00:00.000Z',
       },
-      '~/projects/sample-docs': { type: 'dir' },
+      'd:/demo/sample-docs': { type: 'dir' },
     });
     const result = listProjects({ fs, sources: SOURCES, gitRunner: () => null });
     const project = result.items[0];
@@ -252,7 +252,7 @@ describe('项目 ID 生成（非 ASCII 路径）', () => {
     expect(project.id).toContain('sample-docs');
     // ID 必须可回查到原项目（真实冒烟中纯中文名曾生成空 ID）
     const decision = validateOpenRequest(project.id, 'explorer', result.items);
-    expect(decision.path).toBe('~/projects/sample-docs');
+    expect(decision.path).toBe('d:/demo/sample-docs');
   });
 });
 

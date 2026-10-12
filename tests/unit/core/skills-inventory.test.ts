@@ -483,7 +483,7 @@ describe('项目级技能 project（add-project-skills-discovery）', () => {
 
   it('classifyOrigin 按工作区前缀判定 project（容忍 Windows 反斜杠）', () => {
     expect(classifyOrigin(wsSkill('Zhihu', 'x'), WS)).toBe('project');
-    expect(classifyOrigin('\\d\\Trae\\Zhihu\\.trae\\skills\\x\\SKILL.md', WS)).toBe('project');
+    expect(classifyOrigin('\\d\\demo\\Zhihu\\.trae\\skills\\x\\SKILL.md', WS)).toBe('project');
     // 前缀边界：同前缀的另一目录不命中
     expect(classifyOrigin('/d/demo/Zhihu-backup/.trae/skills/x/SKILL.md', WS)).not.toBe('project');
   });

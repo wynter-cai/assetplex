@@ -80,7 +80,7 @@ export type OpenTarget = (typeof OPEN_TARGETS)[number];
 
 // ============ file URI 解码 ============
 
-/** file:///d%3A/demo/X → ~/projects/X（node 在 Windows 上接受正斜杠） */
+/** file:///d%3A/demo/X → d:/demo/X（node 在 Windows 上接受正斜杠） */
 export function decodeFileUri(uri: string): string {
   let decoded: string;
   try {

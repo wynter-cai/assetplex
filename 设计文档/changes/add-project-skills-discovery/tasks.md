@@ -74,7 +74,7 @@
   - GET /api/workspaces 自动发现出本机 14 个工作区（含中文路径），errors 为空
   - GET /api/skills?origin=project 非空；总数 = Zhihu 4 + Demo App 1 + Super Powers 62 经同名翻转/跨项目去重后的实际值（以 API 实测记录，不预设 67）
   - 验证 marketplace 计数较基线 293 的下降 = 被 project 赢走的同名数；total 与各 origin 计数守恒
-  - PUT 手动根 `~\projects` 与禁用某工作区的行为可逆验证，测后还原（workspaces.json 删除回默认）
+  - PUT 手动根 `d:\demo` 与禁用某工作区的行为可逆验证，测后还原（workspaces.json 删除回默认）
   - 选一个 project 技能（建议 douyin-knowledge-extraction）curate → 校验 vault 文件 source 行 → DELETE 清理
 - [ ] 浏览器实测：技能页「项目技能」筛选与计数、卡片项目徽章、详情路径与沉淀按钮、设置页工作区列表；完成后关闭标签页
 - [ ] 实测记录写入本文件；数据清理回基线（vault 31、总量恢复、workspaces.json 还原）

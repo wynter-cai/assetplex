@@ -63,7 +63,7 @@ describe('parseTraeStorageJson 解析 TRAE 工作区记录', () => {
         ],
       },
       windowsState: {
-        lastActiveWindow: { folder: 'file:///d%3A/demo/Agent%E6%AD%A6%E5%99%A8%E5%BA%93' },
+        lastActiveWindow: { folder: 'file:///d%3A/demo/my-project' },
         openedWindows: [
           { folder: 'file:///d%3A/demo/Zhihu' },
           { folder: 'file:///d%3A/demo/sample%20workflow' },
@@ -78,19 +78,19 @@ describe('parseTraeStorageJson 解析 TRAE 工作区记录', () => {
     });
 
     expect(parseTraeStorageJson(content).sort()).toEqual([
-      '~/projects/my-project',
-      '~/projects/Demo App',
-      '~/projects/Super Powers',
-      '~/projects/Zhihu',
-      '~/projects/sample workflow',
+      'd:/demo/Demo App',
+      'd:/demo/Super Powers',
+      'd:/demo/Zhihu',
+      'd:/demo/my-project',
+      'd:/demo/sample workflow',
     ]);
   });
 
   it('容忍未编码盘符冒号的 file URI', () => {
     const content = JSON.stringify({
-      profileAssociations: { workspaces: { 'file:///~/projects/OpenClaw': 'p' } },
+      profileAssociations: { workspaces: { 'file:///d:/demo/OpenClaw': 'p' } },
     });
-    expect(parseTraeStorageJson(content)).toEqual(['~/projects/OpenClaw']);
+    expect(parseTraeStorageJson(content)).toEqual(['d:/demo/OpenClaw']);
   });
 
   it('POSIX 路径的 file URI 解析为根路径开头', () => {
@@ -126,20 +126,20 @@ describe('parseTraeStorageJson 解析 TRAE 工作区记录', () => {
 
 describe('resolveWorkspaceDirs 工作区组装', () => {
   const fs = makeFs([
-    '~/projects/Zhihu/.trae/skills/zhihu',
-    '~/projects/Demo App/.trae/skills/douyin',
-    '~/projects/Super Powers/.trae/skills/brainstorming',
-    '~/projects/plain-proj/src',
+    'd:/demo/Zhihu/.trae/skills/zhihu',
+    'd:/demo/Demo App/.trae/skills/douyin',
+    'd:/demo/Super Powers/.trae/skills/brainstorming',
+    'd:/demo/plain-proj/src',
   ]);
 
   it('手动根本身是工作区时直接生效', () => {
     const r = resolveWorkspaceDirs({
-      manualRoots: ['~/projects/Zhihu/'],
+      manualRoots: ['d:/demo/Zhihu/'],
       autoPaths: [],
       disabled: [],
       fs,
     });
-    expect(r.dirs.map((d) => d.path)).toEqual(['~/projects/Zhihu']);
+    expect(r.dirs.map((d) => d.path)).toEqual(['d:/demo/Zhihu']);
     expect(r.dirs[0]?.source).toBe('manual');
     expect(r.truncated).toBe(false);
     expect(r.skipped).toEqual([]);
@@ -147,63 +147,63 @@ describe('resolveWorkspaceDirs 工作区组装', () => {
 
   it('手动根是父目录时仅展开一级含 .trae/skills 的子目录（根自身也算）', () => {
     const r = resolveWorkspaceDirs({
-      manualRoots: ['~/projects'],
+      manualRoots: ['d:/demo'],
       autoPaths: [],
       disabled: [],
       fs,
     });
     expect(r.dirs.map((d) => d.path).sort()).toEqual([
-      '~/projects/Demo App',
-      '~/projects/Super Powers',
-      '~/projects/Zhihu',
+      'd:/demo/Demo App',
+      'd:/demo/Super Powers',
+      'd:/demo/Zhihu',
     ]);
   });
 
   it('自动发现的工作区标记 auto，与手动重复时合并且 manual 优先', () => {
     const r = resolveWorkspaceDirs({
       manualRoots: ['D:\\demo\\Zhihu'],
-      autoPaths: ['d:/trae/zhihu/', '~/projects/Demo App'],
+      autoPaths: ['d:/demo/zhihu/', 'd:/demo/Demo App'],
       disabled: [],
       fs,
     });
-    const zhihu = r.dirs.filter((d) => d.path.toLowerCase() === 'd:/trae/zhihu');
+    const zhihu = r.dirs.filter((d) => d.path.toLowerCase() === 'd:/demo/zhihu');
     expect(zhihu).toHaveLength(1);
     expect(zhihu[0]?.source).toBe('manual');
-    expect(r.dirs.find((d) => d.path === '~/projects/Demo App')?.source).toBe('auto');
+    expect(r.dirs.find((d) => d.path === 'd:/demo/Demo App')?.source).toBe('auto');
   });
 
   it('被禁用的自动工作区不参与扫描', () => {
     const r = resolveWorkspaceDirs({
       manualRoots: [],
-      autoPaths: ['~/projects/Zhihu', '~/projects/Demo App'],
+      autoPaths: ['d:/demo/Zhihu', 'd:/demo/Demo App'],
       disabled: ['D:\\demo\\Zhihu\\'],
       fs,
     });
-    expect(r.dirs.map((d) => d.path)).toEqual(['~/projects/Demo App']);
+    expect(r.dirs.map((d) => d.path)).toEqual(['d:/demo/Demo App']);
   });
 
   it('不存在的手动根进入 skipped；自动路径不存在静默丢弃；相对路径拒绝', () => {
     const r = resolveWorkspaceDirs({
-      manualRoots: ['~/projects/missing', 'relative/path'],
-      autoPaths: ['~/projects/ghost'],
+      manualRoots: ['d:/demo/missing', 'relative/path'],
+      autoPaths: ['d:/demo/ghost'],
       disabled: [],
       fs,
     });
     expect(r.dirs).toEqual([]);
-    expect(r.skipped.sort()).toEqual(['~/projects/missing', 'relative/path']);
+    expect(r.skipped.sort()).toEqual(['d:/demo/missing', 'relative/path']);
   });
 
   it('输出稳定排序：手动在前按路径、自动在后按路径', () => {
     const r = resolveWorkspaceDirs({
-      manualRoots: ['~/projects/Super Powers', '~/projects/Zhihu'],
-      autoPaths: ['~/projects/Demo App'],
+      manualRoots: ['d:/demo/Super Powers', 'd:/demo/Zhihu'],
+      autoPaths: ['d:/demo/Demo App'],
       disabled: [],
       fs,
     });
     expect(r.dirs.map((d) => d.path)).toEqual([
-      '~/projects/Super Powers',
-      '~/projects/Zhihu',
-      '~/projects/Demo App',
+      'd:/demo/Super Powers',
+      'd:/demo/Zhihu',
+      'd:/demo/Demo App',
     ]);
   });
 
@@ -266,13 +266,13 @@ describe('工作区配置 sanitize / merge', () => {
     expect(
       sanitizeWorkspacesConfig({
         autoDiscover: false,
-        roots: ['D:\\demo\\Zhihu\\', 'd:/trae/zhihu'],
-        disabledWorkspaces: ['~/projects/Ghost'],
+        roots: ['D:\\demo\\Zhihu\\', 'd:/demo/zhihu'],
+        disabledWorkspaces: ['d:/demo/Ghost'],
       }),
     ).toEqual({
       autoDiscover: false,
-      roots: ['~/projects/Zhihu'],
-      disabledWorkspaces: ['~/projects/Ghost'],
+      roots: ['d:/demo/Zhihu'],
+      disabledWorkspaces: ['d:/demo/Ghost'],
     });
   });
 
@@ -300,10 +300,10 @@ describe('工作区配置 sanitize / merge', () => {
 
   it('merge 路径去重；数量超上限拒绝', () => {
     const merged = mergeWorkspacesConfig(
-      { disabledWorkspaces: ['D:\\demo\\A\\', '~/projects/a'] },
+      { disabledWorkspaces: ['D:\\demo\\A\\', 'd:/demo/a'] },
       DEFAULT_WORKSPACES_CONFIG,
     );
-    expect(merged.disabledWorkspaces).toEqual(['~/projects/A']);
+    expect(merged.disabledWorkspaces).toEqual(['d:/demo/A']);
     const tooMany = Array.from({ length: MAX_WORKSPACES + 1 }, (_, i) => `d:/p${i}`);
     expect(() =>
       mergeWorkspacesConfig({ roots: tooMany }, DEFAULT_WORKSPACES_CONFIG),

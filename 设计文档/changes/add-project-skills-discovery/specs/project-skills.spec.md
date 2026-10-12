@@ -13,7 +13,7 @@ AssetPlex 从 TRAE CN 自身的窗口状态文件（`storage.json` 的 `backupWo
 
 - **Given** TRAE `storage.json` 中 `backupWorkspaces.folders`、`windowsState.openedWindows[].folder`、`windowsState.lastActiveWindow.folder`、`profileAssociations.workspaces` 的键里共出现多个 `folderUri`（含重复项）
 - **When** AssetPlex 解析工作区列表
-- **Then** 所有 `file:///` 开头的文件夹 URI 被解码为本机绝对路径（如 `file:///d%3A/demo/Demo%20App` → `~\projects\Demo App`，中文与 `%20` 等编码正确还原），按规范化路径去重后输出
+- **Then** 所有 `file:///` 开头的文件夹 URI 被解码为本机绝对路径（如 `file:///d%3A/demo/Demo%20App` → `d:\demo\Demo App`，中文与 `%20` 等编码正确还原），按规范化路径去重后输出
 
 ### Scenario: storage.json 缺失或损坏时安全降级
 
@@ -41,13 +41,13 @@ AssetPlex 从 TRAE CN 自身的窗口状态文件（`storage.json` 的 `backupWo
 
 ### Scenario: 根目录本身是工作区
 
-- **Given** 用户配置根 `~\projects\Zhihu`，该目录下存在 `.trae\skills`
+- **Given** 用户配置根 `d:\demo\Zhihu`，该目录下存在 `.trae\skills`
 - **When** 展开工作区列表
-- **Then** `~\projects\Zhihu` 作为一个工作区参与扫描
+- **Then** `d:\demo\Zhihu` 作为一个工作区参与扫描
 
 ### Scenario: 根目录是多个工作区的父目录
 
-- **Given** 用户配置根 `~\projects`，其下有多个一级子目录含 `.trae\skills`（如 Zhihu、Demo App、Super Powers），也有不含的（如 node_modules 同级普通目录）
+- **Given** 用户配置根 `d:\demo`，其下有多个一级子目录含 `.trae\skills`（如 Zhihu、Demo App、Super Powers），也有不含的（如 node_modules 同级普通目录）
 - **When** 展开工作区列表
 - **Then** 仅展开一级：根自身与每个直接子目录被检查一次，只有存在 `.trae\skills` 目录的条目成为工作区；不做更深层级递归
 
@@ -77,9 +77,9 @@ AssetPlex 从 TRAE CN 自身的窗口状态文件（`storage.json` 的 `backupWo
 
 ### Scenario: 项目技能被发现并携带所属项目信息
 
-- **Given** 工作区 `~\projects\Zhihu` 的 `.trae\skills\zhihu\SKILL.md` 存在且 frontmatter 含 name/description
+- **Given** 工作区 `d:\demo\Zhihu` 的 `.trae\skills\zhihu\SKILL.md` 存在且 frontmatter 含 name/description
 - **When** 执行技能盘点
-- **Then** 该技能出现在列表中：`origin = 'project'`、`tool = 'trae'`、`workspaceName = 'Zhihu'`、`workspacePath = '~\projects\Zhihu'`；`countByOrigin.project` 包含它，`origin=project` 筛选可过滤出它
+- **Then** 该技能出现在列表中：`origin = 'project'`、`tool = 'trae'`、`workspaceName = 'Zhihu'`、`workspacePath = 'd:\demo\Zhihu'`；`countByOrigin.project` 包含它，`origin=project` 筛选可过滤出它
 
 ### Scenario: 工作区没有 .trae/skills 时零贡献
 

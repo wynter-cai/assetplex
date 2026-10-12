@@ -570,9 +570,9 @@ describe('SkillsView 项目技能', () => {
     description: '抖音知识提取',
     functionCategory: 'workflow',
     provenance: 'self',
-    path: '~/projects/Zhihu/.trae/skills/douyin-x/SKILL.md',
+    path: 'd:/demo/Zhihu/.trae/skills/douyin-x/SKILL.md',
     workspaceName: 'Zhihu',
-    workspacePath: '~/projects/Zhihu',
+    workspacePath: 'd:/demo/Zhihu',
   });
   const projectResult: SkillListResult = {
     total: 1,
@@ -601,7 +601,7 @@ describe('SkillsView 项目技能', () => {
     fireEvent.click(await screen.findByRole('button', { name: '展开 douyin-x 卡片' }));
     expect(await screen.findByText('所属工作区')).toBeInTheDocument();
     expect(screen.getByText('Zhihu')).toBeInTheDocument();
-    expect(screen.getByText('~/projects/Zhihu')).toBeInTheDocument();
+    expect(screen.getByText('d:/demo/Zhihu')).toBeInTheDocument();
     expect(await screen.findByRole('button', { name: /收藏到我的库/ })).toBeInTheDocument();
   });
 });
