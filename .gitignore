@@ -63,3 +63,6 @@ AssetPlex.cmd
 # 本机私有交接快照，不入库
 HANDOFF.md
 *百度网盘*
+
+# 隐私终检关键词清单（含真实隐私词，仅本机留存，绝不入库）
+.privacy-keywords.local
