@@ -42,6 +42,10 @@ import type {
   DiagnosisReport,
   DiagnoseEstimate,
   DoctorAssetKind,
+  DoctorApplyRequest,
+  DoctorApplyResponse,
+  DoctorUndoResponse,
+  FixDraftResponse,
   ProjectListResult,
   ProjectOpenTarget,
   WorkspacesResponse,
@@ -273,6 +277,14 @@ export const api = {
     }),
   doctorEstimate: (category: DoctorAssetKind) =>
     request<DiagnoseEstimate>(`/doctor/estimate?category=${encodeURIComponent(category)}`),
+
+  // 医生修复链（Phase F）：草案零写库；落盘唯一入口 apply 携带用户确认内容；撤销走备份区不进 swap
+  doctorFixDraft: (body: { kind: DoctorAssetKind; hubRelativePath: string; issueIndexes: number[] }) =>
+    request<FixDraftResponse>('/doctor/fix-draft', { method: 'POST', body: JSON.stringify(body) }),
+  doctorApply: (body: DoctorApplyRequest) =>
+    request<DoctorApplyResponse>('/doctor/apply', { method: 'POST', body: JSON.stringify(body) }),
+  doctorUndo: (backupRef: string) =>
+    request<DoctorUndoResponse>('/doctor/undo', { method: 'POST', body: JSON.stringify({ backupRef }) }),
 
   // Workspaces（项目级技能工作区发现）
   getWorkspaces: () => request<WorkspacesResponse>('/workspaces'),

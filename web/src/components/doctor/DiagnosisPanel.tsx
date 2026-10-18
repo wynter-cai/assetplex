@@ -1,7 +1,8 @@
 /**
  * 资产医生体检面板（add-asset-doctor E6）
  *
- * 「资产医生」按钮触发单资产诊断（advisory-only：只读，修复入口在 Phase F）。
+ * 「资产医生」按钮触发单资产诊断（advisory-only：只读）。报告含可修复问题时（非机械降级）
+ * 下方接入 FixFlow 修复流：草案→一屏确认→分发结果（落盘唯一入口在 Phase F 的显式点击）。
  * 诊断范围=资产侧：解析不出 Hub 相对路径（环境条目/Hub 外文件）时整个入口不渲染。
  * 报告披露机制与仲裁建议卡同构：结论徽标 / cached / 预算截断 / 机械降级引导 / 失败隔离。
  * spec: 设计文档/changes/add-asset-doctor/specs/asset-diagnosis.spec.md
@@ -14,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
 import { toHubRelative } from '@/lib/hub-path';
+import { FixFlow } from './FixFlow';
 import type {
   DiagnosisOverall,
   DiagnosisReport,
@@ -111,12 +113,21 @@ export function DiagnosisPanel(props: DiagnosisPanelProps): JSX.Element | null {
         <p className="text-xs text-destructive">{state.message}</p>
       )}
 
-      {state.kind === 'done' && <ReportView report={state.report} />}
+      {state.kind === 'done' && (
+        <>
+          <ReportView report={state.report} />
+          {!state.report.mechanicalOnly &&
+            state.report.issues.some((issue) => issue.fixable) && (
+              <FixFlow kind={props.kind} hubRelativePath={hubRelativePath} report={state.report} />
+            )}
+        </>
+      )}
     </div>
   );
 }
 
-function ReportView({ report }: { report: DiagnosisReport }): JSX.Element {
+/** 单份报告渲染（批量体检结果展开也复用，add-asset-doctor F5） */
+export function ReportView({ report }: { report: DiagnosisReport }): JSX.Element {
   return (
     <div role="region" aria-label="体检报告" className="rounded border bg-muted/30 p-3 space-y-2">
       <div className="flex flex-wrap items-center gap-2">

@@ -101,8 +101,9 @@ describe('DiagnosisPanel', () => {
     expect(await screen.findByText('需关注')).toBeInTheDocument();
     expect(screen.getByText('高')).toBeInTheDocument();
     expect(screen.getByText('中')).toBeInTheDocument();
-    expect(screen.getByText('description 为空')).toBeInTheDocument();
-    expect(screen.getByText('删除基础概念段')).toBeInTheDocument();
+    // finding 在报告与修复流选择视图各出现一次（可修复项）
+    expect(screen.getAllByText('description 为空')).toHaveLength(2);
+    expect(screen.getAllByText('删除基础概念段')).toHaveLength(2);
     // 机械项标注「机械检查」不是链接；自定义准则是回准则页的链接
     expect(screen.getByText('机械检查')).toBeInTheDocument();
     const link = screen.getByRole('link', { name: 'token-economy' });
@@ -143,5 +144,24 @@ describe('DiagnosisPanel', () => {
     renderPanel();
     fireEvent.click(screen.getByRole('button', { name: '资产医生' }));
     expect(await screen.findByText('诊断失败：输出无法解析为 JSON')).toBeInTheDocument();
+  });
+
+  it('报告含可修复问题 → 下方出现修复流入口（add-asset-doctor F4 联动）', async () => {
+    vi.mocked(api.doctorDiagnose).mockResolvedValue(baseReport());
+    renderPanel();
+    fireEvent.click(screen.getByRole('button', { name: '资产医生' }));
+    expect(await screen.findByText('需关注')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: '修复流' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /生成修复草案/ })).toBeInTheDocument();
+  });
+
+  it('机械降级（mechanicalOnly）不提供修复入口', async () => {
+    vi.mocked(api.doctorDiagnose).mockResolvedValue(
+      baseReport({ overall: 'at-risk', mechanicalOnly: true, issues: [baseReport().issues[0]], criteriaUsed: [], model: '' }),
+    );
+    renderPanel();
+    fireEvent.click(screen.getByRole('button', { name: '资产医生' }));
+    await screen.findByText(/配置 AI 端点后可诊断语义质量问题/);
+    expect(screen.queryByRole('region', { name: '修复流' })).not.toBeInTheDocument();
   });
 });

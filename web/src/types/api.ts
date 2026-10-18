@@ -671,3 +671,52 @@ export interface DiagnoseEstimate {
   /** >50 前端二次确认 */
   willCall: number;
 }
+
+// ---------- 修复与分发（add-asset-doctor Phase F） ----------
+
+/** POST /api/doctor/fix-draft 响应（Scenario 1：草案阶段库内零变化） */
+export interface FixDraftResponse {
+  /** 修订后的完整文件内容（可编辑后再 apply） */
+  draftContent: string;
+  /** 逐问题修复说明 */
+  changeNotes: Array<{ issueIndex: number; note: string }>;
+  /** 恒 false（超长后端直接拒绝）；字段保留与契约对齐 */
+  contentTruncated: boolean;
+  cached: boolean;
+  model: string;
+}
+
+/** 单工具分发结果（swapId 供「回滚本次分发」） */
+export interface DoctorDispatchItem {
+  tool: string;
+  action: 'written' | 'skipped' | 'failed';
+  reason?: string;
+  swapId?: string;
+}
+
+/** POST /api/doctor/apply 请求：用户确认后写库 + 可选分发（Scenario 2-6） */
+export interface DoctorApplyRequest {
+  kind: DoctorAssetKind;
+  hubRelativePath: string;
+  /** 最终采纳内容（可能经用户编辑）；以用户版本为准 */
+  finalContent: string;
+  /** false = 只改库不分发（Scenario 6） */
+  distribute: boolean;
+  /** distribute=true 的目标工具；缺省 = 已安装该资产的全部工具 */
+  targets?: string[];
+}
+
+/** POST /api/doctor/apply 响应（Scenario 2-6） */
+export interface DoctorApplyResponse {
+  saved: true;
+  /** 旧版备份引用：「撤销本次修复」入口依据 */
+  backupRef: string;
+  dispatch: DoctorDispatchItem[];
+  rollbackAvailable: boolean;
+}
+
+/** POST /api/doctor/undo 响应（Scenario 3：库内恢复旧版） */
+export interface DoctorUndoResponse {
+  restored: true;
+  hubRelativePath: string;
+}
