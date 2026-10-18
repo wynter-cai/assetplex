@@ -27,6 +27,7 @@ import {
   type ArbitrationCategory,
   type ArbitrationDecision,
 } from './types.js';
+import { extractJsonObjectText } from './llm-output.js';
 
 // 决策/类别闭集定义在 types.ts（共享基座），此处 re-export 保持对外导入面稳定
 export { ARBITRATION_CATEGORIES, ARBITRATION_DECISIONS };
@@ -113,16 +114,6 @@ export function buildArbitrationPrompt(input: ArbitrationPromptInput): { system:
     truncateSide(input.rightLabel ?? '现有版', input.right),
   ].join('\n\n');
   return { system: systemParts.join('\n\n'), user };
-}
-
-/** 从含杂文输出中提取最外层 JSON 对象文本（首个 { 到末个 }，容忍嵌套与前后缀） */
-function extractJsonObjectText(text: string): string | null {
-  const fenced = /```(?:json)?\s*([\s\S]*?)\s*```/.exec(text);
-  const candidate = fenced ? fenced[1] : text;
-  const start = candidate.indexOf('{');
-  const end = candidate.lastIndexOf('}');
-  if (start === -1 || end <= start) return null;
-  return candidate.slice(start, end + 1);
 }
 
 /**

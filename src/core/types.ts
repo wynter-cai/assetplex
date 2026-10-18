@@ -219,3 +219,35 @@ export type ArbitrationDecision = (typeof ARBITRATION_DECISIONS)[number];
 /** 仲裁可处理的资产类别闭集（preference 不参与仲裁） */
 export const ARBITRATION_CATEGORIES = ['identity', 'skill', 'rule', 'mcp', 'memory'] as const;
 export type ArbitrationCategory = (typeof ARBITRATION_CATEGORIES)[number];
+
+// ========== 资产医生类型（add-asset-doctor，共享基座） ==========
+
+/** 医生服务的资产类别闭集（mcp 一期不做模型诊断，见 proposal 非目标） */
+export const DOCTOR_ASSET_KINDS = ['identity', 'skill', 'rule', 'agent', 'command'] as const;
+export type DoctorAssetKind = (typeof DOCTOR_ASSET_KINDS)[number];
+
+/** 诊断结论闭集（闭集外一律解析失败，Scenario 8） */
+export const DIAGNOSIS_OVERALLS = ['healthy', 'needs-attention', 'at-risk'] as const;
+export type DiagnosisOverall = (typeof DIAGNOSIS_OVERALLS)[number];
+
+export const DIAGNOSIS_SEVERITIES = ['high', 'medium', 'low'] as const;
+export type DiagnosisSeverity = (typeof DIAGNOSIS_SEVERITIES)[number];
+
+/** 确定性预检项闭集（机械判定不烧 token，proposal D6） */
+export const MECHANICAL_CHECK_IDS = [
+  'frontmatter-missing-field',
+  'description-empty',
+  'body-over-length',
+  'shouting-rules',
+] as const;
+export type MechanicalCheckId = (typeof MECHANICAL_CHECK_IDS)[number];
+
+/** 诊断问题条目：机械项 criterion 固定为 'mechanical:<checkId>' */
+export interface DiagnosisIssue {
+  severity: DiagnosisSeverity;
+  criterion: string;
+  finding: string;
+  suggestion: string;
+  /** 是否可生成改写草案 */
+  fixable: boolean;
+}

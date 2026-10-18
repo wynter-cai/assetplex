@@ -23,6 +23,11 @@ import {
   type ArbitrationCacheEntry,
   type ArbitrationCacheStore,
 } from '../../core/arbitration-cache.js';
+import {
+  sanitizeDoctorEntries,
+  type DoctorCacheEntry,
+  type DoctorCacheStore,
+} from '../../core/doctor-cache.js';
 import { expandHome } from '../../utils/paths.js';
 
 /** 解析 Hub 元数据目录下的文件路径：$ASSETPLEX_DIR/<name> */
@@ -99,6 +104,22 @@ export function createNodeArbitrationCacheStore(
 }
 
 export const nodeArbitrationCacheStore = createNodeArbitrationCacheStore();
+
+/** 诊断报告缓存存储（doctor-reports.json，key = 诊断输入 sha256） */
+export function createNodeDoctorCacheStore(
+  filePath: string = resolveAssetplexFile('doctor-reports.json'),
+): DoctorCacheStore {
+  return {
+    load(): Record<string, DoctorCacheEntry> {
+      return sanitizeDoctorEntries(readJson(filePath));
+    },
+    save(entries: Record<string, DoctorCacheEntry>): void {
+      writeJson(filePath, entries);
+    },
+  };
+}
+
+export const nodeDoctorCacheStore = createNodeDoctorCacheStore();
 
 /** 读取当前生效配置的便捷封装（路由层使用） */
 export function loadCurrentAiConfig(store: AiConfigStore = nodeAiConfigStore): AiClassifyConfig {
