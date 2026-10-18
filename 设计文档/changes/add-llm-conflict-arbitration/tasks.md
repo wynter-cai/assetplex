@@ -30,10 +30,10 @@
 
 ## Phase D — 验收与收尾
 
-- [ ] D1 全量：`npm test` / `tsc -b` 双端 / tsup + vite 构建全绿
-- [ ] D2 API 回环脚本：造两条真实分叉内容 → 仲裁 → 采纳 merge 草案 → 确认导入 → 校验落盘内容=草案（临时脚本用毕即删）
-- [ ] D3 浏览器走查（Browser 子代理，用完即关）：准则页 CRUD、differs 仲裁、草案编辑采纳、未配置降级四类场景
-- [ ] D4 文档回写：taxonomy 增「元资产：criterion」层与版本历史行；PRIVACY.md / data-and-privacy.md 补仲裁数据流出说明（Scenario 9 / D6）
+- [x] D1 全量：`npm test` / `tsc -b` 双端 / tsup + vite 构建全绿 ✅（后端 670/670、46 文件；前端 180/180、24 文件；双端 tsc 0 错；tsup/vite build 成）
+- [x] D2 API 回环脚本：造两条真实分叉内容 → 仲裁 → 采纳 merge 草案 → 确认导入 → 校验落盘内容=草案（临时脚本用毕即删）✅（临时 Hub+真实模型：ARBITRATION-OK decision=merge 2s；CACHE-OK 二次 3ms cached=true；ROUNDTRIP-OK 落盘=草案；MECHANICAL-MERGE-OK 无草案回归；脚本已删）
+- [x] D3 浏览器走查（Browser 子代理，用完即关）：准则页 CRUD、differs 仲裁、草案编辑采纳、未配置降级四类场景 ✅（准则页 4/4 通过：空态→包弹窗 7 条模板不导入→新建→开关两次→确认删除→零残留；本机扫描 0 differs（381 exists+2 none）仲裁 UI 手工链不可达，以 API 旁证替代：真实端点 1.7s 返回 keep-left+高质量理由，降级分流由 13 条组件测试覆盖；未碰任何导入执行按钮；备注：原生视图隐藏致截图不可用，子代理已还原标签页）
+- [x] D4 文档回写：taxonomy 增「元资产：criterion」层与版本历史行；PRIVACY.md / data-and-privacy.md 补仲裁数据流出说明（Scenario 9 / D6）✅（taxonomy 1.2 版：元资产小节+历史行；两份隐私文档补「AI 功能 opt-in」节并修正「零网络请求」绝对化表述——同时补齐了 AI 分类既有文档缺口）
 - [ ] D5 隐私终检 `node scripts/privacy-check.mjs` 退出码 0；分层 commit（docs spec / feat 准则 / feat 引擎 / feat UI 接入 / docs 收尾）；本 tasks 勾选与实测记录
 
 ## 风险与预留
