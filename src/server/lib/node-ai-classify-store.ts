@@ -28,6 +28,11 @@ import {
   type DoctorCacheEntry,
   type DoctorCacheStore,
 } from '../../core/doctor-cache.js';
+import {
+  sanitizeFixDraftEntries,
+  type FixDraftCacheEntry,
+  type FixDraftCacheStore,
+} from '../../core/doctor-fix.js';
 import { expandHome } from '../../utils/paths.js';
 
 /** 解析 Hub 元数据目录下的文件路径：$ASSETPLEX_DIR/<name> */
@@ -120,6 +125,22 @@ export function createNodeDoctorCacheStore(
 }
 
 export const nodeDoctorCacheStore = createNodeDoctorCacheStore();
+
+/** 修复草案缓存存储（doctor-drafts.json，key = 草案输入 sha256；与诊断报告分文件两本账） */
+export function createNodeFixDraftCacheStore(
+  filePath: string = resolveAssetplexFile('doctor-drafts.json'),
+): FixDraftCacheStore {
+  return {
+    load(): Record<string, FixDraftCacheEntry> {
+      return sanitizeFixDraftEntries(readJson(filePath));
+    },
+    save(entries: Record<string, FixDraftCacheEntry>): void {
+      writeJson(filePath, entries);
+    },
+  };
+}
+
+export const nodeFixDraftCacheStore = createNodeFixDraftCacheStore();
 
 /** 读取当前生效配置的便捷封装（路由层使用） */
 export function loadCurrentAiConfig(store: AiConfigStore = nodeAiConfigStore): AiClassifyConfig {
