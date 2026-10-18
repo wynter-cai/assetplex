@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { getCategoryConfig } from '@/config/asset-categories';
+import { DiagnosisPanel } from '@/components/doctor/DiagnosisPanel';
 import type { Asset } from '@/types/api';
 
 interface AssetEditorProps {
@@ -34,6 +35,13 @@ export function AssetEditor({
   }, [asset]);
 
   const cat = getCategoryConfig(asset?.category ?? category ?? 'skill');
+
+  // 医生入口（add-asset-doctor G3 走查缺口）：只读视图的 rule/identity 类提供体检；
+  // mcp 一期不做诊断，skill 走技能页专属视图
+  const doctorKind =
+    isReadOnly && asset && (asset.category === 'rule' || asset.category === 'identity')
+      ? asset.category
+      : null;
 
   const handleSave = async (): Promise<void> => {
     if (!name.trim()) return;
@@ -89,6 +97,11 @@ export function AssetEditor({
       <div className="flex-1 overflow-hidden">
         {isReadOnly ? (
           <div className="h-full overflow-auto p-4 prose prose-sm max-w-none">
+            {doctorKind !== null && asset !== undefined && asset !== null && (
+              <div className="mb-3 max-w-none">
+                <DiagnosisPanel kind={doctorKind} hubRelativePath={asset.hubPath} />
+              </div>
+            )}
             <pre className="whitespace-pre-wrap font-mono text-sm leading-relaxed bg-muted p-4 rounded-md">{content}</pre>
           </div>
         ) : (
