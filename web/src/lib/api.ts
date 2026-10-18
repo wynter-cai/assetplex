@@ -29,6 +29,9 @@ import type {
   SkillFunction,
   SkillProvenance,
   SkillAssetScope,
+  CriterionAsset,
+  CriteriaPackTemplate,
+  CriteriaPackImportResult,
   LibraryStatus,
   CurateBatchResult,
   AiClassifyConfigView,
@@ -223,6 +226,17 @@ export const api = {
     request<CurateBatchResult>('/skills/curate-batch', {
       method: 'POST',
       body: JSON.stringify({ ids }),
+    }),
+
+  // Criteria 裁决准则（列表/准则包只读聚合；单条增删改复用上方 /files 接口）
+  listCriteria: () =>
+    request<{ criteria: CriterionAsset[] }>('/criteria'),
+  listCriteriaPack: () =>
+    request<{ templates: CriteriaPackTemplate[] }>('/criteria/pack'),
+  importCriteriaPack: (slugs: string[]) =>
+    request<CriteriaPackImportResult>('/criteria/import-pack', {
+      method: 'POST',
+      body: JSON.stringify({ slugs }),
     }),
 
   // AI 智能分类（配置 + 显式触发，结果按内容 hash 缓存）

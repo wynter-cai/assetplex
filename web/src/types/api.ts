@@ -553,3 +553,45 @@ export interface SwapHistoryEntry {
   rolledBack: boolean;
   rollbackAvailable: boolean;
 }
+
+// ========== 裁决准则元资产(add-llm-conflict-arbitration) ==========
+
+/** 准则适用资产类别（'all' 为通配） */
+export type CriterionAppliesTo =
+  | 'all'
+  | 'identity'
+  | 'skill'
+  | 'rule'
+  | 'mcp'
+  | 'command'
+  | 'agent'
+  | 'memory';
+
+/** 库内准则（frontmatter 解析后 + 正文） */
+export interface CriterionAsset {
+  slug: string;
+  relativePath: string;
+  name: string;
+  description: string;
+  priority: number;
+  enabled: boolean;
+  appliesTo: CriterionAppliesTo[];
+  source?: string;
+  body: string;
+}
+
+/** 内置业内准则包模板元数据（不含正文，UI 勾选导入用） */
+export interface CriteriaPackTemplate {
+  slug: string;
+  name: string;
+  description: string;
+  priority: number;
+  appliesTo: CriterionAppliesTo[];
+  source: string;
+}
+
+/** 准则包导入结果 */
+export interface CriteriaPackImportResult {
+  inserted: string[];
+  rejected: string[];
+}

@@ -15,6 +15,7 @@ import { AssetEditor } from '@/components/vault/AssetEditor';
 import { DistributionDialog } from '@/components/vault/DistributionDialog';
 import { AgentsView } from '@/components/agents/AgentsView';
 import { SkillsView } from '@/components/skills/SkillsView';
+import { CriteriaView } from '@/components/criteria/CriteriaView';
 import { getCategoryConfig } from '@/config/asset-categories';
 import type { Asset, FrontendCategory } from '@/types/api';
 
@@ -154,6 +155,7 @@ export default function Vault(): JSX.Element {
         <div className="flex min-w-0 flex-1">
           {selectedCategory === 'agent' && <AgentsView />}
           {selectedCategory === 'skill' && <SkillsView />}
+          {selectedCategory === 'criteria' && <CriteriaView />}
         </div>
       ) : (
       <div className="flex min-w-0 flex-1 flex-col gap-4">

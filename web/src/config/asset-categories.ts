@@ -7,7 +7,7 @@
  * 参考: 设计文档/assetplex-asset-taxonomy.md
  */
 
-import { User, Sparkles, BookOpen, Server, Bot, type LucideIcon } from 'lucide-react';
+import { User, Sparkles, BookOpen, Server, Bot, Scale, type LucideIcon } from 'lucide-react';
 
 export interface AssetCategoryConfig {
   /** 类别代码，用于 URL 和后端通信 */
@@ -39,6 +39,7 @@ export const ASSET_CATEGORIES: AssetCategoryConfig[] = [
   { code: 'rule', label: '规则', description: '约束 AI 行为的规则与约定', icon: BookOpen, order: 30 },
   { code: 'mcp', label: 'MCP', description: 'MCP 服务器配置资产', icon: Server, order: 40 },
   { code: 'agent', label: '智能体', description: '盘点各工具中的子智能体配置', icon: Bot, order: 50, external: true },
+  { code: 'criteria', label: '裁决准则', description: '冲突仲裁与资产诊断依据的最佳实践准则——准则本身也是资产', icon: Scale, order: 60, external: true },
 ];
 
 /** 根据 code 获取类别配置 */
