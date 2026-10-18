@@ -14,6 +14,7 @@ import { SkillCreateDialog } from './SkillCreateDialog';
 import { SkillsToolbar, type SkillsDimension, type LibraryStatusFilter } from './SkillsToolbar';
 import { SkillsBatchBar } from './SkillsBatchBar';
 import { EnvSkillsPanel } from './EnvSkillsPanel';
+import { SkillsCheckupSection } from '@/components/doctor/SkillsCheckupSection';
 import { FUNCTION_LABELS, PROVENANCE_LABELS, FUNCTION_ORDER, PROVENANCE_ORDER } from './skill-labels';
 import { useAiClassify } from './use-ai-classify';
 import { AiConfigDialog } from './AiConfigDialog';
@@ -180,10 +181,13 @@ export function SkillsView(): JSX.Element {
         title="技能"
         subtitle="盘点各工具安装的技能，收藏到我的库后统一同步分发"
         actions={
-          <Button size="sm" onClick={() => setCreateOpen(true)}>
-            <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-            新建技能
-          </Button>
+          <div className="flex items-center gap-3">
+            <SkillsCheckupSection />
+            <Button size="sm" onClick={() => setCreateOpen(true)}>
+              <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+              新建技能
+            </Button>
+          </div>
         }
       />
       <SkillsToolbar

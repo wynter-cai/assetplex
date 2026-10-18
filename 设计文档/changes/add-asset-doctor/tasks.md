@@ -21,11 +21,16 @@
 
 ## Phase F — 修复与分发（specs/fix-and-distribute.spec.md）
 
-- [ ] F1 `src/core/doctor.ts`：`buildFixDraftPrompt(...)` + `generateFixDraft(...)`（基于原文+选中问题+准则产出草案与 changeNotes；contentTruncated 时拒绝 400）。测试 Scenario 1/7
-- [ ] F2 `POST /api/doctor/fix-draft` 路由：草案阶段零写库断言（测试验证 fs 无写入调用）
-- [ ] F3 `POST /api/doctor/apply`：写库按类别分发到既有路径（hub-files/skill-write/agent-write），覆盖前旧版入备份区并回 backupRef；`distribute=true` 时逐目标工具调用 swap 引擎单资产预览-执行（不自建通道），聚合 DoctorDispatchItem；任一步失败如实回报、整体 rollbackAvailable 判定。红测试先行（Scenario 3/4/5/6）
-- [ ] F4 web：「生成修复草案」→ 可编辑草案 + 逐问题修复说明；「应用并分发」一屏确认框（diff 视图 + 工具勾选清单 + 备份说明），提交后逐工具结果与「撤销本次修复 / 回滚本次分发」入口。组件测试 Scenario 1/2/6
-- [ ] F5 类别页「全部体检」：先 estimate 再发起，前端并发池 ≤4 逐条 diagnose，进度与失败清单，>50 调用二次确认，报告清单排序可点进单份。测试 Scenario 5；断言不提供批量修复（Scenario 8）
+- [x] F1 `src/core/doctor.ts`：`buildFixDraftPrompt(...)` + `generateFixDraft(...)`（基于原文+选中问题+准则产出草案与 changeNotes；contentTruncated 时拒绝 400）。测试 Scenario 1/7
+  > 实测：落地为 src/core/doctor-fix.ts（诊断主体已占 doctor.ts 文件名）；超长不调模型直接 400；草案缓存 doctor-drafts.json 与报告分文件；13 用例绿（8c554a0）
+- [x] F2 `POST /api/doctor/fix-draft` 路由：草案阶段零写库断言（测试验证 fs 无写入调用）
+  > 实测：服务端 re-run diagnoseAsset 对齐 issueIndexes；越界/非 fixable → 400；错误映射 404/422/400/500（c762c8c）
+- [x] F3 `POST /api/doctor/apply`：写库按类别分发到既有路径（hub-files/skill-write/agent-write），覆盖前旧版入备份区并回 backupRef；`distribute=true` 时逐目标工具调用 swap 引擎单资产预览-执行（不自建通道），聚合 DoctorDispatchItem；任一步失败如实回报、整体 rollbackAvailable 判定。红测试先行（Scenario 3/4/5/6）
+  > 实测：swap 增加 onlyHubRelativePaths 单元级范围（既有 32 回归绿）；备份区 <Hub>/.doctor-backup 保留 3 份；apply 序 read→backup→write→分发；9+5+6 用例，后端全量 753/753（921ae45/c762c8c）
+- [x] F4 web：「生成修复草案」→ 可编辑草案 + 逐问题修复说明；「应用并分发」一屏确认框（diff 视图 + 工具勾选清单 + 备份说明），提交后逐工具结果与「撤销本次修复 / 回滚本次分发」入口。组件测试 Scenario 1/2/6
+  > 实测：FixFlow 五态状态机 + FixFlowViews 拆文件；全不勾=只改库（distribute:false）；identity 红字；未安装工具不入清单；9+2 联动用例，web 208/208，tsc 0 错，vite build 成（8717d46）
+- [x] F5 类别页「全部体检」：先 estimate 再发起，前端并发池 ≤4 逐条 diagnose，进度与失败清单，>50 调用二次确认，报告清单排序可点进单份。测试 Scenario 5；断言不提供批量修复（Scenario 8）
+  > 实测：BatchCheckup（并发≤4/排序清单/展开 ReportView）+ SkillsCheckupSection 容器（仅库内且 Hub 内条目）；本期接入技能页，rule/identity/agent 页批量入口待后续（单资产详情已有医生）；7 用例绿
 
 ## Phase G — 验收与收尾
 
