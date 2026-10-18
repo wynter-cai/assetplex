@@ -5,7 +5,10 @@
  * 全依赖注入：假 fs / 准则 / 内存缓存 / mock LLM / 内存 aiConfigStore，不碰真实文件与网络。
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { createArbitrationRoutes } from '../../../src/server/routes/arbitration.js';
 import type { AiConfigStore, AiClassifyConfig } from '../../../src/core/ai-config.js';
 import type { ArbitrationCacheEntry, ArbitrationCacheStore } from '../../../src/core/arbitration-cache.js';
@@ -156,5 +159,75 @@ describe('POST /api/arbitration', () => {
     expect(h.calls[0].user).toContain('我的库');
     const h2 = harness();
     expect((await h2.post({ ...validBody, leftLabel: 7 })).status).toBe(400);
+  });
+});
+
+/**
+ * 默认 fs（nodeRead）：导入向导传入的 rightPath 是 Hub 相对路径（hubTargetPath），
+ * 需解析到 Hub 根目录；绝对路径直读；越界路径拒绝（C1 前置，add-llm-conflict-arbitration）
+ */
+describe('POST /api/arbitration 默认文件读取（Hub 相对路径）', () => {
+  let testDir: string;
+  let originalAssetPlexDir: string | undefined;
+  const calls: { system: string; user: string }[] = [];
+
+  beforeEach(() => {
+    testDir = mkdtempSync(join(tmpdir(), 'assetplex-arb-route-'));
+    originalAssetPlexDir = process.env.ASSETPLEX_DIR;
+    process.env.ASSETPLEX_DIR = testDir;
+    mkdirSync(join(testDir, 'rules'), { recursive: true });
+    writeFileSync(join(testDir, 'rules', 'demo-rule.md'), 'HUB-RIGHT-CONTENT', 'utf-8');
+    writeFileSync(join(testDir, 'left-absolute.md'), 'LEFT-ABSOLUTE-CONTENT', 'utf-8');
+    calls.length = 0;
+  });
+
+  afterEach(() => {
+    if (originalAssetPlexDir === undefined) {
+      delete process.env.ASSETPLEX_DIR;
+    } else {
+      process.env.ASSETPLEX_DIR = originalAssetPlexDir;
+    }
+    rmSync(testDir, { recursive: true, force: true });
+  });
+
+  function realRoutes() {
+    let data: Record<string, ArbitrationCacheEntry> = {};
+    const storeData = fullConfig();
+    return createArbitrationRoutes({
+      // 不注入 fs：走默认 nodeRead，验证绝对路径/Hub 相对路径/越界三类行为
+      getCriteria: () => [],
+      cache: { load: () => ({ ...data }), save: (entries) => { data = { ...entries }; } },
+      llmClient: { chat: async (input) => { calls.push(input); return '{"decision":"keep-right","rationale":"现有版更好"}'; } },
+      aiConfigStore: { load: () => ({ ...storeData }), save: () => undefined },
+      now: () => '2026-10-18T00:00:00.000Z',
+    });
+  }
+
+  async function postReal(body: unknown): Promise<number> {
+    const res = await realRoutes().fetch(
+      new Request('http://local/', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }),
+    );
+    return res.status;
+  }
+
+  it('rightPath 为 Hub 相对路径、leftPath 为绝对路径→200 且两侧内容进 prompt', async () => {
+    const status = await postReal({
+      category: 'rule',
+      leftPath: join(testDir, 'left-absolute.md'),
+      rightPath: 'rules/demo-rule.md',
+    });
+    expect(status).toBe(200);
+    expect(calls[0].user).toContain('LEFT-ABSOLUTE-CONTENT');
+    expect(calls[0].user).toContain('HUB-RIGHT-CONTENT');
+  });
+
+  it('相对路径越界（解析到 Hub 外）→404，不调模型', async () => {
+    const status = await postReal({
+      category: 'rule',
+      leftPath: join(testDir, 'left-absolute.md'),
+      rightPath: '../escape.md',
+    });
+    expect(status).toBe(404);
+    expect(calls).toHaveLength(0);
   });
 });

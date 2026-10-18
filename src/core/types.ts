@@ -179,6 +179,11 @@ export interface ImportItem {
   conflict: ConflictStatus;
   /** 冲突解决策略（仅 conflict !== 'none' 时有效） */
   strategy?: ConflictStrategy;
+  /**
+   * 仲裁合并草案（add-llm-conflict-arbitration C4）：
+   * 仅 strategy === 'merge' 且非空白时生效——直接以此为准落盘，跳过机械合并
+   */
+  mergeDraft?: string;
 }
 
 /** 导入请求 */

@@ -366,8 +366,11 @@ export class SyncEngine {
           });
           result.overwritten++;
         } else if (item.strategy === 'merge') {
-          // 智能合并
-          const merged = mergeFile(item.hubTargetPath, contentToWrite, existing.content, item.tool);
+          // 智能合并：用户采纳过仲裁草案时以草案为准，否则机械合并
+          const draft = item.mergeDraft;
+          const merged = draft !== undefined && draft.trim() !== ''
+            ? { content: draft }
+            : mergeFile(item.hubTargetPath, contentToWrite, existing.content, item.tool);
           writeHubFile(item.hubTargetPath, merged.content);
           result.items.push({
             tool: item.tool,

@@ -11,6 +11,8 @@
 
 import { Hono } from 'hono';
 import { existsSync, readFileSync } from 'node:fs';
+import { isAbsolute, resolve, sep } from 'node:path';
+import { getHubRoot } from '../../utils/paths.js';
 import {
   arbitrateConflict,
   ArbitrationFileError,
@@ -37,11 +39,24 @@ export interface ArbitrationRouteDeps {
   now?: () => string;
 }
 
+/**
+ * 默认文件读取：绝对路径直读（导入向导的工具侧源文件）；
+ * 相对路径视为 Hub 内路径（hubTargetPath），解析到 hubRoot 并拒绝越界（C1 前置）
+ */
+function resolveReadPath(path: string): string | null {
+  if (isAbsolute(path)) return path;
+  const hubRoot = getHubRoot();
+  const full = resolve(hubRoot, path);
+  if (full !== hubRoot && !full.startsWith(hubRoot + sep)) return null;
+  return full;
+}
+
 const nodeRead = {
   read: (path: string): string | null => {
     try {
-      if (!existsSync(path)) return null;
-      return readFileSync(path, 'utf-8');
+      const full = resolveReadPath(path);
+      if (full === null || !existsSync(full)) return null;
+      return readFileSync(full, 'utf-8');
     } catch {
       return null;
     }
