@@ -109,6 +109,52 @@ describe('GET /api/skills', () => {
     expect(res.status).toBe(400);
   });
 
+  // refactor-skill-asset-first-view：Scenario 1/5/6 + 400 错误体
+  describe('scope 参数（资产/环境视图口径）', () => {
+    const scopeFs = (): MemoryWriteFs =>
+      makeFs({
+        [`${sources.vaultSkillsDir}/mine/SKILL.md`]: '---\nname: mine\ndescription: 自建\n---',
+        [`${sources.userSkillsDir}/pdf/SKILL.md`]: '---\nname: pdf\ndescription: 个人文档\n---',
+        [`${sources.marketplaceSkillsDir}/stock/SKILL.md`]: '---\nname: stock\ndescription: 股票数据\n---',
+        [`${sources.builtinRoot}/global/skills/g-skill/SKILL.md`]: '---\nname: g-skill\ndescription: 官方内置\n---',
+      });
+
+    it('scope=asset 只回资产且携带 countByScope', async () => {
+      const res = await buildApp(scopeFs()).request('/api/skills?scope=asset');
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.items.map((s: { id: string }) => s.id).sort()).toEqual(['mine', 'pdf']);
+      expect(body.countByScope).toEqual({ asset: 2, environment: 2 });
+      expect(body.total).toBe(2); // total 随视图口径（契约修订：走查发现统计行需资产口径）
+    });
+
+    it('scope=environment 只回未入库非自建（内置/市场）', async () => {
+      const res = await buildApp(scopeFs()).request('/api/skills?scope=environment');
+      const body = await res.json();
+      expect(body.items.map((s: { id: string }) => s.id).sort()).toEqual(['g-skill', 'stock']);
+    });
+
+    it('不带 scope 旧行为不变：items 全量，countByScope 照常返回（Scenario 6）', async () => {
+      const res = await buildApp(scopeFs()).request('/api/skills');
+      const body = await res.json();
+      expect(body.items).toHaveLength(4);
+      expect(body.countByScope).toEqual({ asset: 2, environment: 2 });
+    });
+
+    it('scope=foo 返回 400，错误消息逐字对齐契约', async () => {
+      const res = await buildApp(scopeFs()).request('/api/skills?scope=foo');
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toBe('无效视图：foo，支持：asset, environment, all');
+    });
+
+    it('scope=environment&provenance=builtin 交集（Scenario 5）', async () => {
+      const res = await buildApp(scopeFs()).request('/api/skills?scope=environment&provenance=builtin');
+      const body = await res.json();
+      expect(body.items.map((s: { id: string }) => s.id)).toEqual(['g-skill']);
+    });
+  });
+
   it('200 条目对外语义：provenance+inLibrary 替换 origin（refactor-skill-origin-taxonomy）', async () => {
     const fs = makeFs({
       [`${sources.vaultSkillsDir}/mine/SKILL.md`]: '---\nname: mine\ndescription: 自建\n---',

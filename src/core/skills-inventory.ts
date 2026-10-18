@@ -88,6 +88,8 @@ export interface SkillSources {
   userSkillsDir: string;
   /** ~/.workbuddy/skills（WorkBuddy 个人技能，可选；origin=personal, tool=workbuddy） */
   workbuddySkillsDir?: string;
+  /** ~/.qoder-cn/skills 或回退 ~/.qoder/skills（Qoder 个人技能，可选；origin=personal, tool=qoder） */
+  qoderUserSkillsDir?: string;
   /** ~/.trae-cn/builtin（global + code/work/design persona 包） */
   builtinRoot: string;
   /** ~/.trae-cn/builtin_skills */
@@ -96,7 +98,7 @@ export interface SkillSources {
   pluginsRoot: string;
   /** ~/.codebuddy/skills-marketplace/skills */
   marketplaceSkillsDir: string;
-  /** TRAE 项目工作区目录列表（每个目录下扫 .trae/skills）；无工作区时为空数组 */
+  /** TRAE/Qoder 项目工作区目录列表（每个目录下扫 .trae/skills 与 .qoder/skills）；无工作区时为空数组 */
   workspaceDirs: string[];
   /** 保险箱技能根目录（Hub skills/<name>/SKILL.md） */
   vaultSkillsDir: string;
@@ -109,10 +111,12 @@ export interface ListSkillsResult {
   items: SkillInfo[];
   total: number;
   countByFunction: Record<SkillFunction, number>;
-  /** 出处计数（随 status/search 过滤联动，不含 provenance 自身维度） */
+  /** 出处计数（随 scope/status/search 过滤联动，不含 provenance 自身维度） */
   countByProvenance: Record<SkillProvenance, number>;
-  /** 状态计数：我的库 / 未入库（随 provenance/search 联动，不含 status 自身维度） */
+  /** 状态计数：我的库 / 未入库（随 scope/provenance/search 联动，不含 status 自身维度） */
   countByStatus: { in: number; out: number };
+  /** 视图口径计数：资产/环境（随 function/provenance/status/search 联动，不含 scope 自身维度） */
+  countByScope: { asset: number; environment: number };
 }
 
 /** 发现到的原始技能副本 */
@@ -242,8 +246,10 @@ export function classifyOrigin(absolutePath: string, sources: SkillSources): Ski
   if (under(sources.vaultSkillsDir)) return 'vault';
   if (under(sources.userSkillsDir)) return 'personal';
   if (sources.workbuddySkillsDir && under(sources.workbuddySkillsDir)) return 'personal';
-  // 项目工作区：限定到 <workspace>/.trae/skills 前缀，避免同前缀兄弟目录误判
-  if (sources.workspaceDirs.some((dir) => under(dir, '/.trae/skills'))) return 'project';
+  if (sources.qoderUserSkillsDir && under(sources.qoderUserSkillsDir)) return 'personal';
+  // 项目工作区：限定到 <workspace>/.trae|.qoder/skills 前缀，避免同前缀兄弟目录误判
+  if (sources.workspaceDirs.some((dir) => under(dir, '/.trae/skills') || under(dir, '/.qoder/skills')))
+    return 'project';
   if (under(sources.marketplaceSkillsDir)) return 'marketplace';
   if (under(sources.pluginsRoot)) return 'plugin';
   return 'builtin';
@@ -332,11 +338,17 @@ export function discoverSkillFiles(fs: SkillFs, sources: SkillSources): RawSkill
     out.push(...scanSkillDir(fs, sources.workbuddySkillsDir, 'personal', 'workbuddy'));
   }
 
-  // 项目级技能（各 TRAE 工作区 <workspace>/.trae/skills）
+  // Qoder 个人技能（~/.qoder-cn/skills 或 ~/.qoder/skills，可选来源；refactor-skill-asset-first-view）
+  if (sources.qoderUserSkillsDir) {
+    out.push(...scanSkillDir(fs, sources.qoderUserSkillsDir, 'personal', 'qoder'));
+  }
+
+  // 项目级技能（各工作区 <ws>/.trae/skills 与 <ws>/.qoder/skills）
   for (const workspaceDir of sources.workspaceDirs) {
     if (!workspaceDir) continue;
     const workspace = { workspaceName: baseName(workspaceDir), workspacePath: workspaceDir };
     out.push(...scanSkillDir(fs, `${workspaceDir}/.trae/skills`, 'project', 'trae', workspace));
+    out.push(...scanSkillDir(fs, `${workspaceDir}/.qoder/skills`, 'project', 'qoder', workspace));
   }
 
   // 官方内置：全局技能
@@ -510,13 +522,11 @@ export function listSkills(input: {
   validateSkillListParams(params, SKILL_FUNCTIONS);
   const all = buildAll(fs, sources, store, aiLookup);
 
-  // 分面计数与过滤：各维度排除自身筛选、随其余筛选与搜索联动；total 保持全集
-  const { items, countByFunction, countByProvenance, countByStatus } = filterAndCountSkills(
-    all,
-    params,
-    SKILL_FUNCTIONS,
-  );
-  return { items, total: all.length, countByFunction, countByProvenance, countByStatus };
+  // 分面计数与过滤：各维度排除自身筛选、随其余筛选（含 scope 预设）与搜索联动；
+  // total 随视图口径（spec Scenario 1），不带 scope 时保持全量（Scenario 6）
+  const { items, scopedTotal, countByFunction, countByProvenance, countByStatus, countByScope } =
+    filterAndCountSkills(all, params, SKILL_FUNCTIONS);
+  return { items, total: scopedTotal, countByFunction, countByProvenance, countByStatus, countByScope };
 }
 
 // ============ 手动覆盖 ============

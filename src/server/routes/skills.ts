@@ -1,7 +1,7 @@
 /**
  * 技能分类全貌 API 路由
  *
- * GET  /api/skills                        列出（可按职能/来源筛选、搜索；AI 缓存自动应用）
+ * GET  /api/skills                        列出（可按视图口径 scope/职能/来源筛选、搜索；AI 缓存自动应用）
  * PUT  /api/skills/:id/function           手动覆盖某技能的职能分类
  * POST /api/skills/function-batch         批量覆盖职能分类
  * POST /api/skills/curate                 沉淀单个技能到保险箱
@@ -19,6 +19,7 @@
 
 import { Hono } from 'hono';
 import { homedir } from 'node:os';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   listSkills,
@@ -80,9 +81,15 @@ export interface SkillsRouteDeps {
 /** 解析本机各技能来源根目录 */
 export function defaultSkillSources(): SkillSources {
   const home = homedir();
+  // Qoder 个人技能目录：国行版优先、回退国际版（与适配器 configDirCandidates 同一顺序），均不存在时不参与扫描
+  const qoderUserSkillsDir =
+    [join(home, '.qoder-cn', 'skills'), join(home, '.qoder', 'skills')].find((p) =>
+      existsSync(p),
+    ) ?? undefined;
   return {
     userSkillsDir: join(home, '.trae-cn', 'skills'),
     workbuddySkillsDir: join(home, '.workbuddy', 'skills'),
+    qoderUserSkillsDir,
     builtinRoot: join(home, '.trae-cn', 'builtin'),
     builtinSkillsDir: join(home, '.trae-cn', 'builtin_skills'),
     pluginsRoot: join(home, '.trae-cn', 'plugins'),
@@ -117,7 +124,7 @@ export function skillsRouteFactory(
   /** AI 缓存查询（缓存未注入时为 undefined，盘点回退关键词兜底） */
   const aiLookup = deps.aiCacheStore ? createAiLookup(deps.aiCacheStore) : undefined;
 
-  /** 列出技能全貌（provenance/status 过滤；计数随筛选联动） */
+  /** 列出技能全貌（scope 视图预设 + provenance/status 过滤；计数随筛选联动） */
   routes.get('/', (c) => {
     try {
       const result = listSkills({
@@ -126,6 +133,7 @@ export function skillsRouteFactory(
         store,
         aiLookup,
         params: {
+          scope: (c.req.query('scope') as ListSkillsParams['scope']) ?? undefined,
           function: (c.req.query('function') as ListSkillsParams['function']) ?? undefined,
           provenance: (c.req.query('provenance') as ListSkillsParams['provenance']) ?? undefined,
           status: (c.req.query('status') as ListSkillsParams['status']) ?? undefined,
@@ -138,6 +146,7 @@ export function skillsRouteFactory(
         countByFunction: result.countByFunction,
         countByProvenance: result.countByProvenance,
         countByStatus: result.countByStatus,
+        countByScope: result.countByScope,
       });
     } catch (err) {
       return c.json({ error: err instanceof Error ? err.message : String(err) }, 400);

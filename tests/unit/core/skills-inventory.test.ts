@@ -106,6 +106,150 @@ describe('WorkBuddy 个人技能来源（spec: fix-scan-count-gaps）', () => {
   });
 });
 
+describe('Qoder 个人技能来源（refactor-skill-asset-first-view）', () => {
+  const QD_SOURCES: SkillSources = {
+    ...SOURCES,
+    qoderUserSkillsDir: '/home/u/.qoder/skills',
+  };
+
+  it('发现 qoder 用户级目录技能：origin=personal、tool=qoder', () => {
+    const fs = makeFs({
+      [`${QD_SOURCES.qoderUserSkillsDir}/demo-q/SKILL.md`]: SKILL('demo-q', 'Qoder 自建'),
+    });
+    const found = discoverSkillFiles(fs, QD_SOURCES);
+    expect(found).toHaveLength(1);
+    expect(found[0]).toMatchObject({ origin: 'personal', tool: 'qoder' });
+  });
+
+  it('qoder 目录缺失时零贡献不报错', () => {
+    expect(discoverSkillFiles(makeFs({}), QD_SOURCES)).toHaveLength(0);
+  });
+
+  it('classifyOrigin 将 qoder 用户级前缀判为 personal（防御性再分类不丢来源）', () => {
+    expect(classifyOrigin('/home/u/.qoder/skills/x/SKILL.md', QD_SOURCES)).toBe('personal');
+  });
+
+  it('发现工作区 .qoder/skills：origin=project、tool=qoder、携项目信息', () => {
+    const ws = { ...SOURCES, workspaceDirs: ['/d/demo/Zhihu'] };
+    const fs = makeFs({
+      '/d/demo/Zhihu/.qoder/skills/proj-q/SKILL.md': SKILL('proj-q', 'Qoder 项目技能'),
+    });
+    const found = discoverSkillFiles(fs, ws);
+    expect(found).toHaveLength(1);
+    expect(found[0]).toMatchObject({
+      origin: 'project',
+      tool: 'qoder',
+      workspaceName: 'Zhihu',
+      workspacePath: '/d/demo/Zhihu',
+    });
+  });
+
+  it('classifyOrigin 按工作区 .qoder/skills 前缀判 project（容忍反斜杠）', () => {
+    const ws = { ...SOURCES, workspaceDirs: ['/d/demo/Zhihu'] };
+    expect(classifyOrigin('/d/demo/Zhihu/.qoder/skills/x/SKILL.md', ws)).toBe('project');
+    expect(classifyOrigin('\\d\\demo\\Zhihu\\.qoder\\skills\\x\\SKILL.md', ws)).toBe('project');
+    expect(classifyOrigin('/d/demo/Zhihu-backup/.qoder/skills/x/SKILL.md', ws)).not.toBe('project');
+  });
+
+  it('qoder 副本与保险箱同名时 vault 优先合并', () => {
+    const fs = makeFs({
+      [`${QD_SOURCES.qoderUserSkillsDir}/dup/SKILL.md`]: SKILL('dup', 'qoder 副本'),
+      [`${SOURCES.vaultSkillsDir}/dup/SKILL.md`]: SKILL('dup', '库内主副本'),
+    });
+    const skills = dedupeSkills(discoverSkillFiles(fs, QD_SOURCES), {});
+    expect(skills).toHaveLength(1);
+    expect(skills[0].origin).toBe('vault');
+    expect(skills[0].variants).toEqual([`${QD_SOURCES.qoderUserSkillsDir}/dup/SKILL.md`]);
+  });
+});
+
+// refactor-skill-asset-first-view：资产/环境视图口径
+// spec: Scenario 1/5/6
+describe('listSkills 资产/环境 scope 筛选与 countByScope', () => {
+  /** 基线布景：库内自建 a、库内沉淀自市场 d、个人 b、未入库市场 c */
+  function setup(): { fs: SkillFs; store: MemoryOverrideStore } {
+    const fs = makeFs({
+      [`${SOURCES.vaultSkillsDir}/a/SKILL.md`]: SKILL('a', '库内自建'),
+      [`${SOURCES.vaultSkillsDir}/d/SKILL.md`]: SKILL('d', '来自市场的好 T', '\nsource: marketplace:/x/d/SKILL.md'),
+      [`${SOURCES.userSkillsDir}/b/SKILL.md`]: SKILL('b', '个人技能'),
+      [`${SOURCES.marketplaceSkillsDir}/c/SKILL.md`]: SKILL('c', '市场技能'),
+    });
+    return { fs, store: new MemoryOverrideStore() };
+  }
+  const list = (
+    fs: SkillFs,
+    store: MemoryOverrideStore,
+    params: Parameters<typeof listSkills>[0]['params'],
+  ) => listSkills({ fs, sources: SOURCES, store, params });
+
+  it('scope=asset 只返回入库+自建（d 为入库市场沉淀也属资产），c 不入资产', () => {
+    const { fs, store } = setup();
+    const result = list(fs, store, { scope: 'asset' });
+    expect(result.items.map((s) => s.id).sort()).toEqual(['a', 'b', 'd']);
+    expect(result.countByScope).toEqual({ asset: 3, environment: 1 });
+  });
+
+  it('scope=environment 只返回未入库非自建', () => {
+    const { fs, store } = setup();
+    const result = list(fs, store, { scope: 'environment' });
+    expect(result.items.map((s) => s.id)).toEqual(['c']);
+    expect(result.countByScope).toEqual({ asset: 3, environment: 1 });
+  });
+
+  it('不带 scope 旧行为等价 scope=all：items 全量，countByScope 照常返回（Scenario 6）', () => {
+    const { fs, store } = setup();
+    const legacy = list(fs, store, undefined);
+    const asAll = list(fs, store, { scope: 'all' });
+    expect(legacy.total).toBe(4);
+    expect(legacy.items.map((s) => s.id).sort()).toEqual(['a', 'b', 'c', 'd']);
+    expect(legacy.countByScope).toEqual({ asset: 3, environment: 1 });
+    expect(asAll.items).toEqual(legacy.items);
+    expect(asAll.countByFunction).toEqual(legacy.countByFunction);
+    expect(asAll.countByProvenance).toEqual(legacy.countByProvenance);
+  });
+
+  it('职能/状态分面计数随 scope 联动（资产视图内职能分面不含环境条目）', () => {
+    const { fs, store } = setup();
+    const result = list(fs, store, { scope: 'asset' });
+    // c 是唯一 browser 关键词命中（描述含“市场技能”无 browser），验证 self/marketplace 分面在资产口径内
+    expect(result.countByProvenance.self).toBe(2); // a + b（d 出处为市场但已入库）
+    expect(result.countByProvenance.marketplace).toBe(1); // d
+    expect(result.countByStatus).toEqual({ in: 2, out: 1 });
+  });
+
+  it('countByScope 随 search 联动重算、不受 scope 自身影响', () => {
+    const { fs, store } = setup();
+    const result = list(fs, store, { scope: 'asset', search: '市场' });
+    expect(result.items.map((s) => s.id)).toEqual(['d']); // a/b 不命中，c 属环境不入资产视图
+    expect(result.countByScope).toEqual({ asset: 1, environment: 1 });
+  });
+
+  it('scope=environment&provenance=marketplace 交集：scope 先行、细分在内二次过滤（Scenario 5）', () => {
+    const { fs, store } = setup();
+    const result = list(fs, store, { scope: 'environment', provenance: 'marketplace' });
+    expect(result.items.map((s) => s.id)).toEqual(['c']);
+    expect(result.countByProvenance.marketplace).toBe(1);
+    expect(result.countByProvenance.self).toBe(0);
+  });
+
+  it('scope 指定时 total 随视图口径（Scenario 1 总计数资产口径；细分筛选不影响 total，沿既有惯例）', () => {
+    const { fs, store } = setup();
+    expect(list(fs, store, { scope: 'asset' }).total).toBe(3);
+    expect(list(fs, store, { scope: 'environment' }).total).toBe(1);
+    expect(list(fs, store, { scope: 'asset', provenance: 'self' }).total).toBe(3);
+    // 不带 scope 的旧调用 total 保持全量（Scenario 6 零破坏）
+    expect(list(fs, store, { provenance: 'self' }).total).toBe(4);
+    expect(list(fs, store, { scope: 'all' }).total).toBe(4);
+  });
+
+  it('scope 非法值抛错（路由转 400）', () => {
+    const { fs, store } = setup();
+    expect(() => list(fs, store, { scope: 'foo' as 'asset' })).toThrow(
+      '无效视图：foo，支持：asset, environment, all',
+    );
+  });
+});
+
 describe('discoverSkillFiles 跨来源发现', () => {
   it('发现用户/builtin global/builtin_skills/persona/插件/市场五类来源', () => {
     const fs = makeFs({

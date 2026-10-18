@@ -22,6 +22,15 @@ export const SKILL_PROVENANCES: SkillProvenance[] = ['self', 'marketplace', 'plu
 export const LIBRARY_STATUSES: LibraryStatus[] = ['in', 'out'];
 
 /**
+ * 视图口径（资产/环境）：资产优先视图的集合定义。
+ * spec: 设计文档/changes/refactor-skill-asset-first-view/specs/asset-first-view.spec.md（定义节）
+ */
+export type SkillAssetScope = 'asset' | 'environment';
+
+/** 视图口径两值全集 */
+export const SKILL_ASSET_SCOPES: SkillAssetScope[] = ['asset', 'environment'];
+
+/**
  * 推导纯出处（内部 origin 六值 → 对外四值）：
  * - personal|project → self
  * - vault：source 以 `marketplace:` 开头 → marketplace；以 `plugin:` 开头 → plugin；其余/无 → self
@@ -49,4 +58,13 @@ export function deriveProvenance(origin: string, curateSource?: string): SkillPr
 /** 是否已入我的库（等价于内部 origin=vault 判定，契约行为零迁移） */
 export function deriveInLibrary(origin: string): boolean {
   return origin === 'vault';
+}
+
+/**
+ * 推导视图口径：资产 ⇔ 已入库 ∪ 出处为自建（未入库的个人/项目技能也是资产）；
+ * 反面即环境（未入库的市场/插件/内置，不公示，仅折叠入口主动调取）。
+ * 两集合互斥，并集为全量盘点。
+ */
+export function deriveScope(provenance: SkillProvenance, inLibrary: boolean): SkillAssetScope {
+  return inLibrary || provenance === 'self' ? 'asset' : 'environment';
 }

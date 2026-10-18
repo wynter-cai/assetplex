@@ -8,7 +8,9 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   deriveProvenance,
   deriveInLibrary,
+  deriveScope,
   SKILL_PROVENANCES,
+  SKILL_ASSET_SCOPES,
   type SkillProvenance,
 } from '../../src/core/skill-provenance.js';
 
@@ -78,5 +80,30 @@ describe('SKILL_PROVENANCES 常量', () => {
   it('恰好四值且互斥穷尽', () => {
     expect(SKILL_PROVENANCES).toHaveLength(4);
     expect(SKILL_PROVENANCES).toEqual(['self', 'marketplace', 'plugin', 'builtin']);
+  });
+});
+
+// refactor-skill-asset-first-view：资产/环境视图口径
+// spec: 设计文档/changes/refactor-skill-asset-first-view/specs/asset-first-view.spec.md（定义节）
+describe('deriveScope 资产/环境推导', () => {
+  it('已入库无论出处均为资产（入库市场沉淀也是资产）', () => {
+    expect(deriveScope('marketplace', true)).toBe('asset');
+    expect(deriveScope('plugin', true)).toBe('asset');
+    expect(deriveScope('builtin', true)).toBe('asset');
+    expect(deriveScope('self', true)).toBe('asset');
+  });
+
+  it('未入库且出处 self → 资产（个人/项目自建也是资产）', () => {
+    expect(deriveScope('self', false)).toBe('asset');
+  });
+
+  it('未入库且出处非 self → 环境', () => {
+    expect(deriveScope('marketplace', false)).toBe('environment');
+    expect(deriveScope('plugin', false)).toBe('environment');
+    expect(deriveScope('builtin', false)).toBe('environment');
+  });
+
+  it('SKILL_ASSET_SCOPES 恰好两值', () => {
+    expect(SKILL_ASSET_SCOPES).toEqual(['asset', 'environment']);
   });
 });
