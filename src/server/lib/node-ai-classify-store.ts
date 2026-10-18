@@ -18,6 +18,11 @@ import {
   type AiClassifyCacheEntry,
   type AiClassifyCacheStore,
 } from '../../core/skill-ai-cache.js';
+import {
+  sanitizeArbitrationEntries,
+  type ArbitrationCacheEntry,
+  type ArbitrationCacheStore,
+} from '../../core/arbitration-cache.js';
 import { expandHome } from '../../utils/paths.js';
 
 /** 解析 Hub 元数据目录下的文件路径：$ASSETPLEX_DIR/<name> */
@@ -78,6 +83,22 @@ export function createNodeAiCacheStore(
 /** 默认单例（真实路径） */
 export const nodeAiConfigStore = createNodeAiConfigStore();
 export const nodeAiCacheStore = createNodeAiCacheStore();
+
+/** 仲裁建议缓存存储（arbitrations.json，key = 仲裁输入 sha256） */
+export function createNodeArbitrationCacheStore(
+  filePath: string = resolveAssetplexFile('arbitrations.json'),
+): ArbitrationCacheStore {
+  return {
+    load(): Record<string, ArbitrationCacheEntry> {
+      return sanitizeArbitrationEntries(readJson(filePath));
+    },
+    save(entries: Record<string, ArbitrationCacheEntry>): void {
+      writeJson(filePath, entries);
+    },
+  };
+}
+
+export const nodeArbitrationCacheStore = createNodeArbitrationCacheStore();
 
 /** 读取当前生效配置的便捷封装（路由层使用） */
 export function loadCurrentAiConfig(store: AiConfigStore = nodeAiConfigStore): AiClassifyConfig {

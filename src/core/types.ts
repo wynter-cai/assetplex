@@ -204,3 +204,13 @@ export interface ImportResult {
   errors: number;
   items: ImportResultItem[];
 }
+
+// ========== 冲突仲裁类型（add-llm-conflict-arbitration，共享基座避免循环依赖） ==========
+
+/** 仲裁决策闭集（闭集外输出一律判失败，不新增取值） */
+export const ARBITRATION_DECISIONS = ['keep-left', 'keep-right', 'merge', 'manual-review'] as const;
+export type ArbitrationDecision = (typeof ARBITRATION_DECISIONS)[number];
+
+/** 仲裁可处理的资产类别闭集（preference 不参与仲裁） */
+export const ARBITRATION_CATEGORIES = ['identity', 'skill', 'rule', 'mcp', 'memory'] as const;
+export type ArbitrationCategory = (typeof ARBITRATION_CATEGORIES)[number];

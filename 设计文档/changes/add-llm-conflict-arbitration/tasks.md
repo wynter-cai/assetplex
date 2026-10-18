@@ -15,11 +15,11 @@
 
 ## Phase B — 仲裁引擎（specs/conflict-arbitration.spec.md）
 
-- [ ] B1 `src/core/arbitration.ts`：`buildArbitrationPrompt({ category, left, right, leftLabel, rightLabel, criteriaBlock })` → system 含内置裁决骨架 + 准则区 + JSON 输出契约；user 含两侧内容（各截断 6000 字符）。测试：准则为空时骨架仍在；预算披露进 prompt
-- [ ] B2 `parseArbitrationOutput(output)`：fenced 容忍 → JSON → decision 四值闭集校验 → merge 必有 mergedContent，非法 throw。测试 Scenario 6 全部非法形态
-- [ ] B3 `arbitrateConflict(input, deps)`：DI LlmClient/Fs/CriteriaStore/AiCacheStore/config；缓存 key = sha256(左+右+准则集哈希+model)，命中不调模型返回 cached=true；配置不全抛 AiConfigIncompleteError。测试 Scenario 7/8
-- [ ] B4 server 路由 `POST /api/arbitration`：请求体校验（400/404）、错误映射（400 配置 / 422 输出非法）、成功回 ArbitrationResponse。红测试先行
-- [ ] B5 `src/core/skill-ai-cache.ts`（或新 `arbitration-cache.ts`）：仲裁建议缓存条目存储复用/扩展。测试往返 + 失效
+- [x] B1 `src/core/arbitration.ts`：`buildArbitrationPrompt({ category, left, right, leftLabel, rightLabel, criteriaBlock })` → system 含内置裁决骨架 + 准则区 + JSON 输出契约；user 含两侧内容（各截断 6000 字符）。测试：准则为空时骨架仍在；预算披露进 prompt。✅ 实测：5 用例绿（含截断标注/准则区条件渲染）
+- [x] B2 `parseArbitrationOutput(output)`：fenced 容忍 → JSON → decision 四值闭集校验 → merge 必有 mergedContent，非法 throw。测试 Scenario 6 全部非法形态。✅ 实测：10 用例绿（含杂文提取/非 merge 草案忽略/rationale 回退）
+- [x] B3 `arbitrateConflict(input, deps)`：DI LlmClient/Fs/CriteriaStore/AiCacheStore/config；缓存 key = sha256(左+右+准则集哈希+model)，命中不调模型返回 cached=true；配置不全抛 AiConfigIncompleteError。测试 Scenario 7/8。✅ 实测：9 用例绿（含内容/准则集变化失效、失败不写缓存）；另补 ArbitrationFileError/OutputError 专用错误类供路由映射
+- [x] B4 server 路由 `POST /api/arbitration`：请求体校验（400/404）、错误映射（400 配置 / 422 输出非法）、成功回 ArbitrationResponse。红测试先行。✅ 实测：routes/arbitration.ts 全依赖注入，8 用例绿；index.ts 注册；后端全量 664/664、tsc 0 错、tsup build 成
+- [x] B5 `src/core/skill-ai-cache.ts`（或新 `arbitration-cache.ts`）：仲裁建议缓存条目存储复用/扩展。测试往返 + 失效。✅ 实测：新建 arbitration-cache.ts（key 含类别/双内容/准则哈希/模型五要素），脏 JSON 过滤/merge 草案约束/增量写入 9 用例绿；Node store 落地 ~/.assetplex/arbitrations.json
 
 ## Phase C — 导入向导接入（UI）
 
