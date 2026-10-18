@@ -5,10 +5,10 @@
 
 ## Phase A — 准则元资产（specs/criteria-meta-asset.spec.md）
 
-- [ ] A1 `hub-files.ts`：`HubFileCategory` + `HUB_CATEGORIES` 增 `'criteria'`；红测试：list/write/read/delete criteria 文件走既有守卫（路径穿越拒绝、类别校验 400 文案自动包含 criteria）
-- [ ] A2 `src/core/criteria.ts`：frontmatter 解析/序列化纯逻辑（name/description/priority/enabled/appliesTo/source + body；缺省 enabled=true、priority=100、appliesTo=['all']）；`listCriteria(fs)` 按 priority→slug 排序；`hashCriteria(criteria[]): string`（组装与缓存用）。测试：Scenario 1/2/4 数据面
-- [ ] A3 `criteria.ts` 增 `assembleCriteriaPromptBlock(enabled, targetCategory, budget=4000)`：先按 appliesTo 匹配目标类别，再按序取入至预算耗尽，返回 `{ block, used: slug[], skipped: number }`。测试 Scenario 5（类别过滤 + 截断披露）
-- [ ] A4 内置**业内准则包**：先派内容任务——调研并改写业内最佳实践为准则模板（≥6 条：Anthropic Agent Skills 设计指南/渐进披露、AGENTS.md 写作规范、token 效率实践、rule 简洁性、agent 配置规范、description 触发写法；每条标 appliesTo 与 source，改写不直搬原文避License 风险），存为 core 模板常量；`insertCriteriaPack(fs, slugs[])` 按勾选生成、同名拒绝。测试 Scenario 1b/3
+- [x] A1 `hub-files.ts`：`HubFileCategory` + `HUB_CATEGORIES` 增 `'criteria'`；红测试：list/write/read/delete criteria 文件走既有守卫（路径穿越拒绝、类别校验 400 文案自动包含 criteria）。✅ 实测：5 用例红→实现后 11/11 绿
+- [x] A2 `src/core/criteria.ts`：frontmatter 解析/序列化纯逻辑（name/description/priority/enabled/appliesTo/source + body；缺省 enabled=true、priority=100、appliesTo=['all']）；`listCriteria(fs)` 按 priority→slug 排序；`hashCriteria(criteria[]): string`（组装与缓存用）。测试：Scenario 1/2/4 数据面 ✅ 实测：解析宽容/往返/排序/哈希 11 用例绿
+- [x] A3 `criteria.ts` 增 `assembleCriteriaPromptBlock(enabled, targetCategory, budget=4000)`：先按 appliesTo 匹配目标类别，再按序取入至预算耗尽，返回 `{ block, used: slug[], skipped: number }`。测试 Scenario 5（类别过滤 + 截断披露）✅ 实测：单条超预算整条舍去、停用不计 skipped，5 用例绿
+- [x] A4 内置**业内准则包**：先派内容任务——调研并改写业内最佳实践为准则模板（≥6 条：Anthropic Agent Skills 设计指南/渐进披露、AGENTS.md 写作规范、token 效率实践、rule 简洁性、agent 配置规范、description 触发写法；每条标 appliesTo 与 source，改写不直搬原文避License 风险），存为 core 模板常量；`insertCriteriaPack(fs, slugs[])` 按勾选生成、同名拒绝。测试 Scenario 1b/3 ✅ 实测：7 条准则（skill×2/token-all/rule/agents-md/agent/identity），模板往返无损+导入 6 用例绿；全量 618 测试、tsc 0 错
 - [ ] A5 server：criteria 走现有 `/api/files?category=criteria` 零新路由验证（集成测试：400 文案、CRUD 回路）；`GET /api/criteria` 聚合只读接口（frontmatter 解析后的 CriterionAsset[]，供 UI 列表）
 - [ ] A6 web：`types/api.ts` + `lib/api.ts` 增 CriterionAsset / listCriteria / createHubFile/updateHubFile/deleteHubFile 复用；「裁决准则」页（列表卡 + 新建/编辑对话框 + 启用开关 + 删除确认 + 空态两动作）。组件测试覆盖 Scenario 1/2/4 UI 面
 - [ ] A7 资产导航动态类别接入：准则页入口进资产库导航，验证"不是写死第 5 个"（导航由类别清单驱动）。测试：导航渲染含 criteria 且未来加类别无需改导航代码

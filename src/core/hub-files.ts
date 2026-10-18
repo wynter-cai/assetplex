@@ -25,7 +25,9 @@ export type HubFileCategory =
   | 'mcp'
   | 'commands'
   | 'agents'
-  | 'memory';
+  | 'memory'
+  /** 裁决准则元资产（add-llm-conflict-arbitration）：Hub/criteria/<slug>.md */
+  | 'criteria';
 
 /** Hub 文件信息 */
 export interface HubFileInfo {
@@ -51,6 +53,7 @@ export const HUB_CATEGORIES: HubFileCategory[] = [
   'commands',
   'agents',
   'memory',
+  'criteria',
 ];
 
 /**

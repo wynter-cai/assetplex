@@ -9,7 +9,15 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdirSync, writeFileSync, existsSync, rmSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { deleteHubDirectory } from '../../../src/core/hub-files.js';
+import {
+  deleteHubDirectory,
+  createHubFile,
+  listHubFiles,
+  readHubFile,
+  writeHubFile,
+  deleteHubFile,
+  HUB_CATEGORIES,
+} from '../../../src/core/hub-files.js';
 
 describe('deleteHubDirectory 技能目录删除', () => {
   let hubRoot: string;
@@ -67,5 +75,53 @@ describe('deleteHubDirectory 技能目录删除', () => {
     mkdirSync(join(hubRoot, 'skills'), { recursive: true });
     writeFileSync(join(hubRoot, 'skills', 'flat.md'), 'x');
     expect(() => deleteHubDirectory('skills/flat.md')).toThrow(/目录/);
+  });
+});
+
+describe('criteria 裁决准则类别（add-llm-conflict-arbitration A1）', () => {
+  let hubRoot: string;
+  let originalEnv: string | undefined;
+
+  beforeEach(() => {
+    hubRoot = mkdtempSync(join(tmpdir(), 'hub-criteria-test-'));
+    originalEnv = process.env.ASSETPLEX_DIR;
+    process.env.ASSETPLEX_DIR = hubRoot;
+  });
+
+  afterEach(() => {
+    if (originalEnv === undefined) delete process.env.ASSETPLEX_DIR;
+    else process.env.ASSETPLEX_DIR = originalEnv;
+    rmSync(hubRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  });
+
+  it('HUB_CATEGORIES 包含 criteria（路由层 400 文案随之自动涵盖）', () => {
+    expect(HUB_CATEGORIES).toContain('criteria');
+  });
+
+  it('目录不存在时 listHubFiles 返回空数组', () => {
+    expect(listHubFiles('criteria')).toEqual([]);
+  });
+
+  it('createHubFile 新建准则文件后 list/read/delete 全链路可用', () => {
+    createHubFile('criteria/progressive-disclosure.md', '---\nname: 渐进披露\n---\n正文');
+
+    const files = listHubFiles('criteria');
+    expect(files.map((f) => f.relativePath)).toEqual(['criteria/progressive-disclosure.md']);
+
+    const read = readHubFile('criteria/progressive-disclosure.md');
+    expect(read?.content).toContain('渐进披露');
+
+    deleteHubFile('criteria/progressive-disclosure.md');
+    expect(listHubFiles('criteria')).toEqual([]);
+  });
+
+  it('createHubFile 同名拒绝（Scenario 3 导入不覆盖的底层保障）', () => {
+    createHubFile('criteria/token-economy.md', '第一版');
+    expect(() => createHubFile('criteria/token-economy.md', '第二版')).toThrow(/已存在/);
+    expect(readHubFile('criteria/token-economy.md')?.content).toBe('第一版');
+  });
+
+  it('criteria 路径穿越同样被守卫拒绝', () => {
+    expect(() => writeHubFile('../outside.md', 'x')).toThrow(/越界/);
   });
 });
