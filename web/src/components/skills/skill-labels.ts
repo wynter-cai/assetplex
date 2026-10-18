@@ -44,6 +44,9 @@ export const FUNCTION_ORDER: SkillFunction[] = [
 
 export const PROVENANCE_ORDER: SkillProvenance[] = ['self', 'marketplace', 'plugin', 'builtin'];
 
+/** 环境列表内分组顺序：市场安装 → 插件自带 → 官方内置最后（spec refactor-skill-asset-first-view Scenario 8） */
+export const ENV_PROVENANCE_ORDER: SkillProvenance[] = ['marketplace', 'plugin', 'builtin'];
+
 /** 来源工具标注（spec fix-scan-count-gaps：官方内置徽章区分 TRAE / WorkBuddy 官方） */
 export const TOOL_LABELS: Record<string, string> = {
   trae: 'TRAE',

@@ -82,6 +82,7 @@ describe('SkillDetail 收藏到我的库', () => {
       },
       countByProvenance: { self: 0, marketplace: 1, plugin: 0, builtin: 0 },
       countByStatus: { in: 1, out: 0 },
+      countByScope: { asset: 1, environment: 0 },
     });
   });
 

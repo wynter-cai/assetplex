@@ -272,6 +272,9 @@ export type SkillProvenance = 'self' | 'marketplace' | 'plugin' | 'builtin';
 /** 库状态（管理轴，独立于出处）：in=已入我的库，out=未入库 */
 export type LibraryStatus = 'in' | 'out';
 
+/** 视图口径（refactor-skill-asset-first-view）：资产=入库∪自建；环境=未入库非自建 */
+export type SkillAssetScope = 'asset' | 'environment';
+
 /** 分类来源：手动覆盖 / AI 分类 / 关键词规则兜底 */
 export type SkillFunctionSource = 'manual' | 'ai' | 'keyword';
 
@@ -334,10 +337,12 @@ export interface SkillListResult {
   items: SkillInfo[];
   total: number;
   countByFunction: Record<SkillFunction, number>;
-  /** 出处计数（随 status/search 过滤联动） */
+  /** 出处计数（随 scope/status/search 过滤联动） */
   countByProvenance: Record<SkillProvenance, number>;
-  /** 库状态计数：我的库 / 未入库（随 provenance/search 联动） */
+  /** 库状态计数：我的库 / 未入库（随 scope/provenance/search 联动） */
   countByStatus: { in: number; out: number };
+  /** 视图口径计数：资产/环境（随 function/provenance/status/search 联动，不含 scope 自身维度） */
+  countByScope: { asset: number; environment: number };
 }
 
 /** 批量收藏单条失败明细 */

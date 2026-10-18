@@ -28,6 +28,7 @@ import type {
   SkillInfo,
   SkillFunction,
   SkillProvenance,
+  SkillAssetScope,
   LibraryStatus,
   CurateBatchResult,
   AiClassifyConfigView,
@@ -178,9 +179,10 @@ export const api = {
   deleteAgent: (id: string) =>
     request<{ success: boolean }>(`/agents/${encodeURIComponent(id)}`, { method: 'DELETE' }),
 
-  // Skills（分类全貌，只读 + 职能覆盖）
-  listSkills: (params?: { function?: SkillFunction; provenance?: SkillProvenance; status?: LibraryStatus; search?: string }) => {
+  // Skills（分类全貌，只读 + 职能覆盖；scope 视图口径预设）
+  listSkills: (params?: { scope?: SkillAssetScope | 'all'; function?: SkillFunction; provenance?: SkillProvenance; status?: LibraryStatus; search?: string }) => {
     const qs = new URLSearchParams();
+    if (params?.scope) qs.set('scope', params.scope);
     if (params?.function) qs.set('function', params.function);
     if (params?.provenance) qs.set('provenance', params.provenance);
     if (params?.status) qs.set('status', params.status);

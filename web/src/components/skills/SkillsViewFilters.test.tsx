@@ -36,6 +36,7 @@ const fullResult: SkillListResult = {
   },
   countByProvenance: { self: 99, marketplace: 292, plugin: 27, builtin: 24 },
   countByStatus: { in: 31, out: 411 },
+  countByScope: { asset: 99, environment: 343 },
 };
 
 const libraryResult: SkillListResult = {
@@ -47,6 +48,7 @@ const libraryResult: SkillListResult = {
   },
   countByProvenance: { self: 31, marketplace: 0, plugin: 0, builtin: 0 },
   countByStatus: { in: 31, out: 0 },
+  countByScope: { asset: 31, environment: 0 },
 };
 
 function renderView(): ReturnType<typeof render> {
@@ -84,12 +86,12 @@ describe('SkillsView 出处与库状态组合筛选', () => {
     await screen.findByText(/去重后共 442 个技能/);
     fireEvent.click(screen.getByRole('button', { name: '未入库 411' }));
     await waitFor(() => {
-      expect(api.listSkills).toHaveBeenLastCalledWith({ function: undefined, provenance: undefined, status: 'out', search: undefined });
+      expect(api.listSkills).toHaveBeenLastCalledWith({ scope: 'asset', function: undefined, provenance: undefined, status: 'out', search: undefined });
     });
     // refetch 完成后 chips 恢复全集计数，再点击出处 chip 形成交集查询
     fireEvent.click(await screen.findByRole('button', { name: '市场安装 292' }));
     await waitFor(() => {
-      expect(api.listSkills).toHaveBeenLastCalledWith({ function: undefined, provenance: 'marketplace', status: 'out', search: undefined });
+      expect(api.listSkills).toHaveBeenLastCalledWith({ scope: 'asset', function: undefined, provenance: 'marketplace', status: 'out', search: undefined });
     });
   });
 
@@ -104,7 +106,7 @@ describe('SkillsView 出处与库状态组合筛选', () => {
     expect(screen.getByRole('button', { name: '插件自带 0' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '官方内置 0' })).toBeInTheDocument();
     await waitFor(() => {
-      expect(api.listSkills).toHaveBeenLastCalledWith({ function: undefined, provenance: undefined, status: 'in', search: undefined });
+      expect(api.listSkills).toHaveBeenLastCalledWith({ scope: 'asset', function: undefined, provenance: undefined, status: 'in', search: undefined });
     });
   });
 

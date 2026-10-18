@@ -13,6 +13,7 @@ import { SkillDetail } from './SkillDetail';
 import { SkillCreateDialog } from './SkillCreateDialog';
 import { SkillsToolbar, type SkillsDimension, type LibraryStatusFilter } from './SkillsToolbar';
 import { SkillsBatchBar } from './SkillsBatchBar';
+import { EnvSkillsPanel } from './EnvSkillsPanel';
 import { FUNCTION_LABELS, PROVENANCE_LABELS, FUNCTION_ORDER, PROVENANCE_ORDER } from './skill-labels';
 import { useAiClassify } from './use-ai-classify';
 import { AiConfigDialog } from './AiConfigDialog';
@@ -32,15 +33,18 @@ export function SkillsView(): JSX.Element {
   const [batchFunction, setBatchFunction] = useState<SkillFunction>('other');
   const [applying, setApplying] = useState(false);
   const [curating, setCurating] = useState(false);
+  // 环境折叠入口（spec refactor-skill-asset-first-view：环境默认不公示，仅底部一格）
+  const [envOpen, setEnvOpen] = useState(false);
 
   /** 新建成功后打开新技能详情 */
   const handleCreated = (skill: SkillInfo): void => setSelected(skill);
 
   const statusParam = statusFilter === 'all' ? undefined : statusFilter;
   const { data, isLoading, error } = useQuery({
-    queryKey: ['skills', functionFilter, provenanceFilter, statusFilter, search],
+    queryKey: ['skills', 'asset', functionFilter, provenanceFilter, statusFilter, search],
     queryFn: () =>
       api.listSkills({
+        scope: 'asset',
         function: functionFilter ?? undefined,
         provenance: provenanceFilter ?? undefined,
         status: statusParam,
@@ -61,13 +65,15 @@ export function SkillsView(): JSX.Element {
   // 全量清单（无筛选）用于「全部 AI 分类」待分类计数：
   // 手动跳过、AI 源为缓存命中，仅关键词源需要实际调用 LLM
   const { data: allData } = useQuery({
-    queryKey: ['skills', null, null, 'all', ''],
-    queryFn: () => api.listSkills(),
+    queryKey: ['skills', 'asset', null, null, 'all', ''],
+    queryFn: () => api.listSkills({ scope: 'asset' }),
     staleTime: 30_000,
   });
   const pendingAiCount = allData
     ? allData.items.filter((s) => s.functionSource === 'keyword').length
     : 0;
+  // 环境入口计数用全量资产口径（不带筛选），避免库状态/搜索影响入口数字
+  const environmentCount = allData?.countByScope.environment ?? data?.countByScope.environment ?? 0;
 
   const switchDimension = (next: SkillsDimension): void => {
     setDimension(next);
@@ -250,6 +256,13 @@ export function SkillsView(): JSX.Element {
             <Sparkles className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-medium mb-1">没有匹配的技能</h3>
             <p className="text-sm text-muted-foreground">试试清除筛选或更换关键字</p>
+            {/* Scenario 4：空态说明搜索限资产口径，一键展开环境入口（不自动切视图） */}
+            <p className="text-sm text-muted-foreground mt-2">
+              当前只搜索资产（我的库与自建技能）；市场 / 插件 / 内置技能可在下方「本机技能环境」查看
+            </p>
+            <Button variant="outline" size="sm" className="mt-3" onClick={() => setEnvOpen(true)}>
+              展开本机技能环境 {environmentCount}
+            </Button>
           </div>
         ) : (
           <div className="space-y-6">
@@ -282,6 +295,17 @@ export function SkillsView(): JSX.Element {
             ))}
           </div>
         )
+      )}
+
+      {/* 底部常驻折叠入口：环境不公示，展开才查询（Scenario 1/2） */}
+      {data && (
+        <EnvSkillsPanel
+          open={envOpen}
+          onToggle={() => setEnvOpen((v) => !v)}
+          environmentCount={environmentCount}
+          selectedId={selected?.id ?? null}
+          onSelect={(s) => setSelected((prev) => (prev?.id === s.id ? null : s))}
+        />
       )}
       </div>
 

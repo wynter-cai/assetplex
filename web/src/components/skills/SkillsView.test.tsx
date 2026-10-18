@@ -36,6 +36,7 @@ const result: SkillListResult = {
   },
   countByProvenance: { self: 1, marketplace: 0, plugin: 0, builtin: 1 },
   countByStatus: { in: 0, out: 2 },
+  countByScope: { asset: 1, environment: 1 },
 };
 
 function renderView(): ReturnType<typeof render> {
@@ -93,12 +94,12 @@ describe('SkillsView 技能分类全貌', () => {
     fireEvent.click(screen.getByRole('button', { name: /按职能/ }));
     fireEvent.click(screen.getByRole('button', { name: /数据处理 0/ }));
     await waitFor(() => {
-      expect(api.listSkills).toHaveBeenLastCalledWith({ function: 'data', provenance: undefined, status: undefined, search: undefined });
+      expect(api.listSkills).toHaveBeenLastCalledWith({ scope: 'asset', function: 'data', provenance: undefined, status: undefined, search: undefined });
     });
 
     fireEvent.click(screen.getByRole('button', { name: /按来源/ }));
     await waitFor(() => {
-      expect(api.listSkills).toHaveBeenLastCalledWith({ function: undefined, provenance: undefined, status: undefined, search: undefined });
+      expect(api.listSkills).toHaveBeenLastCalledWith({ scope: 'asset', function: undefined, provenance: undefined, status: undefined, search: undefined });
     });
     // 出处分组标题出现
     expect(screen.getByRole('heading', { name: '自建 1' })).toBeInTheDocument();
@@ -212,6 +213,7 @@ describe('SkillsView 我的库写管理', () => {
     },
     countByProvenance: { self: 1, marketplace: 0, plugin: 0, builtin: 1 },
     countByStatus: { in: 1, out: 1 },
+    countByScope: { asset: 1, environment: 1 },
   };
 
   const twoTools: ToolStatus[] = [
@@ -365,6 +367,7 @@ describe('SkillsView 批量收藏', () => {
     },
     countByProvenance: { self: 1, marketplace: 0, plugin: 0, builtin: 1 },
     countByStatus: { in: 1, out: 1 },
+    countByScope: { asset: 1, environment: 1 },
   };
 
   beforeEach(() => {
@@ -583,6 +586,7 @@ describe('SkillsView 项目技能', () => {
     },
     countByProvenance: { self: 1, marketplace: 0, plugin: 0, builtin: 0 },
     countByStatus: { in: 0, out: 1 },
+    countByScope: { asset: 1, environment: 0 },
   };
 
   beforeEach(() => {
@@ -647,6 +651,7 @@ describe('SkillsView 页头（spec refactor-design-system page-headers）', () =
       },
       countByProvenance: { self: 0, marketplace: 0, plugin: 0, builtin: 0 },
       countByStatus: { in: 0, out: 0 },
+      countByScope: { asset: 0, environment: 0 },
     });
   });
 
@@ -665,6 +670,7 @@ describe('SkillsView 页头（spec refactor-design-system page-headers）', () =
       },
       countByProvenance: { self: 1, marketplace: 0, plugin: 0, builtin: 0 },
       countByStatus: { in: 0, out: 1 },
+      countByScope: { asset: 1, environment: 0 },
     });
     renderView();
     fireEvent.click(await screen.findByText('示例技能'));
