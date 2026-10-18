@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Merge, FileDown, Forward, ChevronDown, Eye } from 'lucide-react';
 import { DiffView } from './DiffView';
+import { ArbitrationPanel, isArbitrableCategory } from './ArbitrationPanel';
 import type { ConflictStrategy } from '@/types/api';
 
 interface SourceInfo {
@@ -17,7 +18,9 @@ interface Props {
   existingSize?: number;
   category: string;
   strategy: ConflictStrategy;
-  onChange: (s: ConflictStrategy) => void;
+  /** 采纳仲裁草案（strategy==='merge' 且已携带草案）时 true，策略提示区展示标注 */
+  hasAdoptedDraft?: boolean;
+  onChange: (s: ConflictStrategy, draft?: string) => void;
 }
 
 const TOOL_DISPLAY: Record<string, string> = {
@@ -85,6 +88,7 @@ export function ConflictDialog({
   existingSize,
   category,
   strategy,
+  hasAdoptedDraft,
   onChange,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
@@ -176,6 +180,9 @@ export function ConflictDialog({
         <div className="text-xs text-warning flex items-center gap-1">
           <span className="font-medium">{selectedOption.label}：</span>
           <span className="text-muted-foreground">{getStrategyHint(strategy, category, multiSource)}</span>
+          {strategy === 'merge' && hasAdoptedDraft === true && (
+            <span className="text-info">（将以已采纳的仲裁草案为准）</span>
+          )}
         </div>
       </div>
 
@@ -199,6 +206,15 @@ export function ConflictDialog({
           )}
           {activeSource && (
             <DiffView sourcePath={activeSource.sourcePath} hubTargetPath={hubTargetPath} />
+          )}
+          {activeSource && isArbitrableCategory(category) && (
+            <ArbitrationPanel
+              category={category}
+              leftPath={activeSource.sourcePath}
+              rightPath={hubTargetPath}
+              leftLabel={TOOL_DISPLAY[activeSource.tool] ?? activeSource.tool}
+              onAdopt={(s, draft) => onChange(s, draft)}
+            />
           )}
         </div>
       )}

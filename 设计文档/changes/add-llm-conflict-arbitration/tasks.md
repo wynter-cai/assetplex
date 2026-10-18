@@ -23,10 +23,10 @@
 
 ## Phase C — 导入向导接入（UI）
 
-- [ ] C1 `ConflictDialog`：differs 项展开区加「AI 仲裁」按钮（none/exists 不渲染）；建议卡渲染决策徽标+理由+criteriaUsed 清单+截断提示+cached 标注。组件测试 Scenario 1/2
-- [ ] C2 草案采纳流：merge 建议的可编辑草案框 +「以此为准」→ 项策略置 merge 且携带草案；keep-left/right 采纳 → overwrite/skip；manual-review 无采纳按钮。测试 Scenario 3/4/5（含"未确认导入前不落盘"断言）
-- [ ] C3 降级与失败态：400 未配置 → 提示 + 跳设置链接；422 → "仲裁失败：原因"且手动策略按钮不受影响。测试 Scenario 6/8
-- [ ] C4 Import 流程把草案文本透传到确认导入请求（后端 merge 分支优先采用显式草案，而非机械追加）。红测试先行
+- [x] C1 `ConflictDialog`：differs 项展开区加「AI 仲裁」按钮（none/exists 不渲染）；建议卡渲染决策徽标+理由+criteriaUsed 清单+截断提示+cached 标注。组件测试 Scenario 1/2 ✅（ArbitrationPanel.test 9 用例 + ConflictDialog.test 4 用例；preference 等非闭集类别不渲染入口）
+- [x] C2 草案采纳流：merge 建议的可编辑草案框 +「以此为准」→ 项策略置 merge 且携带草案；keep-left/right 采纳 → overwrite/skip；manual-review 无采纳按钮。测试 Scenario 3/4/5（含"未确认导入前不落盘"断言）✅（面板只回调 onAdopt，不发任何写请求）
+- [x] C3 降级与失败态：400 未配置 → 提示 + 跳设置链接；422 → "仲裁失败：原因"且手动策略按钮不受影响。测试 Scenario 6/8 ✅（按错误文案分流：含「配置」→ config-missing+链接 /skills；否则原样展示「仲裁失败：…」）
+- [x] C4 Import 流程把草案文本透传到确认导入请求（后端 merge 分支优先采用显式草案，而非机械追加）。红测试先行 ✅（后端 commit 1d41bf2：sync-engine-import 4 用例红→绿；前端 conflictResolutions 升级 {strategy,draft?} 并在 buildImportRequest 透传 mergeDraft；nodeRead 支持 Hub 相对路径+防越界）
 
 ## Phase D — 验收与收尾
 

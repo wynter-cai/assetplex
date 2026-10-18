@@ -37,6 +37,8 @@ import type {
   AiClassifyConfigView,
   SaveAiClassifyConfigInput,
   AiClassifyResult,
+  ArbitrationRequest,
+  ArbitrationResponse,
   ProjectListResult,
   ProjectOpenTarget,
   WorkspacesResponse,
@@ -251,6 +253,13 @@ export const api = {
     request<AiClassifyResult>('/skills/ai-classify', {
       method: 'POST',
       body: JSON.stringify(ids ? { ids } : {}),
+    }),
+
+  // 冲突仲裁（advisory-only：后端只读+调模型，永不落盘；采纳由导入确认提交）
+  arbitrate: (body: ArbitrationRequest) =>
+    request<ArbitrationResponse>('/arbitration', {
+      method: 'POST',
+      body: JSON.stringify(body),
     }),
 
   // Workspaces（项目级技能工作区发现）

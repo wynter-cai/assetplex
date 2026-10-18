@@ -130,6 +130,8 @@ export interface ImportItem {
   category: DiscoveredCategory;
   conflict: ConflictStatus;
   strategy?: ConflictStrategy;
+  /** 仲裁合并草案：仅 strategy==='merge' 且非空白时后端以此为准落盘 */
+  mergeDraft?: string;
 }
 
 export interface ImportResult {
@@ -594,4 +596,36 @@ export interface CriteriaPackTemplate {
 export interface CriteriaPackImportResult {
   inserted: string[];
   rejected: string[];
+}
+
+// ========== 冲突仲裁（add-llm-conflict-arbitration） ==========
+
+/** 仲裁可受理的资产类别（与后端 ARBITRATION_CATEGORIES 闭集对齐） */
+export type ArbitrationRequestCategory = 'identity' | 'skill' | 'rule' | 'mcp' | 'memory';
+
+export type ArbitrationDecision = 'keep-left' | 'keep-right' | 'merge' | 'manual-review';
+
+export interface ArbitrationRequest {
+  category: ArbitrationRequestCategory;
+  /** 左侧（导入源）文件绝对路径 */
+  leftPath: string;
+  /** 右侧（Hub 现有）路径：Hub 相对路径或绝对路径 */
+  rightPath: string;
+  leftLabel?: string;
+  rightLabel?: string;
+}
+
+export interface ArbitrationResponse {
+  decision: ArbitrationDecision;
+  rationale: string;
+  /** 仅 decision==='merge' 时存在：可编辑合并草案 */
+  mergedContent?: string;
+  /** 本次参与裁决的准则 slug 清单 */
+  criteriaUsed: string[];
+  /** 因预算未参与的准则条数 */
+  criteriaSkipped: number;
+  /** 命中内容哈希缓存（未重复调模型） */
+  cached: boolean;
+  model: string;
+  generatedAt: string;
 }

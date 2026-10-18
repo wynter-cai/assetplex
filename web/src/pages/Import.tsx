@@ -38,10 +38,16 @@ interface GroupedConflict {
   }>;
 }
 
+/** 冲突项解决状态：策略 + 可选的已采纳仲裁草案（仅 merge 时有意义） */
+interface ConflictResolution {
+  strategy: ConflictStrategy;
+  draft?: string;
+}
+
 export default function Import() {
   const [step, setStep] = useState<Step>(1);
   const [selectedItemKeys, setSelectedItemKeys] = useState<Set<string>>(new Set());
-  const [conflictResolutions, setConflictResolutions] = useState<Map<string, ConflictStrategy>>(new Map());
+  const [conflictResolutions, setConflictResolutions] = useState<Map<string, ConflictResolution>>(new Map());
 
   // Step 1: 扫描工具
   const { data: scanData, isLoading: scanLoading, refetch: rescan } = useQuery({
@@ -136,26 +142,41 @@ export default function Import() {
     });
   }, []);
 
-  const setConflictStrategy = useCallback((key: string, strategy: ConflictStrategy) => {
+  const setConflictStrategy = useCallback((key: string, strategy: ConflictStrategy, draft?: string) => {
     setConflictResolutions((prev) => {
       const next = new Map(prev);
-      next.set(key, strategy);
+      const existing = next.get(key);
+      // 草案仅由仲裁采纳路径传入；未传时：同策略重选 merge 保留旧草案，切到其他策略清除
+      const effectiveDraft = draft !== undefined
+        ? draft
+        : (existing !== undefined && strategy === 'merge' && existing.strategy === 'merge' ? existing.draft : undefined);
+      next.set(key, strategy === 'merge'
+        ? { strategy, ...(effectiveDraft !== undefined ? { draft: effectiveDraft } : {}) }
+        : { strategy });
       return next;
     });
   }, []);
 
-  // 构建导入请求
+  // 构建导入请求（differs 项携带解决策略；已采纳仲裁草案时透传 mergeDraft，后端以此为准落盘）
   const buildImportRequest = useCallback((): ImportItem[] => {
     return allItems
       .filter((i) => selectedItemKeys.has(itemKey(i)))
-      .map((i) => ({
-        tool: i.tool,
-        absolutePath: i.absolutePath,
-        hubTargetPath: i.hubTargetPath,
-        category: i.category,
-        conflict: i.conflict,
-        strategy: i.conflict === 'differs' ? (conflictResolutions.get(i.hubTargetPath) ?? 'merge') : undefined,
-      }));
+      .map((i) => {
+        const resolution = i.conflict === 'differs'
+          ? (conflictResolutions.get(i.hubTargetPath) ?? { strategy: 'merge' as ConflictStrategy })
+          : undefined;
+        return {
+          tool: i.tool,
+          absolutePath: i.absolutePath,
+          hubTargetPath: i.hubTargetPath,
+          category: i.category,
+          conflict: i.conflict,
+          strategy: resolution?.strategy,
+          ...(resolution !== undefined && resolution.strategy === 'merge' && resolution.draft !== undefined
+            ? { mergeDraft: resolution.draft }
+            : {}),
+        };
+      });
   }, [allItems, selectedItemKeys, conflictResolutions]);
 
   // 进入 Step 3 时，为冲突项设置默认策略（按 hubTargetPath 分组）
@@ -163,7 +184,7 @@ export default function Import() {
     const newResolutions = new Map(conflictResolutions);
     for (const gc of groupedConflicts) {
       if (!newResolutions.has(gc.hubTargetPath)) {
-        newResolutions.set(gc.hubTargetPath, 'merge');
+        newResolutions.set(gc.hubTargetPath, { strategy: 'merge' });
       }
     }
     setConflictResolutions(newResolutions);
@@ -356,8 +377,9 @@ export default function Import() {
                   sources={gc.sources}
                   existingSize={gc.existingSize}
                   category={gc.category}
-                  strategy={conflictResolutions.get(gc.hubTargetPath) ?? 'merge'}
-                  onChange={(s) => setConflictStrategy(gc.hubTargetPath, s)}
+                  strategy={conflictResolutions.get(gc.hubTargetPath)?.strategy ?? 'merge'}
+                  hasAdoptedDraft={conflictResolutions.get(gc.hubTargetPath)?.draft !== undefined}
+                  onChange={(s, draft) => setConflictStrategy(gc.hubTargetPath, s, draft)}
                 />
               ))}
               {groupedConflicts.length === 0 && (
