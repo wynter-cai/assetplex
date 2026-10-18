@@ -61,6 +61,16 @@ interface PreviewSnapshot {
   fingerprint: string;
 }
 
+/**
+ * 单资产分发范围过滤（add-asset-doctor F3）：单元级保留——entries 命中任一路径即整单元执行
+ * （技能目录的主文件命中时，同目录子文件随资产一同分发）；缺省/空 = 全量不过滤。
+ */
+export function filterUnitsByScope(units: WriteUnit[], scope?: string[]): WriteUnit[] {
+  if (scope === undefined || scope.length === 0) return units;
+  const set = new Set(scope);
+  return units.filter((unit) => unit.entries.some((e) => set.has(e.preview.hubRelativePath)));
+}
+
 export class SwapEngine {
   private readonly snapshots = new Map<string, PreviewSnapshot>();
 
@@ -225,10 +235,11 @@ export class SwapEngine {
       results: [],
       counts: { written: 0, skipped: 0, failed: 0 },
     };
-    for (const unit of snapshot.units) {
+    const scopedUnits = filterUnitsByScope(snapshot.units, req.onlyHubRelativePaths);
+    for (const unit of scopedUnits) {
       await executeUnit(ctx, unit);
     }
-    this.attachVerifyResults(ctx, snapshot.units);
+    this.attachVerifyResults(ctx, scopedUnits);
 
     if (ctx.manifest.length > 0) {
       const manifest: SwapBackupManifest = { swapId, tool: req.tool, createdAt, entries: ctx.manifest };

@@ -80,6 +80,11 @@ export interface SwapExecuteRequest {
   /** 回传预览生成时间；工具目录在此期间已变化则拒绝执行，要求重新预览 */
   previewGeneratedAt: string;
   overwriteDecisions: SwapOverwriteDecision[];
+  /**
+   * 单资产分发范围（add-asset-doctor F3）：只执行 entries 命中任一路径的写入单元
+   * （技能目录单元命中主文件即整目录执行）；缺省/空数组 = 全量，既有行为不变。
+   */
+  onlyHubRelativePaths?: string[];
 }
 
 /** 单资产验证结论(回读:存在 + 可解析 + 与源一致) */
