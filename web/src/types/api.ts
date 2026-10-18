@@ -629,3 +629,45 @@ export interface ArbitrationResponse {
   model: string;
   generatedAt: string;
 }
+
+// ========== 资产医生（add-asset-doctor Phase E） ==========
+
+/** 医生服务的资产类别（与后端 DOCTOR_ASSET_KINDS 闭集对齐；mcp 一期不做） */
+export type DoctorAssetKind = 'identity' | 'skill' | 'rule' | 'agent' | 'command';
+
+export type DiagnosisOverall = 'healthy' | 'needs-attention' | 'at-risk';
+
+export type DiagnosisSeverity = 'high' | 'medium' | 'low';
+
+export interface DiagnosisIssue {
+  severity: DiagnosisSeverity;
+  /** 准则 slug；机械项为 'mechanical:<checkId>' */
+  criterion: string;
+  finding: string;
+  suggestion: string;
+  /** 是否可生成改写草案（Phase F 接入点） */
+  fixable: boolean;
+}
+
+export interface DiagnosisReport {
+  kind: DoctorAssetKind;
+  hubRelativePath: string;
+  overall: DiagnosisOverall;
+  issues: DiagnosisIssue[];
+  criteriaUsed: string[];
+  criteriaSkipped: number;
+  cached: boolean;
+  /** AI 未配置：仅机械项 + 配置引导（Scenario 7） */
+  mechanicalOnly: boolean;
+  model: string;
+  generatedAt: string;
+}
+
+/** GET /api/doctor/estimate 响应（批量前预算护栏，Scenario 5） */
+export interface DiagnoseEstimate {
+  category: DoctorAssetKind;
+  total: number;
+  cacheHits: number;
+  /** >50 前端二次确认 */
+  willCall: number;
+}

@@ -39,6 +39,9 @@ import type {
   AiClassifyResult,
   ArbitrationRequest,
   ArbitrationResponse,
+  DiagnosisReport,
+  DiagnoseEstimate,
+  DoctorAssetKind,
   ProjectListResult,
   ProjectOpenTarget,
   WorkspacesResponse,
@@ -261,6 +264,15 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
+
+  // 资产医生（advisory-only：诊断只读永不写库；修复入口在 Phase F）
+  doctorDiagnose: (body: { kind: DoctorAssetKind; hubRelativePath: string }) =>
+    request<DiagnosisReport>('/doctor/diagnose', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  doctorEstimate: (category: DoctorAssetKind) =>
+    request<DiagnoseEstimate>(`/doctor/estimate?category=${encodeURIComponent(category)}`),
 
   // Workspaces（项目级技能工作区发现）
   getWorkspaces: () => request<WorkspacesResponse>('/workspaces'),

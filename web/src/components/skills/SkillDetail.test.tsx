@@ -216,3 +216,38 @@ describe('SkillDetail AI 智能分类', () => {
     });
   });
 });
+
+describe('SkillDetail 资产医生入口', () => {
+  beforeEach(() => {
+    vi.spyOn(api, 'getSkill').mockResolvedValue({ skill: librarySelfBuilt, rawContent: '# mine\n内容' });
+    vi.spyOn(api, 'getAiClassifyConfig').mockResolvedValue({ baseUrl: '', model: '', hasApiKey: false });
+  });
+
+  it('库内技能且路径在 Hub 根内 → 渲染「资产医生」入口（add-asset-doctor E6）', async () => {
+    vi.spyOn(api, 'getHubHealth').mockResolvedValue({
+      hubRoot: '/x', hubExists: true, hubTomlExists: true, fileCountByCategory: {}, totalFiles: 1,
+    });
+    renderDetail(librarySelfBuilt);
+    expect(await screen.findByRole('button', { name: '资产医生' })).toBeInTheDocument();
+  });
+
+  it('库内但路径不在 Hub 根内 → 入口隐藏（医生只服务库内资产）', async () => {
+    vi.spyOn(api, 'getHubHealth').mockResolvedValue({
+      hubRoot: '/z', hubExists: true, hubTomlExists: true, fileCountByCategory: {}, totalFiles: 0,
+    });
+    renderDetail(librarySelfBuilt);
+    await screen.findByRole('button', { name: '编辑' });
+    await new Promise((r) => setTimeout(r, 50));
+    expect(screen.queryByRole('button', { name: '资产医生' })).toBeNull();
+  });
+
+  it('环境条目（inLibrary=false）不提供医生入口', async () => {
+    vi.spyOn(api, 'getHubHealth').mockResolvedValue({
+      hubRoot: '/x', hubExists: true, hubTomlExists: true, fileCountByCategory: {}, totalFiles: 1,
+    });
+    renderDetail(marketSkill);
+    await screen.findByRole('button', { name: 'AI 分类' });
+    await new Promise((r) => setTimeout(r, 50));
+    expect(screen.queryByRole('button', { name: '资产医生' })).toBeNull();
+  });
+});

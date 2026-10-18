@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { DiagnosisPanel } from '@/components/doctor/DiagnosisPanel';
 import { Save, FileText } from 'lucide-react';
 
 const SUBDIRS = ['always', 'by-glob', 'by-project'] as const;
@@ -86,6 +87,8 @@ function RuleEditor({ subdir }: { subdir: RuleSubdir }) {
         <CardContent className="space-y-3">
           {selectedFile ? (
             <>
+              {/* 资产医生：库内规则直用 Hub 相对路径体检（advisory-only） */}
+              <DiagnosisPanel kind="rule" hubRelativePath={selectedFile} />
               <Textarea
                 value={content}
                 onChange={(e) => {

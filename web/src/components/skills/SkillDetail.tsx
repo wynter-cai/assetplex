@@ -17,6 +17,7 @@ import { errorMessage } from '@/lib/error-message';
 import { useEscapeKey } from '@/lib/use-escape-key';
 import { Markdown, stripFrontmatter } from '@/components/common/Markdown';
 import { SyncDistribute } from '@/components/common/SyncDistribute';
+import { DiagnosisPanel } from '@/components/doctor/DiagnosisPanel';
 import { FUNCTION_LABELS, PROVENANCE_LABELS, FUNCTION_SOURCE_LABELS, parseCurateSource, provenanceBadgeLabel } from './skill-labels';
 import { DeleteConfirmDialog, CurateDialog } from './SkillDialogs';
 import { useAiClassify } from './use-ai-classify';
@@ -153,6 +154,11 @@ export function SkillDetail({ skill, onClose, onCurated }: SkillDetailProps): JS
             )}
             <SyncDistribute onSynced={refresh} />
           </div>
+        )}
+
+        {/* 资产医生：advisory-only 体检入口；库内技能经 hubRoot 解析后才渲染（环境条目自动隐藏） */}
+        {isLibrary && (
+          <DiagnosisPanel kind="skill" absolutePath={skill.path} />
         )}
 
         {skill.workspacePath && (

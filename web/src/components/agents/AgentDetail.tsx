@@ -27,6 +27,7 @@ import { errorMessage } from '@/lib/error-message';
 import { useEscapeKey } from '@/lib/use-escape-key';
 import { Markdown, stripFrontmatter } from '@/components/common/Markdown';
 import { SyncDistribute } from '@/components/common/SyncDistribute';
+import { DiagnosisPanel } from '@/components/doctor/DiagnosisPanel';
 import { KIND_LABELS, TOOL_LABELS, formatTime } from './agent-labels';
 import type { AgentInfo } from '@/types/api';
 
@@ -179,6 +180,9 @@ export function AgentDetail({ agent, onClose }: AgentDetailProps): JSX.Element {
           <code className="block text-xs bg-muted rounded p-2 break-all">{agent.sourcePath}</code>
           <p className="text-xs text-muted-foreground mt-1">最后修改：{formatTime(agent.lastModifiedAt)}</p>
         </div>
+
+        {/* 资产医生：库内（hub 工具）智能体才提供体检入口 */}
+        {isHub && <DiagnosisPanel kind="agent" absolutePath={agent.sourcePath} />}
 
         {agent.extra && Object.keys(agent.extra).length > 0 && (
           <div>

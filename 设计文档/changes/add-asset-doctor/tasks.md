@@ -6,12 +6,18 @@
 
 ## Phase E — 诊断引擎（specs/asset-diagnosis.spec.md）
 
-- [ ] E1 `src/core/doctor.ts`：确定性预检 `runMechanicalChecks(kind, content)`（frontmatter 必填/description 空/正文超长/shouting，按类别阈值表），输出 DiagnosisIssue（criterion='mechanical:<id>'，fixable 按检查项定义）。测试 Scenario 3
-- [ ] E2 `buildDiagnosisPrompt({ kind, content, criteriaBlock })`：内置基线骨架（审视单资产 × 准则、无问题返回空 issues 不凑数）+ 准则区 + JSON 闭集契约；内容截断 6000 并标 `contentTruncated`。测试 Scenario 2/6/7 数据面
-- [ ] E3 `parseDiagnosisOutput(output)`：fenced 容忍 → overall 三值闭集 → issue 必填字段与 severity 闭集校验，非法 throw。测试 Scenario 8 全部非法形态
-- [ ] E4 `diagnoseAsset(input, deps)`：机械项恒跑；AI 未配置返回 mechanicalOnly=true 不发请求；缓存 key = sha256(内容 + 适用准则集哈希 + model)，命中不调模型。测试 Scenario 4/7
-- [ ] E5 server `POST /api/doctor/diagnose` + `GET /api/doctor/estimate`：403 环境条目守卫、错误映射（400/404/422）；红测试先行
-- [ ] E6 web：体检报告组件（结论徽标 + issue 列表 + 准则跳转 + cached/mechanicalOnly 标注）；技能/规则/agent/identity 详情接入「资产医生」按钮（环境条目不渲染）。组件测试 Scenario 1/2/7
+- [x] E1 `src/core/doctor.ts`：确定性预检 `runMechanicalChecks(kind, content)`（frontmatter 必填/description 空/正文超长/shouting，按类别阈值表），输出 DiagnosisIssue（criterion='mechanical:<id>'，fixable 按检查项定义）。测试 Scenario 3
+  > 实测：落地于 doctor-mechanical.ts；阈值表 skill/agent 必填 name+description、command 必填 description、rule/identity 无必填；正文限 skill 10000/agent 6000/rule 4000/identity 8000/command 2000 字符；shouting ≥3 处连续全大写词。8/8 绿（b8001d6）
+- [x] E2 `buildDiagnosisPrompt({ kind, content, criteriaBlock })`：内置基线骨架（审视单资产 × 准则、无问题返回空 issues 不凑数）+ 准则区 + JSON 闭集契约；内容截断 6000 并标 `contentTruncated`。测试 Scenario 2/6/7 数据面
+  > 实测：另含 mechanicalFindings 注入（防模型重复报机械项）；截断标注+contentTruncated 三态齐备（b8001d6）
+- [x] E3 `parseDiagnosisOutput(output)`：fenced 容忍 → overall 三值闭集 → issue 必填字段与 severity 闭集校验，非法 throw。测试 Scenario 8 全部非法形态
+  > 实测：落地于 doctor-parse.ts；fixable 缺失宽容为 false；extractJsonObjectText 从 arbitration 抽公共 llm-output.ts（b8001d6）
+- [x] E4 `diagnoseAsset(input, deps)`：机械项恒跑；AI 未配置返回 mechanicalOnly=true 不发请求；缓存 key = sha256(内容 + 适用准则集哈希 + model)，命中不调模型。测试 Scenario 4/7
+  > 实测：缓存仅存模型部分（doctor-cache.ts，机械项每次重跑）；机械 high 项不被模型 healthy 覆盖（mergeOverall）；15/15 绿（b8001d6）
+- [x] server `POST /api/doctor/diagnose` + `GET /api/doctor/estimate`：403 环境条目守卫、错误映射（400/404/422）；红测试先行
+  > 实测：E5 落地 routes/doctor.ts，绝对路径/越界→403、缺文件→404、非法输出→422 不落缓存；estimate 未配置 AI 时 willCall=0；缓存命中按内容哈希（同内容资产共享条目）；11/11 绿，后端全量 704/704（b8001d6）
+- [x] E6 web：体检报告组件（结论徽标 + issue 列表 + 准则跳转 + cached/mechanicalOnly 标注）；技能/规则/agent/identity 详情接入「资产医生」按钮（环境条目不渲染）。组件测试 Scenario 1/2/7
+  > 实测：DiagnosisPanel（hubRelativePath 直用 / absolutePath 经 hubRoot 换算，Hub 外自动隐藏入口）；接入 SkillDetail（isLibrary）/AgentDetail（isHub tool）/Rules/Identity；新增 10 用例，前端全量 190/190，tsc 0 错，vite build 成；command 类详情入口待后续页面成型再接
 
 ## Phase F — 修复与分发（specs/fix-and-distribute.spec.md）
 

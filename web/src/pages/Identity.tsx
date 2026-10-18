@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { DiagnosisPanel } from '@/components/doctor/DiagnosisPanel';
 import { Save, FileText } from 'lucide-react';
 
 export default function Identity() {
@@ -86,6 +87,8 @@ export default function Identity() {
           <CardContent className="space-y-3">
             {selectedFile ? (
               <>
+                {/* 资产医生：库内身份文件直用 Hub 相对路径体检（advisory-only） */}
+                <DiagnosisPanel kind="identity" hubRelativePath={selectedFile} />
                 <Textarea
                   value={content}
                   onChange={(e) => {
