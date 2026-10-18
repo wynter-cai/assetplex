@@ -112,6 +112,8 @@ export type DoctorDispatchItem = {
   tool: string;
   action: 'written' | 'skipped' | 'failed';
   reason?: string;
+  /** 写入成功时回传本次 swap 执行 id，供「回滚本次分发」入口调用 /api/swap/rollback */
+  swapId?: string;
 };
 
 /** apply 响应：写库结果 + 逐工具分发结果如实回报 */

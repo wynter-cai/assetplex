@@ -48,8 +48,9 @@ const KIND_TO_HUB_DIR: Record<DoctorAssetKind, HubFileCategory> = {
 /**
  * 库内资产判定：必须是非绝对路径，且规范化后仍在 Hub 根内。
  * 绝对路径/越界 = 工具侧或环境条目 → 医生不提供（spec「定义」：诊断范围=资产侧）。
+ * 修复/分发路由（routes/doctor-fix.ts）共用同一守卫。
  */
-function isHubInternalPath(relativePath: string): boolean {
+export function isHubInternalPath(relativePath: string): boolean {
   if (relativePath.trim() === '' || isAbsolute(relativePath) || /^[A-Za-z]:[\\/]/.test(relativePath)) {
     return false;
   }
@@ -80,8 +81,8 @@ const nodeListAssets = (kind: DoctorAssetKind): string[] => {
     .map((f) => f.relativePath);
 };
 
-/** 请求体校验：合法返回诊断输入，非法返回错误文案与状态码 */
-function parseDiagnoseBody(body: unknown): { input?: { kind: DoctorAssetKind; hubRelativePath: string }; error?: string; status?: 400 | 403 } {
+/** 请求体校验：合法返回诊断输入，非法返回错误文案与状态码（fix-draft 路由共用 kind/hubRelativePath 守卫） */
+export function parseDiagnoseBody(body: unknown): { input?: { kind: DoctorAssetKind; hubRelativePath: string }; error?: string; status?: 400 | 403 } {
   if (typeof body !== 'object' || body === null) return { error: '请求体必须是 JSON 对象', status: 400 };
   const p = body as Record<string, unknown>;
   if (typeof p.kind !== 'string' || !(DOCTOR_ASSET_KINDS as readonly string[]).includes(p.kind)) {

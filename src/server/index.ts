@@ -24,6 +24,7 @@ import { swapRoutes } from './routes/swap.js';
 import { criteriaRoutes } from './routes/criteria.js';
 import { createArbitrationRoutes } from './routes/arbitration.js';
 import { createDoctorRoutes } from './routes/doctor.js';
+import { createDoctorFixRoutes } from './routes/doctor-fix.js';
 import { errorHandler } from './middleware/error.js';
 
 export interface ServerOptions {
@@ -68,6 +69,7 @@ export async function startServer(options: ServerOptions = {}): Promise<void> {
   app.route('/api/criteria', criteriaRoutes);
   app.route('/api/arbitration', createArbitrationRoutes());
   app.route('/api/doctor', createDoctorRoutes());
+  app.route('/api/doctor', createDoctorFixRoutes());
 
   // 静态文件服务（前端构建产物）
   // 开发模式下前端跑在 5173 端口，这里只服务 API；
