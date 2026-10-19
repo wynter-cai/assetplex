@@ -34,10 +34,14 @@
 
 ## Phase G — 验收与收尾
 
-- [ ] G1 全量：`npm test` / `tsc -b` 双端 / tsup + vite 构建全绿
-- [ ] G2 API 回环：造一个故意写坏的技能（无 description + 冗长正文）→ 机械项命中 → 诊断 → 草案 → apply（只改库）→ 校验备份可撤销 → apply+分发到 1 个测试工具 → swap 回滚复原（临时脚本用毕即删；测试数据一律中性示例名）
-- [ ] G3 浏览器走查（Browser 子代理，用完即关）：单资产报告、草案编辑采纳一屏确认、未配置降级、批量 estimate 四类场景
-- [ ] G4 文档回写：taxonomy 元资产层补"准则第二个消费方（诊断）"；PRIVACY.md/data-and-privacy.md 补诊断/草案数据流出说明（Scenario 9）
+- [x] G1 全量：`npm test` / `tsc -b` 双端 / tsup + vite 构建全绿
+  > 实测：后端 753/753（55 文件）；前端 211/211（29 文件）；双端 tsc 0 错；tsup/vite build 成（chunk >500KB 警告为既有现象）
+- [x] G2 API 回环：造一个故意写坏的技能（无 description + 冗长正文）→ 机械项命中 → 诊断 → 草案 → apply（只改库）→ 校验备份可撤销 → apply+分发到 1 个测试工具 → swap 回滚复原（临时脚本用毕即删；测试数据一律中性示例名）
+  > 实测：造坏技能→诊断命中机械项→草案真产出→apply只改库→undo 恢复→apply+分发 全链路 PASS；非法 backupRef '../evil'→404；本机 .trae-cn/skills、rules 为 Junction 指向 Hub（同 inode），分发必然 skipped（目标已一致），written+swapId+rollback 真实分支由路由单测覆盖；临时脚本用毕已删
+- [x] G3 浏览器走查（子代理不稳，改 MCP browser-use 直连，用完导航回 about:blank）：单资产报告、草案编辑采纳一屏确认、未配置降级、批量 estimate 四类场景
+  > 实测：场景1-4 通过（全部体检按钮/预算文案 42 次/技能报告“需关注”含机械+语义/修复流 3 勾选）；场景5初发现 /vault/rule 详情无医生入口→修复（AssetEditor view 模式对 rule/identity 渲染 DiagnosisPanel，commit efd69d0）→复验：规则详情正文上方出现“资产医生”按钮；截图受窗口隐藏阻塞，改 DOM 快照核验
+- [x] G4 文档回写：taxonomy 元资产层补“准则第二个消费方（诊断）”；PRIVACY.md/data-and-privacy.md 补诊断/草案数据流出说明（Scenario 9）
+  > 实测：taxonomy 1.3 版（元资产表“资产诊断（已上线）”+历史行）；PRIVACY.md 第5节 + data-and-privacy.md “Two→Three features”并加入资产医生（机械检查离线、apply/分发全本地、advisory-only）
 - [ ] G5 隐私终检退出码 0；分层 commit（docs spec / feat 诊断引擎 / feat 诊断 UI / feat 修复分发 / docs 收尾）；本 tasks 勾选与实测记录
 
 ## 风险与预留

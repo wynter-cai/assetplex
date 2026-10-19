@@ -63,17 +63,17 @@ MCP server configurations can contain API keys or tokens. AssetPlex processes th
 
 ## 5. AI-assisted features are opt-in / AI 辅助功能需你主动启用
 
-Two features make network requests, and only both are available after you explicitly configure an endpoint in the app: **AI skill classification** and **conflict arbitration** (LLM suggests how to resolve a differs conflict in the import wizard).
+Three features make network requests, and only after you explicitly configure an endpoint in the app: **AI skill classification**, **conflict arbitration** (LLM suggests how to resolve a differs conflict in the import wizard), and the **Asset Doctor** (AI diagnosis of one asset plus, on request, a fix draft). The Doctor's mechanical checks run fully offline; only the AI pass sends anything.
 
-- Content sent: only the text AssetPlex is asked about — the skill body being classified, or the two sides of that one conflicting file plus your enabled adjudication criteria. Never unrelated assets, never paths, never your hub as a whole.
+- Content sent: only the text AssetPlex is asked about — the skill body being classified, the two sides of that one conflicting file, or the single asset being diagnosed, each plus your enabled adjudication criteria. Never unrelated assets, never paths, never your hub as a whole.
 - Destination: **only** the OpenAI-compatible endpoint you configured yourself (base URL / API key / model). AssetPlex has no backend of its own and acts as no relay — there is no third party in between.
-- Results (including arbitration suggestions and their local cache files `skill-ai-classifications.json` / `arbitrations.json`) stay in `~/.assetplex/`. Arbitration is **advisory only**: nothing is ever written by the model itself — every change happens only when you confirm the import.
+- Results (including arbitration suggestions, diagnosis reports and fix drafts, and their local cache files `skill-ai-classifications.json` / `arbitrations.json` / `doctor-reports.json` / `doctor-drafts.json`) stay in `~/.assetplex/`. Both arbitration and the Asset Doctor are **advisory only**: nothing is ever written by the model itself — applying a fix (and any distribution to your tools) happens only when you explicitly confirm it, and that write/distribute step is entirely local, over no network endpoint.
 - No endpoint configured, or feature not triggered = zero network requests. Everything else remains 100% local.
 
-> 有两个功能会发起网络请求，且都必须你先在应用内显式配置端点才可用：**技能智能分类**与**冲突仲裁**（导入向导中由大模型对 differs 冲突给出建议）。
-> - 发送内容：仅限被询问的文本——待分类的技能正文，或该单个冲突文件的两侧内容加上你启用的裁决准则。绝不包含无关资产、路径或整个 Hub。
+> 有三个功能会发起网络请求，且都必须你先在应用内显式配置端点才可用：**技能智能分类**、**冲突仲裁**（导入向导中由大模型对 differs 冲突给出建议）、以及**资产医生**（对单个资产做 AI 诊断，并在你请求时生成修复草案）。医生的机械检查完全离线，只有 AI 那一趟会发请求。
+> - 发送内容：仅限被询问的文本——待分类的技能正文、该单个冲突文件的两侧内容、或被诊断的那一个资产本体，各自再加上你启用的裁决准则。绝不包含无关资产、路径或整个 Hub。
 > - 去向：**只发往你自己配置的** OpenAI 兼容端点。AssetPlex 自身没有任何后端、不做任何中转——中间不存在第三方。
-> - 结果（含仲裁建议及其本地缓存文件）保存在 `~/.assetplex/`。仲裁仅为建议（advisory-only）：模型本身永不写盘，所有变更都由你「确认导入」触发。
+> - 结果（含仲裁建议、诊断报告与修复草案及其本地缓存文件）保存在 `~/.assetplex/`。仲裁与资产医生均仅为建议（advisory-only）：模型本身永不写盘，应用修复（以及向工具的任何分发）只在你显式确认时才发生，且这一步落盘/分发完全在本地进行、不经任何网络端点。
 > - 未配置端点或未触发功能 = 零网络请求，其余一切依旧 100% 本地。
 
 ## 6. What AssetPlex never does / 绝不做什么
@@ -105,7 +105,7 @@ Two features make network requests, and only both are available after you explic
 > | 读写 `~/.assetplex/` | ✅ | Hub 本体 |
 > | 读取工具配置目录 | ✅ | 仅用于检测/同步/导入 |
 > | 写入工具配置目录 | ✅ | 仅限你在 `hub.toml` 中启用的工具 |
-> | 网络访问 | ⚠️ 按需 | 仅当你触发分类/仲裁时发往**你自己配置的** AI 端点（见第 5 节）；其余情况零请求 |
+> | 网络访问 | ⚠️ 按需 | 仅当你触发分类/仲裁/资产医生 AI 诊断时发往**你自己配置的** AI 端点（见第 5 节）；其余情况零请求 |
 > | 遥测 / 分析 | ❌ | 无 |
 
 ## 8. Questions / 问题
