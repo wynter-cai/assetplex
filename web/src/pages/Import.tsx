@@ -19,11 +19,12 @@ import {
 import { ToolCard } from '@/components/import/ToolCard';
 import { FileItem } from '@/components/import/FileItem';
 import { ConflictDialog } from '@/components/import/ConflictDialog';
+import { ImportConfirmList } from '@/components/import/ImportConfirmList';
 import type { DiscoveredItem, ConflictStrategy, ImportItem } from '@/types/api';
 
 type Step = 1 | 2 | 3 | 4;
 
-const stepLabels = ['检测工具', '发现内容', '确认冲突', '导入完成'];
+const stepLabels = ['检测工具', '发现内容', '确认导入', '导入完成'];
 
 /** 按 hubTargetPath 分组的冲突项 */
 interface GroupedConflict {
@@ -76,6 +77,12 @@ export default function Import() {
   // 有冲突的项（conflict === 'differs'），仅包含已选中的
   const selectedConflictItems = useMemo(
     () => allItems.filter((i) => i.conflict === 'differs' && selectedItemKeys.has(itemKey(i))),
+    [allItems, selectedItemKeys],
+  );
+
+  // 已选中的无冲突项（none/exists）：Step 3 确认屏预览用
+  const selectedNonConflictItems = useMemo(
+    () => allItems.filter((i) => i.conflict !== 'differs' && selectedItemKeys.has(itemKey(i))),
     [allItems, selectedItemKeys],
   );
 
@@ -341,15 +348,16 @@ export default function Import() {
             </Button>
             <Button
               onClick={() => {
+                // 无冲突不再一键直达落盘：统一进 Step 3 确认屏，预览后才执行
                 if (groupedConflicts.length > 0) {
                   goToStep3();
                 } else {
-                  handleExecuteImport();
+                  setStep(3);
                 }
               }}
               disabled={selectedItemKeys.size === 0}
             >
-              {groupedConflicts.length > 0 ? '下一步' : '开始导入'}
+              下一步
               <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
           </div>
@@ -362,30 +370,45 @@ export default function Import() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-warning" />
-                {groupedConflicts.length} 个文件存在冲突
-                {groupedConflicts.some((g) => g.sources.length > 1) && (
-                  <Badge variant="outline" className="text-xs ml-1">含多来源</Badge>
+                {groupedConflicts.length > 0 ? (
+                  <>
+                    <AlertTriangle className="h-4 w-4 text-warning" />
+                    {groupedConflicts.length} 个文件存在冲突
+                    {groupedConflicts.some((g) => g.sources.length > 1) && (
+                      <Badge variant="outline" className="text-xs ml-1">含多来源</Badge>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-4 w-4 text-success" />
+                    确认导入
+                  </>
                 )}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              {groupedConflicts.map((gc) => (
-                <ConflictDialog
-                  key={gc.hubTargetPath}
-                  hubTargetPath={gc.hubTargetPath}
-                  sources={gc.sources}
-                  existingSize={gc.existingSize}
-                  category={gc.category}
-                  strategy={conflictResolutions.get(gc.hubTargetPath)?.strategy ?? 'merge'}
-                  hasAdoptedDraft={conflictResolutions.get(gc.hubTargetPath)?.draft !== undefined}
-                  onChange={(s, draft) => setConflictStrategy(gc.hubTargetPath, s, draft)}
-                />
-              ))}
-              {groupedConflicts.length === 0 && (
-                <div className="text-center py-4 text-muted-foreground text-sm">
-                  所选文件中没有冲突项
-                </div>
+              {groupedConflicts.length > 0 ? (
+                <>
+                  {groupedConflicts.map((gc) => (
+                    <ConflictDialog
+                      key={gc.hubTargetPath}
+                      hubTargetPath={gc.hubTargetPath}
+                      sources={gc.sources}
+                      existingSize={gc.existingSize}
+                      category={gc.category}
+                      strategy={conflictResolutions.get(gc.hubTargetPath)?.strategy ?? 'merge'}
+                      hasAdoptedDraft={conflictResolutions.get(gc.hubTargetPath)?.draft !== undefined}
+                      onChange={(s, draft) => setConflictStrategy(gc.hubTargetPath, s, draft)}
+                    />
+                  ))}
+                  {selectedNonConflictItems.length > 0 && (
+                    <p className="text-xs text-muted-foreground pt-1">
+                      另有 {selectedNonConflictItems.length} 个无冲突文件，将按新增/跳过一并处理
+                    </p>
+                  )}
+                </>
+              ) : (
+                <ImportConfirmList items={selectedNonConflictItems} />
               )}
             </CardContent>
           </Card>
