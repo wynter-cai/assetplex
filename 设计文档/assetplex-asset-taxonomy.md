@@ -177,6 +177,18 @@ AgentHub 的核心价值是**让用户掌控自己的AI资产，换工具不丢�
 
 **状态**: ✅ 已实现，正在做 UI 重构（v2 设计方案）
 
+**技能出处轴（provenance）五值**：每个已入库技能带一个出处标记，用于资产视图筛选与「来自」徽章。五值闭集，前端导航/后端类型/筛选均按动态扩展、不写死个数：
+
+| 值 | 界面词 | 含义 |
+|----|--------|------|
+| `self` | 自建 | 用户自己创建/项目工作区内技能（含 vault 内无前缀来源） |
+| `marketplace` | 市场 | 从工具市场导入 |
+| `plugin` | 插件 | 随插件安装带入 |
+| `builtin` | 内置 | 工具/环境自带（资产侧 vs 环境侧归位：builtin 属环境侧，不入资产侧出处序） |
+| `github` | GitHub 源 | 从公开 GitHub 仓库经「技能发现」锁 commit 后确认入库（vault source 串 `github:{repo}@{sha}:{skillPath}`），本版新增 |
+
+> 前向兼容：旧版 AssetPlex 遇 `github:` 前缀条目会由 `deriveProvenance` 回落为 `self`（无迁移）。同名冲突本版仅「跳过/覆盖（覆盖前备份）」，「AI 整合新旧两版」为待办不在本版。
+
 ### Phase B：扩展3类（UI 重构完成后）
 
 新增：`command`、`agent`、`memory`

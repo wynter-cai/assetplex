@@ -61,7 +61,8 @@ Your identity, skills, rules and MCP servers are **your assets**. AI coding tool
 - **Format translation** — JSON↔TOML for Codex, `${VAR}` interpolation for WorkBuddy.
 - **Cross-platform symlinks** — Windows (junction fallback), macOS and Linux.
 - **Plugin-style adapters** — add a new tool without touching the core.
-- **100% local & private** — nothing ever leaves your machine. [Read the privacy model](PRIVACY.md).
+- **Skill discovery** — pull skills from a **public GitHub repo you name**, preview, then import only on your explicit confirm. External skills are added entirely at your own discretion: AssetPlex ships no curated repo mirror and does no content review — treat third-party `SKILL.md` as untrusted input.
+- **100% local & private** — nothing ever leaves your machine unless you configure and trigger an opt-in AI feature or fetch a repo yourself. [Read the privacy model](PRIVACY.md).
 
 ## Supported Tools
 
