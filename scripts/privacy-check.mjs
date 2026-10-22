@@ -76,7 +76,10 @@ if (pathHits.length) warns.push({ name: '疑似真实用户主目录绝对路径
 const emailHits = collect(
   '[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+\\.[A-Za-z0-9.-]+',
   /([A-Za-z0-9._%+-]+@[A-Za-z0-9-]+\.[A-Za-z0-9.-]+)/g,
-  /@users\.noreply\.github\.com$/i,
+  // 排除合法非隐私形态：GitHub noreply 提交邮箱；以及 GitHub 源串版本标签
+  // owner/repo@v1.2.3 被邮箱正则误判（v1 当域名、.2.3 当 TLD）——真实邮箱 TLD 恒为
+  // 字母、绝不会以 semver 数字段结尾，故排除 @v数字.数字 标签形态只消误报不伤真检测。
+  /@(?:users\.noreply\.github\.com|v\d+\.\d+(?:\.\d+)?)$/i,
 );
 if (emailHits.length) warns.push({ name: '疑似真实邮箱(非占位)', samples: emailHits.slice(0, 8) });
 
