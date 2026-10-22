@@ -18,6 +18,7 @@ import { filesRoutes } from './routes/files.js';
 import { assetsRoutes } from './routes/assets.js';
 import { agentsRoutes } from './routes/agents.js';
 import { skillsRoutes } from './routes/skills.js';
+import { githubRoutes } from './routes/github.js';
 import { workspacesRoutes } from './routes/workspaces.js';
 import { projectsRoutes } from './routes/projects.js';
 import { swapRoutes } from './routes/swap.js';
@@ -63,6 +64,7 @@ export async function startServer(options: ServerOptions = {}): Promise<void> {
   app.route('/api/assets', assetsRoutes);
   app.route('/api/agents', agentsRoutes);
   app.route('/api/skills', skillsRoutes);
+  app.route('/api/github', githubRoutes);
   app.route('/api/workspaces', workspacesRoutes);
   app.route('/api/projects', projectsRoutes);
   app.route('/api/swap', swapRoutes);
