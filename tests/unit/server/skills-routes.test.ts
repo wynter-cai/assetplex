@@ -230,7 +230,7 @@ describe('GET /api/skills provenance/status 过滤（refactor-skill-origin-taxon
   it('状态=我的库时出处 chips 计数联动重算', async () => {
     const res = await buildApp(seed()).request('/api/skills?status=in');
     const body = await res.json();
-    expect(body.countByProvenance).toEqual({ self: 1, marketplace: 1, plugin: 0, builtin: 0 });
+    expect(body.countByProvenance).toEqual({ self: 1, marketplace: 1, plugin: 0, builtin: 0, github: 0 });
     expect(body.countByStatus).toEqual({ in: 2, out: 2 });
   });
 

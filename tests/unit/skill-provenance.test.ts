@@ -32,6 +32,10 @@ describe('deriveProvenance 出处推导', () => {
     expect(deriveProvenance('vault', 'plugin:/x/plug/SKILL.md')).toBe('plugin');
   });
 
+  it('vault source=github:* → github（add-github-skill-source D5）', () => {
+    expect(deriveProvenance('vault', 'github:owner/repo@abc123:skills/foo/SKILL.md')).toBe('github');
+  });
+
   it('vault source 其他前缀 → self', () => {
     expect(deriveProvenance('vault', 'personal:/home/pdf/SKILL.md')).toBe('self');
     expect(deriveProvenance('vault', 'project:/d/ws/SKILL.md')).toBe('self');
@@ -77,9 +81,9 @@ describe('deriveInLibrary 库状态推导', () => {
 });
 
 describe('SKILL_PROVENANCES 常量', () => {
-  it('恰好四值且互斥穷尽', () => {
-    expect(SKILL_PROVENANCES).toHaveLength(4);
-    expect(SKILL_PROVENANCES).toEqual(['self', 'marketplace', 'plugin', 'builtin']);
+  it('恰好五值且互斥穷尽（github 为第五值）', () => {
+    expect(SKILL_PROVENANCES).toHaveLength(5);
+    expect(SKILL_PROVENANCES).toEqual(['self', 'marketplace', 'plugin', 'builtin', 'github']);
   });
 });
 
@@ -91,6 +95,7 @@ describe('deriveScope 资产/环境推导', () => {
     expect(deriveScope('plugin', true)).toBe('asset');
     expect(deriveScope('builtin', true)).toBe('asset');
     expect(deriveScope('self', true)).toBe('asset');
+    expect(deriveScope('github', true)).toBe('asset');
   });
 
   it('未入库且出处 self → 资产（个人/项目自建也是资产）', () => {

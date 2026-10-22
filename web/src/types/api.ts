@@ -268,8 +268,8 @@ export type SkillFunction =
   | 'workflow'
   | 'other';
 
-/** 纯出处四类（MECE：按这个技能最初从哪来，互斥且穷尽） */
-export type SkillProvenance = 'self' | 'marketplace' | 'plugin' | 'builtin';
+/** 纯出处五类（MECE：按这个技能最初从哪来，互斥且穷尽） */
+export type SkillProvenance = 'self' | 'marketplace' | 'plugin' | 'builtin' | 'github';
 
 /** 库状态（管理轴，独立于出处）：in=已入我的库，out=未入库 */
 export type LibraryStatus = 'in' | 'out';
@@ -339,8 +339,8 @@ export interface SkillListResult {
   items: SkillInfo[];
   total: number;
   countByFunction: Record<SkillFunction, number>;
-  /** 出处计数（随 scope/status/search 过滤联动） */
-  countByProvenance: Record<SkillProvenance, number>;
+  /** 出处计数（随 scope/status/search 过滤联动）；Partial 以容出处类别动态扩展（新出处未回填时读 0） */
+  countByProvenance: Partial<Record<SkillProvenance, number>>;
   /** 库状态计数：我的库 / 未入库（随 scope/provenance/search 联动） */
   countByStatus: { in: number; out: number };
   /** 视图口径计数：资产/环境（随 function/provenance/status/search 联动，不含 scope 自身维度） */
@@ -358,6 +358,89 @@ export interface CurateBatchFailure {
 export interface CurateBatchResult {
   created: SkillInfo[];
   failed: CurateBatchFailure[];
+}
+
+// ========== GitHub 技能发现（add-github-skill-source，对齐 api-contract.ts） ==========
+
+/** 候选技能（发现阶段内存对象，未确认入库前不落盘） */
+export interface GithubCandidate {
+  name: string;
+  description: string;
+  /** 仓库内 SKILL.md 相对路径，如 'skills/foo/SKILL.md' */
+  skillPath: string;
+  /** 技能目录相对路径（附属归属），根布局为 '' */
+  dirPath: string;
+  sizeBytes: number;
+  supportingFileCount: number;
+  /** 超护栏被跳过原因（如 'over-size-limit'），正常为空 */
+  skippedReason?: string;
+  /** 打标后回填的九职能（未打标为 undefined） */
+  functionCategory?: SkillFunction;
+}
+
+/** POST /api/github/discover 响应 */
+export interface GithubDiscoverResult {
+  repo: string;
+  sha: string;
+  shortSha: string;
+  candidates: GithubCandidate[];
+  notes: string[];
+  cached: boolean;
+}
+
+export interface GithubSupportingFile {
+  path: string;
+  sizeBytes: number;
+  binary: boolean;
+}
+
+/** POST /api/github/preview 响应 */
+export interface GithubSkillPreview {
+  skillPath: string;
+  name: string;
+  description: string;
+  content: string;
+  contentTruncated: boolean;
+  supportingFiles: GithubSupportingFile[];
+}
+
+/** 单条入库动作（同名已存在时生效，缺省 skip） */
+export type GithubCurateAction = 'overwrite' | 'skip';
+
+export interface GithubCurateItemInput {
+  skillPath: string;
+  name?: string;
+  action?: GithubCurateAction;
+}
+
+/** POST /api/github/curate 响应 */
+export interface GithubCurateResult {
+  created: SkillInfo[];
+  skipped: Array<{ skillPath: string; name: string }>;
+  failed: Array<{ skillPath: string; name?: string; error: string }>;
+  backupRefs: string[];
+  suggestDoctor: boolean;
+}
+
+/** POST /api/github/classify/estimate 响应 */
+export interface GithubClassifyEstimate {
+  total: number;
+  cacheHits: number;
+  willCall: number;
+  aiConfigured: boolean;
+}
+
+/** POST /api/github/classify 单条打标结果 */
+export interface GithubCandidateTag {
+  skillPath: string;
+  function: SkillFunction | null;
+  cached: boolean;
+  error?: string;
+}
+
+export interface GithubClassifyResult {
+  tags: GithubCandidateTag[];
+  called: number;
 }
 
 // ========== 工作区发现（项目级技能） ==========

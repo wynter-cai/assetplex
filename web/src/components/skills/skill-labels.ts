@@ -16,12 +16,13 @@ export const FUNCTION_LABELS: Record<SkillFunction, string> = {
   other: '其他',
 };
 
-/** 纯出处四类（spec refactor-skill-origin-taxonomy：MECE，库状态不占分类轴） */
+/** 纯出处五类（spec refactor-skill-origin-taxonomy + add-github-skill-source D5：MECE，库状态不占分类轴） */
 export const PROVENANCE_LABELS: Record<SkillProvenance, string> = {
   self: '自建',
   marketplace: '市场安装',
   plugin: '插件自带',
   builtin: '官方内置',
+  github: 'GitHub 源',
 };
 
 /** 库状态分段控件标签（与出处 chips 正交组合） */
@@ -42,7 +43,7 @@ export const FUNCTION_ORDER: SkillFunction[] = [
   'coding', 'writing', 'browser', 'data', 'devops', 'ai-integration', 'design', 'workflow', 'other',
 ];
 
-export const PROVENANCE_ORDER: SkillProvenance[] = ['self', 'marketplace', 'plugin', 'builtin'];
+export const PROVENANCE_ORDER: SkillProvenance[] = ['self', 'marketplace', 'plugin', 'builtin', 'github'];
 
 /** 环境列表内分组顺序：市场安装 → 插件自带 → 官方内置最后（spec refactor-skill-asset-first-view Scenario 8） */
 export const ENV_PROVENANCE_ORDER: SkillProvenance[] = ['marketplace', 'plugin', 'builtin'];
@@ -77,7 +78,7 @@ export function provenanceBadgeLabel(skill: {
 
 /**
  * 收藏溯源内部 origin → 纯出处映射（source frontmatter `${origin}:${path}` 格式不变，仅内部使用）；
- * personal/project/vault 无外部出处记 self，marketplace/plugin/builtin 保留原出处
+ * personal/project/vault 无外部出处记 self，marketplace/plugin/builtin/github 保留原出处
  */
 const CURATE_SOURCE_PROVENANCE: Record<string, SkillProvenance> = {
   personal: 'self',
@@ -86,6 +87,7 @@ const CURATE_SOURCE_PROVENANCE: Record<string, SkillProvenance> = {
   marketplace: 'marketplace',
   plugin: 'plugin',
   builtin: 'builtin',
+  github: 'github',
 };
 
 /** 解析收藏溯源标识（`${origin}:${path}`）并映射为纯出处供徽章显示；格式非法返回 null */

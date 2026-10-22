@@ -49,6 +49,17 @@ const libraryCurated = skill({
   source: 'marketplace:/x/airbnb/SKILL.md',
 });
 
+const libraryGithub = skill({
+  id: 'gh-skill',
+  name: 'gh-skill',
+  description: '来自 GitHub 的技能',
+  functionCategory: 'other',
+  provenance: 'github',
+  inLibrary: true,
+  tool: 'hub',
+  source: 'github:acme/skills@abc123:skills/gh-skill/SKILL.md',
+});
+
 const librarySelfBuilt = skill({
   id: 'mine',
   name: 'mine',
@@ -157,6 +168,12 @@ describe('SkillDetail 收藏来源徽章', () => {
     renderDetail(librarySelfBuilt);
     await screen.findByRole('button', { name: '编辑' });
     expect(screen.queryByText(/来自/)).not.toBeInTheDocument();
+  });
+
+  it('收藏自 GitHub 源的库内技能显示「来自 GitHub 源」（add-github-skill-source D5）', async () => {
+    vi.spyOn(api, 'getSkill').mockResolvedValue({ skill: libraryGithub, rawContent: '# gh' });
+    renderDetail(libraryGithub);
+    expect(await screen.findByText(/来自 GitHub 源/)).toBeInTheDocument();
   });
 });
 

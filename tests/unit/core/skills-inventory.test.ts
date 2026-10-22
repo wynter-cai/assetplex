@@ -687,7 +687,7 @@ describe('listSkills provenance/status 筛选与联动计数（refactor-skill-or
     const { fs, store } = setup();
     const all = listSkills({ fs, sources: SOURCES, store });
     expect(all.total).toBe(4);
-    expect(all.countByProvenance).toEqual({ self: 2, marketplace: 2, plugin: 0, builtin: 0 });
+    expect(all.countByProvenance).toEqual({ self: 2, marketplace: 2, plugin: 0, builtin: 0, github: 0 });
     expect(all.countByStatus).toEqual({ in: 2, out: 2 });
   });
 
@@ -714,7 +714,7 @@ describe('listSkills provenance/status 筛选与联动计数（refactor-skill-or
   it('状态=我的库时出处计数联动重算（self 1 / 其余 0）', () => {
     const { fs, store } = setup();
     const result = listSkills({ fs, sources: SOURCES, store, params: { status: 'in' } });
-    expect(result.countByProvenance).toEqual({ self: 1, marketplace: 1, plugin: 0, builtin: 0 });
+    expect(result.countByProvenance).toEqual({ self: 1, marketplace: 1, plugin: 0, builtin: 0, github: 0 });
   });
 
   it('出处=市场安装时状态计数联动重算（in 1 / out 1）', () => {
@@ -738,7 +738,7 @@ describe('listSkills provenance/status 筛选与联动计数（refactor-skill-or
     const { fs, store } = setup();
     const result = listSkills({ fs, sources: SOURCES, store, params: { search: '市场' } });
     expect(result.items.map((s) => s.id)).toEqual(['c', 'd']);
-    expect(result.countByProvenance).toEqual({ self: 0, marketplace: 2, plugin: 0, builtin: 0 });
+    expect(result.countByProvenance).toEqual({ self: 0, marketplace: 2, plugin: 0, builtin: 0, github: 0 });
   });
 
   it('total 保持全集不随筛选变化', () => {
