@@ -10,6 +10,7 @@ import {
   Boxes,
   ChevronDown,
   FolderGit2,
+  Compass,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -28,6 +29,7 @@ const MAIN_NAV: MainNavItem[] = [
   { to: '/vault', label: '资产库', icon: Package, hasChildren: true },
   { to: '/projects', label: '项目', icon: FolderGit2 },
   { to: '/connections', label: '连接', icon: Plug },
+  { to: '/discover', label: '技能发现', icon: Compass },
   { to: '/sync', label: '同步', icon: RefreshCw },
   { to: '/swap', label: '切换', icon: Repeat },
   { to: '/settings', label: '设置', icon: Settings },

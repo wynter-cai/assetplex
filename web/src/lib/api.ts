@@ -56,6 +56,12 @@ import type {
   SwapExecuteResult,
   SwapRollbackResult,
   SwapHistoryEntry,
+  GithubDiscoverResult,
+  GithubSkillPreview,
+  GithubCurateItemInput,
+  GithubCurateResult,
+  GithubClassifyEstimate,
+  GithubClassifyResult,
 } from '@/types/api';
 
 const BASE = '/api';
@@ -338,4 +344,33 @@ export const api = {
       body: JSON.stringify({ swapId }),
     }),
   getSwapHistory: () => request<{ history: SwapHistoryEntry[] }>('/swap/history'),
+
+  // GitHub 技能发现（add-github-skill-source：发现/预览/入库/打标，均显式手动触发）
+  github: {
+    discover: (source: string, force = false) =>
+      request<GithubDiscoverResult>('/github/discover', {
+        method: 'POST',
+        body: JSON.stringify({ source, force }),
+      }),
+    preview: (body: { repo: string; sha: string; skillPath: string }) =>
+      request<GithubSkillPreview>('/github/preview', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    curate: (body: { repo: string; sha: string; items: GithubCurateItemInput[] }) =>
+      request<GithubCurateResult>('/github/curate', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    classifyEstimate: (body: { repo: string; sha: string; skillPaths: string[] }) =>
+      request<GithubClassifyEstimate>('/github/classify/estimate', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    classify: (body: { repo: string; sha: string; skillPaths: string[] }) =>
+      request<GithubClassifyResult>('/github/classify', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+  },
 };

@@ -10,6 +10,7 @@ import Swap from './pages/Swap';
 import Import from './pages/Import';
 import Identity from './pages/Identity';
 import Skills from './pages/Skills';
+import Discover from './pages/Discover';
 import Rules from './pages/Rules';
 import Mcp from './pages/Mcp';
 import Settings from './pages/Settings';
@@ -37,6 +38,7 @@ export default function App(): JSX.Element {
         <Route path="/import" element={<Import />} />
         <Route path="/identity" element={<Identity />} />
         <Route path="/skills" element={<Skills />} />
+        <Route path="/discover" element={<Discover />} />
         <Route path="/rules" element={<Rules />} />
         <Route path="/mcp" element={<Mcp />} />
 
