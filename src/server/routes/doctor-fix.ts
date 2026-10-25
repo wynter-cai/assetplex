@@ -36,6 +36,7 @@ import {
 } from '../../core/doctor-apply.js';
 import { backupHubFileForDoctor, readDoctorBackup } from '../../core/doctor-backup.js';
 import { writeHubFile } from '../../core/hub-files.js';
+import { invalidateDistributionIndex } from '../../core/distribution-index.js';
 import { hubContext } from '../lib/hub-context.js';
 import { dispatchToolViaSwap, resolveDefaultTargets } from '../lib/doctor-dispatch.js';
 import { nodeAiConfigStore, nodeDoctorCacheStore, nodeFixDraftCacheStore } from '../lib/node-ai-classify-store.js';
@@ -205,6 +206,8 @@ export function createDoctorFixRoutes(deps: DoctorFixRouteDeps = {}): Hono {
         { ...parsed.input, finalContent: p.finalContent, distribute: p.distribute, ...(p.targets === undefined ? {} : { targets: p.targets as string[] }) },
         deps.apply ?? nodeApplyPorts,
       );
+      // apply 可能同时写库并分发，状态索引需重算（proposal D2）
+      invalidateDistributionIndex();
       return c.json(result);
     } catch (err) {
       if (err instanceof ApplyAssetError) return c.json({ error: err.message }, 404);
@@ -226,6 +229,7 @@ export function createDoctorFixRoutes(deps: DoctorFixRouteDeps = {}): Hono {
     }
     try {
       const result = await undoApplyFix(p.backupRef, deps.undo ?? nodeUndoPorts);
+      invalidateDistributionIndex();
       return c.json(result);
     } catch (err) {
       if (err instanceof UndoBackupError) return c.json({ error: err.message }, 404);

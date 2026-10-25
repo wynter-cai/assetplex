@@ -4,6 +4,7 @@
 
 import { Hono } from 'hono';
 import { hubContext } from '../lib/hub-context.js';
+import { invalidateDistributionIndex } from '../../core/distribution-index.js';
 import type { ImportRequest } from '../../core/types.js';
 
 export const syncRoutes = new Hono();
@@ -45,6 +46,8 @@ syncRoutes.post('/run', async (c) => {
   const dryRun = c.req.query('dryRun') === 'true';
   const engine = hubContext.getEngine();
   const results = await engine.run({ ...filter, dryRun });
+  // 真实写入后分发状态已变，缓存必须失效（proposal D2）
+  if (!dryRun) invalidateDistributionIndex();
 
   // 记录历史
   syncHistory.unshift({
@@ -64,6 +67,7 @@ syncRoutes.post('/reverse-import', async (c) => {
   const filter = parseTools(c.req.query() as Record<string, string | string[]>);
   const engine = hubContext.getEngine();
   const results = await engine.reverseImport(filter);
+  invalidateDistributionIndex();
   return c.json({ results });
 });
 
@@ -132,5 +136,6 @@ syncRoutes.post('/execute-import', async (c) => {
   }
   const engine = hubContext.getEngine();
   const result = await engine.executeImport(body);
+  invalidateDistributionIndex();
   return c.json(result);
 });

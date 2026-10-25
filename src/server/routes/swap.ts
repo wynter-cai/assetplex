@@ -10,6 +10,7 @@ import { Hono } from 'hono';
 import type { HubConfig } from '../../core/config.js';
 import type { ToolAdapter } from '../../core/adapters/base.js';
 import { SwapEngine } from '../../core/swap.js';
+import { invalidateDistributionIndex } from '../../core/distribution-index.js';
 import type {
   CategorySupport,
   SwapCategory,
@@ -100,6 +101,8 @@ export function swapRoutesFactory(deps: SwapRouteDeps): Hono {
         previewGeneratedAt: body.previewGeneratedAt,
         overwriteDecisions: body.overwriteDecisions ?? [],
       });
+      // 切换真实写盘后分发状态已变，缓存必须失效（proposal D2）
+      invalidateDistributionIndex();
       return c.json(result);
     } catch (err) {
       return c.json({ error: (err as Error).message }, statusForError(err as Error));
@@ -113,6 +116,7 @@ export function swapRoutesFactory(deps: SwapRouteDeps): Hono {
       return c.json({ error: '缺少 swapId 参数' }, 400);
     }
     const result = await deps.getEngine().rollback(body.swapId);
+    invalidateDistributionIndex();
     return c.json(result);
   });
 
