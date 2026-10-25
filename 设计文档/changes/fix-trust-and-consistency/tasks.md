@@ -13,12 +13,15 @@
   > 验收：symlink 目录、文件 symlink、聚合文件命中/未命中、内容一致/不一致、目标缺失、未启用、未安装、项目级工具跳过——九种边界逐条单测（用临时目录造夹具，中性示例名）。`partial` / `failedTools` 在适配器抛错时正确回填。
   > 实测：13 用例全绿，`tsc -b` 退出 0，后端全量 65 文件 / 845 用例绿。实现拆两文件：`distribution-status.ts`（判定层，259 行）+ `distribution-index.ts`（编排/缓存，134 行），均 ≤300 行。
   > 过程中的真坑：本机文件级 symlink `EPERM`，原测试静默 return（假绿）。改为注入 `FsProbe` 探针后，symlink 分支变为确定性覆盖，并补两条反向用例（链接指向别处 → `conflict`，不得冒充 synced）。
-- [ ] H3 `src/core/assets.ts`：资产入口文件归一（技能取 `skills/<name>/SKILL.md` 并以 `<name>` 命名）+ 内部文件过滤（`_` / `.` 前缀、技能子文件不作为资产）
+- [x] H3 `src/core/assets.ts`：资产入口文件归一（技能取 `skills/<name>/SKILL.md` 并以 `<name>` 命名）+ 内部文件过滤（`_` / `.` 前缀、技能子文件不作为资产）
   > 验收：单测断言 `skills/demo/SKILL.md` → 名称 `demo`；`skills/demo/_meta.json`、`references/x.md` 不出现；库内技能数与入口文件数一致。
-- [ ] H4 `src/server/routes`：新增 `GET /api/asset-categories`、`GET /api/distributions`；`/api/hub/overview` 增加 `counts` 四口径与 `toolSynced`，保留 `assetStats` 兼容
+  > 实测：新增 `resolveAssetEntry()` 作为「算不算一项资产」的唯一判定；7 用例全绿（技能按目录名、大小写不敏感入口、`_`/`.` 前缀过滤、`references/` 等子文件不冒充、历史平铺 `skills/<name>.md` 兼容）。真实数据：库内 37 项（技能 32，均为技能名），旧的 42 张 `SKILL` 卡片消失。
+- [x] H4 `src/server/routes`：新增 `GET /api/asset-categories`、`GET /api/distributions`；`/api/hub/overview` 增加 `counts` 四口径与 `toolSynced`，保留 `assetStats` 兼容
   > 验收：路由单测覆盖 200 / 400（非法 refresh）/ 500（索引整体失败）；`counts` 与 `toolSynced` 字段与 api-contract 完全一致。
-- [ ] H5 缓存失效挂点：同步、切换、资产医生 apply 成功后使索引失效
+  > 实测：`src/server/lib/distribution-context.ts` 装配与计数 + `src/server/routes/catalog.ts` 两端点；8 用例全绿。额外修一处一致性问题：`/api/hub/overview` 原有 `assetStats` 按文件数统计（含 `_meta.json`、技能子文件），与新 `counts.library` 在同一条响应里给两个数字，现由 `alignAssetStats()` 收敛到同源口径（未纳入声明源的 `memory` 保留原值，不假装有真值）。真实数据：`trae-cn` 已同步 37 / `workbuddy` 36，状态分布 73 synced / 1 pending / 74 not_installed。
+- [x] H5 缓存失效挂点：同步、切换、资产医生 apply 成功后使索引失效
   > 验收：集成测试断言写操作后下一次读取 `cached === false`。
+  > 实测：4 用例全绿（缓存命中不重算 / `invalidateDistributionIndex` 后重算 / swap 执行后失效 / swap 回滚后失效，均用计数 loader 断言真实重算次数）。挂点：`sync`（run 仅非 dryRun 失效、reverse-import、execute-import）、`swap`（execute、rollback）、`doctor-fix`（apply、undo）。`catalog-summary` 补 `beforeEach(resetDistributionIndexCache)`，否则模块级缓存会串用例。
 
 ## Phase I — 界面消费（specs/asset-center-consistency、asset-distribution-truth、product-surface-hygiene）
 
