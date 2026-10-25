@@ -33,7 +33,10 @@ hubRoutes.get('/health', (c) => {
 /** 首页聚合数据（资产统计 + 连接状态 + 最近活动） */
 hubRoutes.get('/overview', async (c) => {
   try {
-    const data = await getOverview();
+    const data = await getOverview({
+      adapters: hubContext.getAllAdapters(),
+      hubConfig: hubContext.getConfig(),
+    });
     // 口径真值：我的库计数与已同步计数都来自分发索引，禁止前端就地统计（proposal D4）
     const [distribution, assets] = await Promise.all([getDistributions(), listAssets()]);
     const summary = buildCounts(assets.items, distribution);

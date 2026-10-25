@@ -8,8 +8,18 @@
  */
 
 import { checkHubHealth, HUB_CATEGORIES } from './hub-files.js';
-import { hubContext } from '../server/lib/hub-context.js';
+import type { HubConfig } from './config.js';
 import type { ToolAdapter } from './adapters/base.js';
+
+/**
+ * getOverview 的外部依赖：由 server 层注入
+ *
+ * core 不读全局单例（依赖方向守卫 tests/unit/core/dependency-direction.test.ts，H6）。
+ */
+export interface OverviewDeps {
+  adapters: ToolAdapter[];
+  hubConfig: HubConfig;
+}
 
 /** 前端资产类别（单数形式，与前端 ASSET_CATEGORIES 对齐） */
 export type FrontendCategory = 'identity' | 'skill' | 'rule' | 'mcp' | 'agent' | 'memory';
@@ -56,8 +66,10 @@ export interface OverviewData {
 
 /**
  * 获取首页聚合数据
+ *
+ * @param deps 适配器与配置（server 层从 hubContext 取后传入）
  */
-export async function getOverview(): Promise<OverviewData> {
+export async function getOverview(deps: OverviewDeps): Promise<OverviewData> {
   const health = checkHubHealth();
 
   // 1. 资产统计（后端复数类别 → 前端单数类别）
@@ -86,7 +98,7 @@ export async function getOverview(): Promise<OverviewData> {
   const healthScore = computeHealthScore(totalAssets);
 
   // 3. 工具连接状态
-  const connections = await getConnections();
+  const connections = await getConnections(deps);
 
   // 4. 最近活动
   const recentActivities = getRecentActivities();
@@ -105,17 +117,21 @@ function computeHealthScore(totalAssets: number): number {
   return Math.min(100, 60 + totalAssets * 4);
 }
 
-async function getConnections(): Promise<ConnectionInfo[]> {
-  const adapters = hubContext.getAllAdapters() as ToolAdapter[];
-  const config = hubContext.getConfig();
+/** hub.toml 中该工具是否启用（tools 是固定键对象，按名字查需窄化） */
+function isToolEnabled(config: HubConfig, name: string): boolean {
+  const tools: Record<string, { enabled?: boolean } | undefined> = config.tools;
+  return tools[name]?.enabled ?? false;
+}
+
+async function getConnections(deps: OverviewDeps): Promise<ConnectionInfo[]> {
+  const { adapters, hubConfig } = deps;
 
   const results: ConnectionInfo[] = [];
 
   for (const adapter of adapters) {
     try {
       const status = await adapter.detect();
-      const toolConfig = (config.tools as Record<string, { enabled?: boolean }> | undefined)?.[adapter.name];
-      const enabled = toolConfig?.enabled ?? false;
+      const enabled = isToolEnabled(hubConfig, adapter.name);
 
       if (!status.installed) {
         results.push({

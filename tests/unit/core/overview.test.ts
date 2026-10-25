@@ -7,17 +7,12 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getOverview } from '../../../src/core/overview.js';
+import { getOverview, type OverviewDeps } from '../../../src/core/overview.js';
+import { HubConfigSchema } from '../../../src/core/config.js';
+import type { ToolAdapter } from '../../../src/core/adapters/base.js';
 import { checkHubHealth } from '../../../src/core/hub-files.js';
 
-// mock overview.ts 依赖的模块
-vi.mock('../../../src/server/lib/hub-context.js', () => ({
-  hubContext: {
-    getConfig: () => ({ tools: {} }),
-    getAllAdapters: () => [],
-  },
-}));
-
+// core 不再 import server：适配器与配置由调用方注入（H6 依赖方向守卫）
 vi.mock('../../../src/core/hub-files.js', () => ({
   checkHubHealth: vi.fn(),
   HUB_CATEGORIES: ['identity', 'skills', 'rules', 'preferences', 'mcp', 'commands', 'agents', 'memory'],
@@ -50,9 +45,39 @@ beforeEach(() => {
   vi.mocked(checkHubHealth).mockReturnValue(makeHealth());
 });
 
+/** 默认依赖：无适配器（连接列表用例单独注入） */
+const DEFAULT_DEPS: OverviewDeps = { adapters: [], hubConfig: HubConfigSchema.parse({}) };
+
+/** 造一个只需 detect() 的假适配器 */
+function makeAdapter(name: string, displayName: string, installed: boolean): ToolAdapter {
+  return {
+    name,
+    displayName,
+    async detect() {
+      return { name, installed, configDirExists: installed, configDir: '' };
+    },
+    targets() {
+      return [];
+    },
+    resolveHubItems() {
+      return [];
+    },
+    async apply() {},
+    async import() {
+      return { type: 'identity', relativePath: '', absolutePath: '' };
+    },
+    async scan() {
+      return [];
+    },
+    transform(content: Buffer) {
+      return content;
+    },
+  };
+}
+
 describe('getOverview', () => {
   it('返回符合 api-contract 的完整数据结构', async () => {
-    const result = await getOverview();
+    const result = await getOverview(DEFAULT_DEPS);
 
     expect(result).toHaveProperty('assetStats');
     expect(result).toHaveProperty('connections');
@@ -62,7 +87,7 @@ describe('getOverview', () => {
   });
 
   it('assetStats 将后端复数类别映射为前端单数类别', async () => {
-    const result = await getOverview();
+    const result = await getOverview(DEFAULT_DEPS);
 
     expect(result.assetStats.identity).toBe(1);
     expect(result.assetStats.skill).toBe(3);
@@ -71,7 +96,7 @@ describe('getOverview', () => {
   });
 
   it('assetStats 包含第 5 类 agent，计数来自 agents 目录（fix-ui-trust-gaps T2）', async () => {
-    const result = await getOverview();
+    const result = await getOverview(DEFAULT_DEPS);
     expect(result.assetStats).toHaveProperty('agent');
     expect(result.assetStats.agent).toBe(4);
   });
@@ -83,13 +108,13 @@ describe('getOverview', () => {
         totalFiles: 17,
       }),
     );
-    const result = await getOverview();
+    const result = await getOverview(DEFAULT_DEPS);
     expect(result.assetStats).toHaveProperty('memory');
     expect(result.assetStats.memory).toBe(2);
   });
 
   it('hubInitialized 在有资产时为 true', async () => {
-    const result = await getOverview();
+    const result = await getOverview(DEFAULT_DEPS);
     expect(result.hubInitialized).toBe(true);
   });
 
@@ -97,7 +122,7 @@ describe('getOverview', () => {
     vi.mocked(checkHubHealth).mockReturnValue(
       makeHealth({ hubExists: true, hubTomlExists: false }),
     );
-    const result = await getOverview();
+    const result = await getOverview(DEFAULT_DEPS);
     expect(result.hubInitialized).toBe(true);
   });
 
@@ -105,7 +130,7 @@ describe('getOverview', () => {
     vi.mocked(checkHubHealth).mockReturnValue(
       makeHealth({ hubExists: false, hubTomlExists: false, totalFiles: 0, fileCountByCategory: {} }),
     );
-    const result = await getOverview();
+    const result = await getOverview(DEFAULT_DEPS);
     expect(result.hubInitialized).toBe(false);
   });
 
@@ -118,20 +143,20 @@ describe('getOverview', () => {
         totalFiles: 0,
       }),
     );
-    const result = await getOverview();
+    const result = await getOverview(DEFAULT_DEPS);
     expect(result.hubInitialized).toBe(false);
     expect(result.assetStats.identity).toBe(0);
     expect(result.assetStats.agent).toBe(0);
   });
 
   it('healthScore 是 0-100 之间的数字', async () => {
-    const result = await getOverview();
+    const result = await getOverview(DEFAULT_DEPS);
     expect(result.healthScore).toBeGreaterThanOrEqual(0);
     expect(result.healthScore).toBeLessThanOrEqual(100);
   });
 
   it('connections 中每项包含 status 字段', async () => {
-    const result = await getOverview();
+    const result = await getOverview(DEFAULT_DEPS);
     expect(Array.isArray(result.connections)).toBe(true);
     for (const conn of result.connections) {
       expect(conn).toHaveProperty('toolId');
@@ -142,7 +167,26 @@ describe('getOverview', () => {
   });
 
   it('recentActivities 返回数组', async () => {
-    const result = await getOverview();
+    const result = await getOverview(DEFAULT_DEPS);
     expect(Array.isArray(result.recentActivities)).toBe(true);
+  });
+
+  it('连接状态由注入的适配器与配置派生，不读全局单例（H6）', async () => {
+    const hubConfig = HubConfigSchema.parse({
+      tools: { 'trae-cn': { enabled: true }, claude: { enabled: false } },
+    });
+    const result = await getOverview({
+      adapters: [
+        makeAdapter('trae-cn', 'TRAE CN', true),
+        makeAdapter('claude', 'Claude', true),
+        makeAdapter('ghost', 'Ghost', false),
+      ],
+      hubConfig,
+    });
+    const byId = new Map(result.connections.map((conn) => [conn.toolId, conn.status]));
+    expect(byId.get('trae-cn')).toBe('synced');
+    // 已安装但配置里未启用 → not_connected（不能死写成 synced）
+    expect(byId.get('claude')).toBe('not_connected');
+    expect(byId.get('ghost')).toBe('not_installed');
   });
 });
