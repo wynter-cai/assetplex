@@ -23,6 +23,9 @@
   > 验收：集成测试断言写操作后下一次读取 `cached === false`。
   > 实测：4 用例全绿（缓存命中不重算 / `invalidateDistributionIndex` 后重算 / swap 执行后失效 / swap 回滚后失效，均用计数 loader 断言真实重算次数）。挂点：`sync`（run 仅非 dryRun 失效、reverse-import、execute-import）、`swap`（execute、rollback）、`doctor-fix`（apply、undo）。`catalog-summary` 补 `beforeEach(resetDistributionIndexCache)`，否则模块级缓存会串用例。
 
+- [ ] H6 `src/core/overview.ts` 反向依赖 server（H4 期间发现）：`getOverview()` 里 `import { hubContext } from '../server/lib/hub-context.js'`，违反「core 不得依赖 server」铁律；应改为适配器/配置由 server 层参数注入，并补一条依赖方向守卫测试。
+  > 影响：本次 H4 只是让 overview 多读一份分发索引，没有加剧该问题；但它使 core 层能直接读全局单例，后续拆包/测试会很痛。
+
 ## Phase I — 界面消费（specs/asset-center-consistency、asset-distribution-truth、product-surface-hygiene）
 
 - [ ] I1 `web/src/config/asset-categories.ts`：改为「fallback + 接口覆盖」，侧栏 / 首页快照 / 资产库筛选统一由它派生
