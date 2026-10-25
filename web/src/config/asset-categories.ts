@@ -35,7 +35,7 @@ export interface AssetCategoryConfig {
  */
 export const ASSET_CATEGORIES: AssetCategoryConfig[] = [
   { code: 'identity', label: '身份', description: '你的人设、背景与身份资料', icon: User, order: 10 },
-  { code: 'skill', label: '技能', description: '盘点各工具安装的技能，收藏到我的库后统一同步分发', icon: Sparkles, order: 20, external: true },
+  { code: 'skill', label: '技能', description: '盘点各工具安装的技能，收藏到我的库后统一同步到各工具', icon: Sparkles, order: 20, external: true },
   { code: 'rule', label: '规则', description: '约束 AI 行为的规则与约定', icon: BookOpen, order: 30 },
   { code: 'mcp', label: 'MCP', description: 'MCP 服务器配置资产', icon: Server, order: 40 },
   { code: 'agent', label: '智能体', description: '盘点各工具中的子智能体配置', icon: Bot, order: 50, external: true },
