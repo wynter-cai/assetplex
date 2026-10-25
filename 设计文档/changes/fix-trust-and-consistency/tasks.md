@@ -9,8 +9,10 @@
 - [x] H1 `src/core/asset-categories.ts`：声明源（code / label / description / hubDir / external / syncable / doctorSupported / order）与查询函数
   > 验收：新增一个假类别后，`listCategories()` 返回其配置；现有六类配置与 `web/src/config/asset-categories.ts` 逐字段核对一致（图标除外）。单测覆盖排序与 code 唯一性。
   > 实测：7 用例全绿（含用正则解析前端 fallback 逐字段比对，「新增类别只改一处」靠这条测试守）；`tsc -b` 退出 0；后端 64 文件 / 832 用例、前端 31 文件 / 222 用例全绿。声明源与前端 fallback 的技能描述统一为「同步到各工具」；`SkillsView.tsx` 副标题同句改到 J1 一并做（该文件当时还挂着上一轮未提交的他人改动，不混入本 commit）。
-- [ ] H2 `src/core/distribution-index.ts`：状态判定矩阵（优先级 1-8）+ 30s 缓存 + `refresh` 强刷 + 单工具失败隔离
+- [x] H2 `src/core/distribution-index.ts` + `src/core/distribution-status.ts`：状态判定矩阵（优先级 1-8）+ 30s 缓存 + `refresh` 强刷 + 单工具失败隔离
   > 验收：symlink 目录、文件 symlink、聚合文件命中/未命中、内容一致/不一致、目标缺失、未启用、未安装、项目级工具跳过——九种边界逐条单测（用临时目录造夹具，中性示例名）。`partial` / `failedTools` 在适配器抛错时正确回填。
+  > 实测：13 用例全绿，`tsc -b` 退出 0，后端全量 65 文件 / 845 用例绿。实现拆两文件：`distribution-status.ts`（判定层，259 行）+ `distribution-index.ts`（编排/缓存，134 行），均 ≤300 行。
+  > 过程中的真坑：本机文件级 symlink `EPERM`，原测试静默 return（假绿）。改为注入 `FsProbe` 探针后，symlink 分支变为确定性覆盖，并补两条反向用例（链接指向别处 → `conflict`，不得冒充 synced）。
 - [ ] H3 `src/core/assets.ts`：资产入口文件归一（技能取 `skills/<name>/SKILL.md` 并以 `<name>` 命名）+ 内部文件过滤（`_` / `.` 前缀、技能子文件不作为资产）
   > 验收：单测断言 `skills/demo/SKILL.md` → 名称 `demo`；`skills/demo/_meta.json`、`references/x.md` 不出现；库内技能数与入口文件数一致。
 - [ ] H4 `src/server/routes`：新增 `GET /api/asset-categories`、`GET /api/distributions`；`/api/hub/overview` 增加 `counts` 四口径与 `toolSynced`，保留 `assetStats` 兼容
