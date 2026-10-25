@@ -16,6 +16,7 @@ import { toolsRoutes } from './routes/tools.js';
 import { syncRoutes } from './routes/sync.js';
 import { filesRoutes } from './routes/files.js';
 import { assetsRoutes } from './routes/assets.js';
+import { createCatalogRoutes } from './routes/catalog.js';
 import { agentsRoutes } from './routes/agents.js';
 import { skillsRoutes } from './routes/skills.js';
 import { githubRoutes } from './routes/github.js';
@@ -62,6 +63,7 @@ export async function startServer(options: ServerOptions = {}): Promise<void> {
   app.route('/api/sync', syncRoutes);
   app.route('/api/files', filesRoutes);
   app.route('/api/assets', assetsRoutes);
+  app.route('/api', createCatalogRoutes());
   app.route('/api/agents', agentsRoutes);
   app.route('/api/skills', skillsRoutes);
   app.route('/api/github', githubRoutes);

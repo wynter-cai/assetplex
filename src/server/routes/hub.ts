@@ -7,6 +7,8 @@ import { HubConfigSchema } from '../../core/config.js';
 import { hubContext } from '../lib/hub-context.js';
 import { checkHubHealth } from '../../core/hub-files.js';
 import { getOverview } from '../../core/overview.js';
+import { listAssets } from '../../core/assets.js';
+import { buildCounts, alignAssetStats, getDistributions } from '../lib/distribution-context.js';
 
 export const hubRoutes = new Hono();
 
@@ -32,7 +34,19 @@ hubRoutes.get('/health', (c) => {
 hubRoutes.get('/overview', async (c) => {
   try {
     const data = await getOverview();
-    return c.json(data);
+    // 口径真值：我的库计数与已同步计数都来自分发索引，禁止前端就地统计（proposal D4）
+    const [distribution, assets] = await Promise.all([getDistributions(), listAssets()]);
+    const summary = buildCounts(assets.items, distribution);
+    return c.json({
+      ...data,
+      // assetStats 收敛到同一口径，避免响应内两个数字打架（proposal D4）
+      assetStats: alignAssetStats(data.assetStats, summary.counts),
+      generatedAt: distribution.generatedAt,
+      counts: summary.counts,
+      toolSynced: summary.toolSynced,
+      partial: distribution.partial,
+      failedTools: distribution.failedTools,
+    });
   } catch (err) {
     return c.json(
       { error: err instanceof Error ? err.message : String(err) },
