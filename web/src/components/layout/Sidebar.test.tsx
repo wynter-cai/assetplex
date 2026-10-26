@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Sidebar } from './Sidebar';
 import { api } from '@/lib/api';
 import { makeCategoryDescriptor } from '@/lib/test-factories';
+import { APP_VERSION } from '@/lib/app-version';
 
 /**
  * Sidebar 组件测试
@@ -127,5 +128,10 @@ describe('Sidebar', () => {
     await waitFor(() => expect(screen.getByText('身份')).toBeInTheDocument());
     expect(screen.getByText('技能')).toBeInTheDocument();
     expect(screen.getByText('首页')).toBeInTheDocument();
+  });
+
+  it('底部版本号与 APP_VERSION 一致（I6）', () => {
+    renderSidebar();
+    expect(screen.getByText(new RegExp(APP_VERSION))).toBeInTheDocument();
   });
 });

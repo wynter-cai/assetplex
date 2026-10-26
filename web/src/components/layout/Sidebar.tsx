@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAssetCategories } from '@/lib/use-asset-categories';
+import { APP_VERSION } from '@/lib/app-version';
 
 interface MainNavItem {
   to: string;
@@ -141,9 +142,9 @@ export function Sidebar(): JSX.Element {
         })}
       </nav>
 
-      {/* 底部状态条（可选，后续放版本号等） */}
+      {/* 底部版本 */}
       <div className="px-4 py-3 border-t text-xs text-muted-foreground shrink-0">
-        AssetPlex v2.0
+        AssetPlex v{APP_VERSION}
       </div>
     </aside>
   );

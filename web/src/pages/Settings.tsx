@@ -14,6 +14,8 @@ import { Save } from 'lucide-react';
 import { WorkspaceSettingsCard } from '@/components/settings/WorkspaceSettingsCard';
 import { toast } from '@/lib/toast-store';
 import { errorMessage } from '@/lib/error-message';
+import { APP_VERSION } from '@/lib/app-version';
+import { STRATEGY_OPTIONS } from '@/lib/sync-strategy-labels';
 
 export default function Settings() {
   const queryClient = useQueryClient();
@@ -56,19 +58,27 @@ export default function Settings() {
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div>
-            <Label>版本</Label>
-            <Input value={draft.hub.version} readOnly className="bg-muted/50" />
+            <Label htmlFor="app-version">版本</Label>
+            <Input id="app-version" value={APP_VERSION} readOnly className="bg-muted/50" />
           </div>
           <div>
-            <Label>默认同步策略</Label>
-            <Input
+            <Label htmlFor="sync-strategy">默认同步策略</Label>
+            <select
+              id="sync-strategy"
               value={draft.hub.defaultSyncStrategy}
               onChange={(e) => {
                 draft.hub.defaultSyncStrategy = e.target.value;
                 setDraft({ ...draft });
                 setDirty(true);
               }}
-            />
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+            >
+              {STRATEGY_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
           </div>
           <div>
             <Label>备份目录</Label>

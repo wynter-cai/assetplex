@@ -56,8 +56,9 @@
 -- [x] I5 `Sync`：未选目标禁用主操作 + 「请先选择目标工具」；影响范围回显；预览开关可访问且文案随状态变化；未安装卡片 `aria-disabled`
   > 验收：四条场景各有组件测试；删除两条互斥空态文案之一。
   > 实测：新增纯逻辑 `web/src/lib/sync-impact.ts`（79 行：`summarizeImpact` / `impactText` / `derivePrimaryAction` / `modeCaption`）+ 单测 10 条；拆出 `components/sync/TargetToolCard.tsx`（99）、`SyncActionBar.tsx`（56）、`ToolPlanDetail.tsx`（48）、`SyncResultCard.tsx`（30）、已有 `sync-display.ts`（44）；重写 `Sync.tsx` 397 → 164 行。关键改动：（1）主操作由 `derivePrimaryAction` 三态驱动（未选目标 / 无内容 / 可执行），旧「将同步到全部已启用工具」文案清零；（2）Switch 加 `aria-label="预览模式"` + 模式说明由 `modeCaption` 渲染；（3）未安装工具 `aria-disabled={!installed}` + onClick 守卫 + 「安装后重新扫描即可启用」引导；（4）`api.runSync` 始终传 `selectedList`（不再传 undefined）；（5）影响范围逐字「将影响 N 个工具 · M 项变更 · K 项冲突」。新增 18 用例（lib 10 / 页面 8），前端 42 文件 / 316 用例、后端 70 文件 / 882 用例全绿，`tsc -b` 退出 0，`vite build` 成功。
-- [ ] I6 版本号单一来源：vite define 注入，侧栏与设置页共用；设置页把内部枚举改为中文选项
+- [x] I6 版本号单一来源：vite define 注入，侧栏与设置页共用；设置页把内部枚举改为中文选项
   > 验收：断言界面版本 === `package.json` 版本；设置页无 `hybrid` / 工具 id 直出。
+  > 实测：新增 `web/src/lib/app-version.ts`（从 `__APP_VERSION__` 取 package.json 唯一版本）+ `web/src/lib/sync-strategy-labels.ts`（五值中文映射）；`vite.config.ts` + `vitest.config.ts` 加 `define`；Sidebar 硬编码 `v2.0` → `{APP_VERSION}`；Settings 版本字段不再读 API config，策略改为原生 `<select>` + 中文选项。新增 5 用例（Sidebar 1 / Settings 4），前端 43 文件 / 321 用例全绿，`tsc -b` 退出 0，`vite build` 成功。遗留：`learnSources` 字段仍显示工具 id（如 trae-cn），可在 J1 文案统一时一并处理。
 - [ ] I7 `Swap` / `Connections`：项目级工具展示能力说明；未配置项目时显示「尚未选择项目」+「去配置」，不再六类全标「不支持」；支持矩阵改由工具能力声明推导（D3）
   > 验收：组件测试断言项目级工具卡片存在说明文案；断言零项目时无「不支持」字样；红测试可用「`projectTargets` 为空」复现现缺陷。
 
