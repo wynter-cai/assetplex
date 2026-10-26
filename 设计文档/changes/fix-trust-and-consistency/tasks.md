@@ -33,8 +33,12 @@
   > 验收：接口不可用时回退 fallback 且不白屏（mock 失败测试）；接口返回新增类别时侧栏自动出现（组件测试）。
   > 实测：新增 `web/src/lib/use-asset-categories.ts`（`mergeCategories` + `useAssetCategories` + `pickCategory`，5 分钟 staleTime）与 6 用例；三处消费改吃接口清单 —— `Sidebar` 子项、`AssetSnapshot` 格子与总数、`Vault` 页头 label/description/external 判定。组件测试各条真实断言：接口只下发两类时旧常量类别不再出现（证明吃的不是常量）、接口失败回退 fallback 不白屏、`external` 由接口决定且不打 `/api/assets`。前端 33 文件 / 235 用例全绿，`tsc -b` 退出 0，`vite build` 成功。常量 `ASSET_CATEGORIES` 降级为 `@deprecated` alias，仅供骨架屏与静态兜底文案。
   > 两个坑：（1）首屏先渲染 fallback，若 URL 上是 fallback 认不出的新类别，会先按「内部类别」发一次不该发的 `listAssets` —— 改为 `categoryPending` 等接口清单落地再决定，但接口已失败（`isError`）时不再无限等；（2）lucide 图标是 `forwardRef` 对象，`typeof icon === 'function'` 恒假，断言改成「等于哪个图标」。
-- [ ] I2 `AssetCard` / `DistributionBadge`：改用真实状态渲染；`partial` 时展示「部分工具状态暂不可用」
+- [x] I2 `AssetCard` / `DistributionBadge`：改用真实状态渲染；`partial` 时展示「部分工具状态暂不可用」
   > 验收：五状态各有渲染断言；`distributions: []` 不再渲染「未分发」；失败工具不渲染成任何状态。
+  > 实测：新增 `web/src/lib/use-distributions.ts`（按资产 id 取条目 + 透出 `partial`/`failedTools`/`projectTools`/`refresh()`，staleTime 30s 与服务端索引缓存同频）；`DistributionBadge` 改成五值闭集映射表（导出 `DISTRIBUTION_STATUS`，卡片与弹窗共用一份，消除同一 `pending` 一边叫「待同步」一边叫「待更新」）；空条目不再渲染任何文字（Scenario 9），闭集之外的状态直接不渲染（Scenario 8，不再把未知状态默认画成灰色「未启用」）；`Vault` 页级拉一次索引、逐卡下发条目，`partial` 时列表上方一行「部分工具状态暂不可用」。额外发现第三处谎：`DistributionDialog` 读 `asset.distributions`（恒空）把所有已装工具都说成「未同步」，一并收敛为索引真值，无条目时只说「状态未知」。新增 20 个用例（badge 8 / card 3 / dialog 3 / hook 4 / Vault 2），前端 37 文件 / 255 用例全绿，`tsc -b` 退出 0，`vite build` 成功。
+  > 真实数据探针（用完即删）：37 项资产 **零缺 key**（不会出现满屏无圆点），状态分布 73 synced / 74 not_installed / 1 pending，`partial=false`、`projectTools=[]`；示例 `skills/handoff/SKILL.md` → trae-cn synced / workbuddy synced / claude-code not_installed / codex not_installed。
+  > 两个坑：（1）`useCallback` 误从 `@tanstack/react-query` 导入（它不导这个）→ 运行时 `useCallback is not a function`；（2）提示行一旦把 `failedTools`（工具 id，如 `claude`）拼进文案，`findByText` 完全匹配不中，而且把内部 id 直出给用户看违反词表——改为一句话，不点名工具。REFACTOR 步抽出 `web/src/lib/test-factories.ts`，四个测试不再各抄一份八字段夹具。
+  > 遗留：`Vault.tsx` 已到 300 行上限，I3 加筛选/分页前必须先拆子组件；卡片「分发」按钮文案属 J1 禁用词范围，本任务只加 `data-testid="distribute-action"` 使文案改动不再连带改测试。
 - [ ] I3 `Vault`：类别 + 分发状态筛选、50/页分页、切换筛选回第 1 页、空态/失败态文案按 spec
   > 验收：组件测试断言筛选后数量、分页边界、失败态不显示「共 0 项」。
 - [ ] I4 `Connections`：把「已同步资产」改为「已同步 N / 我的库 M」与「可收藏」三口径，删除就地 filter 计数
