@@ -150,9 +150,10 @@ export default function Vault(): JSX.Element {
       {/* 类别导航单轨化（spec refactor-design-system navigation-consolidation）：
           Vault 内类别栏已撤，切换类别唯一途径是全局侧栏，当前类别由页头 H1 标识 */}
 
-      {/* 右侧内容区 */}
+      {/* 右侧内容区；外部类别页（技能/智能体/裁决准则）用 self-start：高度随内容自然增长，
+          不锁 h-full —— 锁高会把右侧详情面板的 sticky 可粘滞空间压成 0（详情会随列表滚出视口） */}
       {isExternalCategory ? (
-        <div className="flex min-w-0 flex-1">
+        <div data-testid="external-view-host" className="flex min-w-0 flex-1 self-start">
           {selectedCategory === 'agent' && <AgentsView />}
           {selectedCategory === 'skill' && <SkillsView />}
           {selectedCategory === 'criteria' && <CriteriaView />}

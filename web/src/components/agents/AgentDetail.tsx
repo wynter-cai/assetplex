@@ -117,10 +117,12 @@ export function AgentDetail({ agent, onClose }: AgentDetailProps): JSX.Element {
       });
   };
 
+  // 宽屏（≥1024px）右栏吸顶：列表滚多远详情都停在视口内（spec navigation-consolidation
+  // 长列表滚动中打开详情）；面板高度封顶后由 body 自持滚动
   return (
     <div
       data-testid="detail-overlay"
-      className="fixed inset-0 z-50 flex min-w-0 flex-col overflow-y-auto bg-background p-4 lg:static lg:inset-auto lg:z-auto lg:max-w-xl lg:flex-1 lg:overflow-visible lg:rounded-lg lg:border lg:bg-card lg:p-0"
+      className="fixed inset-0 z-50 flex min-w-0 flex-col overflow-y-auto bg-background p-4 lg:sticky lg:top-0 lg:left-auto lg:right-auto lg:bottom-auto lg:z-auto lg:max-h-[calc(100vh-3rem)] lg:flex-1 lg:self-start lg:overflow-hidden lg:rounded-lg lg:border lg:bg-card lg:p-0"
     >
       <div className="flex items-center justify-between px-4 py-3 border-b">
         <div className="flex items-center gap-2 min-w-0">
@@ -130,7 +132,7 @@ export function AgentDetail({ agent, onClose }: AgentDetailProps): JSX.Element {
         <Button variant="ghost" size="sm" onClick={onClose}>关闭</Button>
       </div>
 
-      <div className="p-4 space-y-4 overflow-y-auto min-h-0 flex-1">
+      <div data-testid="detail-body" className="p-4 space-y-4 overflow-y-auto overscroll-contain min-h-0 flex-1">
         <div className="flex flex-wrap gap-1.5">
           <Badge variant="outline">{KIND_LABELS[agent.kind]}</Badge>
           <Badge variant="outline">{TOOL_LABELS[agent.tool]}</Badge>

@@ -166,7 +166,8 @@ export function AgentsView(): JSX.Element {
         )}
       </div>
 
-      {selected && <AgentDetail agent={selected} onClose={() => setSelected(null)} />}
+      {/* key 绑定选中 id：换智能体时重建面板，内部滚动位置随新对象回到顶部 */}
+      {selected && <AgentDetail key={selected.id} agent={selected} onClose={() => setSelected(null)} />}
 
       <AgentCreateDialog
         open={createOpen}

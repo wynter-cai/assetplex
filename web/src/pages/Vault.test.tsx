@@ -4,7 +4,7 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Vault from './Vault';
 import { api } from '@/lib/api';
-import type { Asset } from '@/types/api';
+import type { Asset, SkillListResult } from '@/types/api';
 
 /**
  * 资产库类别页页头（spec refactor-design-system page-headers）：
@@ -80,5 +80,27 @@ describe('Vault 类别导航单轨与详情 overlay（spec refactor-design-syste
     expect(overlay.className).toContain('lg:static');
     // 列表不被详情替换（关闭可返回列表状态）
     expect(screen.getAllByText('示例规则').length).toBeGreaterThan(0);
+  });
+});
+
+describe('Vault 技能页容器高度（spec navigation-consolidation 长列表滚动中打开详情）', () => {
+  const emptySkills: SkillListResult = {
+    total: 0,
+    items: [],
+    countByFunction: {
+      coding: 0, writing: 0, browser: 0, data: 0, devops: 0,
+      'ai-integration': 0, design: 0, workflow: 0, other: 0,
+    },
+    countByProvenance: { self: 0, marketplace: 0, plugin: 0, builtin: 0 },
+    countByStatus: { in: 0, out: 0 },
+    countByScope: { asset: 0, environment: 0 },
+  };
+
+  it('外部类别页容器不自拉伸（self-start），否则右侧详情面板没有 sticky 可粘滞空间', async () => {
+    vi.spyOn(api, 'listSkills').mockResolvedValue(emptySkills);
+    renderVault('/vault/skill');
+    await screen.findByRole('heading', { level: 1, name: '技能' });
+    const host = screen.getByTestId('external-view-host');
+    expect(host.className).toContain('self-start');
   });
 });

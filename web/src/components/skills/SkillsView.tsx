@@ -313,8 +313,10 @@ export function SkillsView(): JSX.Element {
       )}
       </div>
 
+      {/* key 绑定选中 id：换技能时重建面板，内部滚动位置随新对象回到顶部 */}
       {selected && (
         <SkillDetail
+          key={selected.id}
           skill={selected}
           onClose={() => setSelected(null)}
           onCurated={(s) => setSelected(s)}

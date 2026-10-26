@@ -660,7 +660,7 @@ describe('SkillsView 页头（spec refactor-design-system page-headers）', () =
     expect(await screen.findByRole('heading', { level: 1, name: '技能' })).toBeInTheDocument();
   });
 
-  it('详情打开时列表保持渲染，详情面板具备窄屏 overlay 钩子（fixed + lg:static）', async () => {
+  it('详情打开时列表保持渲染，宽屏详情右栏吸顶（fixed + lg:sticky）', async () => {
     vi.spyOn(api, 'listSkills').mockResolvedValue({
       total: 1,
       items: [skill({ id: 's1', name: '示例技能', functionCategory: 'coding', provenance: 'self' })],
@@ -676,8 +676,32 @@ describe('SkillsView 页头（spec refactor-design-system page-headers）', () =
     fireEvent.click(await screen.findByText('示例技能'));
     const overlay = await screen.findByTestId('detail-overlay');
     expect(overlay.className).toContain('fixed');
-    expect(overlay.className).toContain('lg:static');
+    // 长列表滚动时详情不跟着跑出视口（spec navigation-consolidation 长列表滚动中打开详情）
+    expect(overlay.className).toContain('lg:sticky');
+    expect(overlay.className).toContain('lg:self-start');
+    expect(overlay.className).not.toContain('lg:static');
+    // 详情内容区自持滚动，长文档不撑爆面板
+    const body = screen.getByTestId('detail-body');
+    expect(body.className).toContain('overflow-y-auto');
+    expect(body.className).toContain('min-h-0');
     // 列表卡片仍在（不与详情互斥渲染，关闭可返回）
     expect(screen.getAllByText('示例技能').length).toBeGreaterThan(0);
+  });
+
+  it('切换技能时详情内容滚动复位到顶部', async () => {
+    vi.spyOn(api, 'listSkills').mockResolvedValue(result);
+    vi.spyOn(api, 'getSkill').mockResolvedValue({ skill: result.items[0], rawContent: '# 内容' });
+    renderView();
+    fireEvent.click(await screen.findByRole('button', { name: '展开 mycode 卡片' }));
+    const first = await screen.findByTestId('detail-body');
+    first.scrollTop = 480;
+    expect(first.scrollTop).toBe(480);
+
+    fireEvent.click(screen.getByRole('button', { name: '展开 pdf 卡片' }));
+    await waitFor(() => {
+      const next = screen.getByTestId('detail-body');
+      expect(next).not.toBe(first);
+      expect(next.scrollTop).toBe(0);
+    });
   });
 });
