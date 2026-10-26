@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ASSET_CATEGORIES } from '@/config/asset-categories';
+import { useAssetCategories } from '@/lib/use-asset-categories';
 
 interface AssetSnapshotProps {
   assetStats: Record<string, number>;
@@ -9,8 +9,10 @@ interface AssetSnapshotProps {
 
 export function AssetSnapshot({ assetStats }: AssetSnapshotProps): JSX.Element {
   const navigate = useNavigate();
+  // 快照格子与后端声明源对齐：接口可用时以接口为准，失败时回退 fallback（tasks I1）
+  const { categories } = useAssetCategories();
 
-  const total = ASSET_CATEGORIES.reduce((sum, cat) => sum + (assetStats[cat.code] ?? 0), 0);
+  const total = categories.reduce((sum, cat) => sum + (assetStats[cat.code] ?? 0), 0);
 
   return (
     <Card>
@@ -22,7 +24,7 @@ export function AssetSnapshot({ assetStats }: AssetSnapshotProps): JSX.Element {
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-3">
-          {ASSET_CATEGORIES.map((cat) => {
+          {categories.map((cat) => {
             const Icon = cat.icon;
             const count = assetStats[cat.code] ?? 0;
             return (

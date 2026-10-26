@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Vault from './Vault';
 import { api } from '@/lib/api';
-import type { Asset, SkillListResult } from '@/types/api';
+import type { Asset, AssetCategoryDescriptor, SkillListResult } from '@/types/api';
 
 /**
  * 资产库类别页页头（spec refactor-design-system page-headers）：
@@ -102,5 +102,59 @@ describe('Vault 技能页容器高度（spec navigation-consolidation 长列表�
     await screen.findByRole('heading', { level: 1, name: '技能' });
     const host = screen.getByTestId('external-view-host');
     expect(host.className).toContain('self-start');
+  });
+});
+
+/**
+ * spec: asset-center-consistency Scenario 1（后端声明源是唯一真相）
+ * 关联: fix-trust-and-consistency tasks I1
+ */
+function descriptor(overrides: Partial<AssetCategoryDescriptor> & { code: string }): AssetCategoryDescriptor {
+  return {
+    label: overrides.code,
+    description: '接口下发的类别',
+    hubDir: overrides.code,
+    external: false,
+    syncable: true,
+    doctorSupported: true,
+    order: 10,
+    ...overrides,
+  };
+}
+
+describe('Vault 类别清单以接口为准（I1）', () => {
+  it('接口下发的 label 覆盖 fallback 常量', async () => {
+    vi.spyOn(api, 'getAssetCategories').mockResolvedValue({
+      declaredAt: '2026-10-26T00:00:00.000Z',
+      categories: [descriptor({ code: 'rule', label: '约定', order: 30 })],
+    });
+
+    renderVault('/vault/rule');
+
+    await screen.findByRole('heading', { level: 1, name: '约定' });
+    expect(screen.queryByRole('heading', { level: 1, name: '规则' })).not.toBeInTheDocument();
+  });
+
+  it('接口标为 external 的类别走专用视图，不打 /api/assets', async () => {
+    const listAssets = vi.spyOn(api, 'listAssets');
+    vi.spyOn(api, 'getAssetCategories').mockResolvedValue({
+      declaredAt: '2026-10-26T00:00:00.000Z',
+      categories: [descriptor({ code: 'memory', label: '记忆', external: true, order: 70 })],
+    });
+
+    renderVault('/vault/memory');
+
+    await screen.findByTestId('external-view-host');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(listAssets).not.toHaveBeenCalled();
+  });
+
+  it('接口失败时不无限等清单：未知类别照常加载', async () => {
+    const listAssets = vi.spyOn(api, 'listAssets');
+    vi.spyOn(api, 'getAssetCategories').mockRejectedValue(new Error('network down'));
+
+    renderVault('/vault/unknown-code');
+
+    await waitFor(() => expect(listAssets).toHaveBeenCalled());
   });
 });

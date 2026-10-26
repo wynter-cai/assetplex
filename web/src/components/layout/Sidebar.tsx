@@ -14,7 +14,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ASSET_CATEGORIES } from '@/config/asset-categories';
+import { useAssetCategories } from '@/lib/use-asset-categories';
 
 interface MainNavItem {
   to: string;
@@ -38,6 +38,8 @@ const MAIN_NAV: MainNavItem[] = [
 export function Sidebar(): JSX.Element {
   // 资产库默认展开
   const [vaultExpanded, setVaultExpanded] = useState<boolean>(true);
+  // 类别子项走「fallback + 接口覆盖」：后端声明源新增类别时侧栏自动跟随（spec asset-center-consistency S1，tasks I1）
+  const { categories } = useAssetCategories();
 
   return (
     <aside className="w-60 shrink-0 border-r bg-muted/40 h-screen sticky top-0 flex flex-col">
@@ -91,7 +93,7 @@ export function Sidebar(): JSX.Element {
 
                 {vaultExpanded && (
                   <div className="ml-4 pl-3 border-l space-y-0.5">
-                    {ASSET_CATEGORIES.map((cat) => {
+                    {categories.map((cat) => {
                       const CatIcon = cat.icon;
                       const childTo = `${item.to}/${cat.code}`;
                       return (

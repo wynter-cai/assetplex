@@ -1,22 +1,47 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, afterEach, vi } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Sidebar } from './Sidebar';
+import { api } from '@/lib/api';
+import type { AssetCategoryDescriptor } from '@/types/api';
 
 /**
  * Sidebar 组件测试
  *
  * 验证 spec: vault-page R1（双栏布局，资产库左侧导航动态显示）
- * 验证 spec: assetplex-asset-taxonomy（类别从配置读取，不写死）
+ * 验证 spec: asset-center-consistency Scenario 1（类别清单唯一声明源在后端，
+ *   前端是 fallback + 接口覆盖；tasks I1）
  */
 
+/** 造接口类别（只关心侧栏用到的字段） */
+function descriptor(overrides: Partial<AssetCategoryDescriptor> & { code: string }): AssetCategoryDescriptor {
+  return {
+    label: overrides.code,
+    description: '接口下发的类别',
+    hubDir: overrides.code,
+    external: false,
+    syncable: true,
+    doctorSupported: true,
+    order: 10,
+    ...overrides,
+  };
+}
+
 function renderSidebar(initialPath = '/'): ReturnType<typeof render> {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <MemoryRouter initialEntries={[initialPath]}>
-      <Sidebar />
-    </MemoryRouter>,
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={[initialPath]}>
+        <Sidebar />
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe('Sidebar', () => {
   it('渲染 7 个主导航项（首页/资产库/项目/连接/同步/切换/设置，无活动入口）', () => {
@@ -89,5 +114,32 @@ describe('Sidebar', () => {
   it('显示品牌名 AssetPlex', () => {
     renderSidebar();
     expect(screen.getByText('AssetPlex')).toBeInTheDocument();
+  });
+
+  it('接口新增类别自动出现在侧栏（I1）', async () => {
+    vi.spyOn(api, 'getAssetCategories').mockResolvedValue({
+      declaredAt: '2026-10-26T00:00:00.000Z',
+      categories: [
+        descriptor({ code: 'identity', label: '身份', order: 10 }),
+        descriptor({ code: 'memory', label: '记忆', order: 70 }),
+      ],
+    });
+
+    renderSidebar();
+
+    await waitFor(() => expect(screen.getByText('记忆')).toBeInTheDocument());
+    // 接口只下发 2 类，未下发的旧类别不应再出现——证明侧栏吃的是接口清单而非常量
+    expect(screen.queryByText('规则')).not.toBeInTheDocument();
+    expect(screen.getByText('记忆').closest('a')).toHaveAttribute('href', '/vault/memory');
+  });
+
+  it('接口不可用时回退 fallback 且不白屏（I1）', async () => {
+    vi.spyOn(api, 'getAssetCategories').mockRejectedValue(new Error('network down'));
+
+    renderSidebar();
+
+    await waitFor(() => expect(screen.getByText('身份')).toBeInTheDocument());
+    expect(screen.getByText('技能')).toBeInTheDocument();
+    expect(screen.getByText('首页')).toBeInTheDocument();
   });
 });

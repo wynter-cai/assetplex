@@ -6,9 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ASSET_CATEGORIES } from '@/config/asset-categories';
 import { api } from '@/lib/api';
 import { useEscapeKey } from '@/lib/use-escape-key';
+import { pickCategory, useAssetCategories } from '@/lib/use-asset-categories';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { AssetCard } from '@/components/vault/AssetCard';
 import { AssetEditor } from '@/components/vault/AssetEditor';
@@ -16,7 +16,6 @@ import { DistributionDialog } from '@/components/vault/DistributionDialog';
 import { AgentsView } from '@/components/agents/AgentsView';
 import { SkillsView } from '@/components/skills/SkillsView';
 import { CriteriaView } from '@/components/criteria/CriteriaView';
-import { getCategoryConfig } from '@/config/asset-categories';
 import type { Asset, FrontendCategory } from '@/types/api';
 
 type ViewMode = 'list' | 'view' | 'edit' | 'create';
@@ -28,7 +27,15 @@ export default function Vault(): JSX.Element {
   const queryClient = useQueryClient();
 
   const selectedCategory = params.category ?? null;
-  const isExternalCategory = getCategoryConfig(selectedCategory ?? '')?.external === true;
+  // 当前类别的 label / description / external 一律以接口清单为准，查不到再回退 fallback（tasks I1）
+  const { categories, source, isFetching, isError } = useAssetCategories();
+  const currentCategory = selectedCategory ? pickCategory(categories, selectedCategory) : undefined;
+  const isExternalCategory = currentCategory?.external === true;
+  // URL 里是 fallback 与接口都认不出的类别时，先等接口清单落地再决定视图：
+  // 贸然按「内部类别」发一次 /api/assets，会给 external 供数类别多发一次无谓请求。
+  // 接口已失败则不再等（拿不到清单已成定局），按内部类别走正常加载/报错路径
+  const categoryPending =
+    !!selectedCategory && !currentCategory && !isError && (source === 'fallback' || isFetching);
   const [search, setSearch] = useState(searchParams.get('q') ?? '');
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
@@ -37,7 +44,7 @@ export default function Vault(): JSX.Element {
   // 获取资产列表（外部类别由专用视图自行取数）
   const { data, isLoading, error } = useQuery({
     queryKey: ['assets', selectedCategory, search],
-    enabled: !isExternalCategory,
+    enabled: !isExternalCategory && !categoryPending,
     queryFn: () =>
       api.listAssets({
         category: (selectedCategory as FrontendCategory | null) ?? undefined,
@@ -119,7 +126,7 @@ export default function Vault(): JSX.Element {
           <>
             <h3 className="text-lg font-medium mb-1">
               {selectedCategory
-                ? `还没有${ASSET_CATEGORIES.find((c) => c.code === selectedCategory)?.label ?? ''}资产`
+                ? `还没有${currentCategory?.label ?? ''}资产`
                 : '资产库为空'}
             </h3>
             <p className="text-sm text-muted-foreground mb-4">
@@ -135,7 +142,7 @@ export default function Vault(): JSX.Element {
         )}
       </div>
     );
-  }, [isLoading, data, search, selectedCategory, navigate]);
+  }, [isLoading, data, search, selectedCategory, currentCategory, navigate]);
 
   const showDetail = viewMode !== 'list';
 
@@ -163,10 +170,10 @@ export default function Vault(): JSX.Element {
         {/* 页头（spec refactor-design-system page-headers：类别名 H1 + 描述 + 主操作） */}
         <PageHeader
           title={selectedCategory
-            ? ASSET_CATEGORIES.find((c) => c.code === selectedCategory)?.label ?? '全部资产'
+            ? currentCategory?.label ?? '全部资产'
             : '全部资产'}
           subtitle={selectedCategory
-            ? ASSET_CATEGORIES.find((c) => c.code === selectedCategory)?.description
+            ? currentCategory?.description
             : '统一管理你的身份、技能、规则与 MCP 配置'}
           actions={
             <>
