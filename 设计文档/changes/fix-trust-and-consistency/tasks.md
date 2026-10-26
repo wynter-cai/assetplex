@@ -39,8 +39,13 @@
   > 真实数据探针（用完即删）：37 项资产 **零缺 key**（不会出现满屏无圆点），状态分布 73 synced / 74 not_installed / 1 pending，`partial=false`、`projectTools=[]`；示例 `skills/handoff/SKILL.md` → trae-cn synced / workbuddy synced / claude-code not_installed / codex not_installed。
   > 两个坑：（1）`useCallback` 误从 `@tanstack/react-query` 导入（它不导这个）→ 运行时 `useCallback is not a function`；（2）提示行一旦把 `failedTools`（工具 id，如 `claude`）拼进文案，`findByText` 完全匹配不中，而且把内部 id 直出给用户看违反词表——改为一句话，不点名工具。REFACTOR 步抽出 `web/src/lib/test-factories.ts`，四个测试不再各抄一份八字段夹具。
   > 遗留：`Vault.tsx` 已到 300 行上限，I3 加筛选/分页前必须先拆子组件；卡片「分发」按钮文案属 J1 禁用词范围，本任务只加 `data-testid="distribute-action"` 使文案改动不再连带改测试。
-- [ ] I3 `Vault`：类别 + 分发状态筛选、50/页分页、切换筛选回第 1 页、空态/失败态文案按 spec
+- [x] I3 `Vault`：类别 + 分发状态筛选、50/页分页、切换筛选回第 1 页、空态/失败态文案按 spec
   > 验收：组件测试断言筛选后数量、分页边界、失败态不显示「共 0 项」。
+  > 实测：先把列表区从 `Vault.tsx` 拆出（301 行 → 234 行，新增 `components/vault/AssetListPanel.tsx` 226 行 + `AssetFilterBar.tsx` 97 行 + 纯函数 `lib/asset-filter.ts`），再上功能。筛选两个维度：类别下拉（仅「全部资产」页给，URL 已锁定类别时隐藏，不与侧栏双轨）+ 同步状态下拉（选项直接复用 `DISTRIBUTION_STATUS` 那份映射，不建第二套文案）；数量行 `共 N 项资产` 随筛选实时变化；50 项/页 + 上一页/下一页 + `第 X / Y 页`（仅多于一页时出现）；页码与筛选指纹同行存储（`filterKey` 变了就当第 1 页），不用 effect，翻页不会被误判成筛选变化。空态按 Scenario 8 改为「还没有资产」+ 唯一主动作「从工具收藏到我的库」；失败态改用现成的 `ErrorState`（带重试），不再把 `error.message` 直出给用户，也不显示数量行。`Asset.category` 类型放宽为 `AssetCategoryCode`（`FrontendCategory | 'memory' | (string & {})` 开放并集），`api.listAssets` 的 category 不再需要 `as FrontendCategory` 强转。新增 29 个用例（lib 13 / panel 11 / Vault 5），前端 39 文件 / 284 用例全绿，`tsc -b` 退出 0，`vite build` 成功；未动后端。
+  > 两个决定：（1）用户可见文案用「同步状态」而不是 tasks 原文的「分发状态」——`分发` 是 product-surface-hygiene 禁用词，不能因为写任务而新增一处。（2）**类别下拉改为由当前列表实际出现的类别派生**（`categoryOptionsFor`），不按 `external` 排除：真实数据下 `/api/assets` 会把 32 个库内技能一并返回，下拉里却没有「技能」就是一处新谎；反过来只走专用接口的类别（如裁决准则）从不在这个列表里出现，也就自然不会进了选项。
+  > 真实数据探针（用完即删）：37 项（技能 32 / 规则 3 / 身份 1 / MCP 1）→ 按 50 项/页只有 1 页，分页控件不出现；状态命中数 已同步 37 / 待同步 1 / 冲突 0 / 未启用 0 / 未安装 37（条目总分布 73 synced / 74 not_installed / 1 pending，与 I2 一致）；`ASSETS_WITHOUT_ENTRY=0`，即不会有任何资产在任何状态筛选下凭空消失；`partial=false`。
+  > 三个坑：（1）`getByText('共 2 项资产')` 类型的断言会打到 `<option>` 文本上——测试夹具的资产名没有取叫「身份」，改叫「我的人设」；（2）同名两个「清除筛选」按钮（工具条小链接 + 零结果大按钮）逼着测试用 `getAllByRole`，改为零结果时只留大按钮；（3）`Asset.category` 放宽后，`asset.category === 'rule' ? asset.category : null` 不再能收窄成 `DoctorAssetKind`（`string & {}` 不会被字面量比较剔除），`AssetEditor` 的医生入口改为闭集数组查找。
+  > 遗留：Scenario 8 的「唯一主动作」只在列表区成立，页头仍有「导入 / 新建」两个按钮；若要全站空态只留一个出口，属 J1 文案与动作收敛范围。
 - [ ] I4 `Connections`：把「已同步资产」改为「已同步 N / 我的库 M」与「可收藏」三口径，删除就地 filter 计数
   > 验收：组件测试断言未安装工具不出现「已同步」数字；页面无 `filter(...).length` 计数。
 - [ ] I5 `Sync`：未选目标禁用主操作 + 「请先选择目标工具」；影响范围回显；预览开关可访问且文案随状态变化；未安装卡片 `aria-disabled`
