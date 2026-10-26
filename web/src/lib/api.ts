@@ -21,6 +21,8 @@ import type {
   AssetCategoriesResponse,
   DistributionIndexResponse,
   AssetCategoryCode,
+  DiscoveredFiles,
+  ToolAssetCounts,
   FrontendCategory,
   AgentListResult,
   AgentDetailResult,
@@ -328,12 +330,10 @@ export const api = {
   getToolDetail: (toolName: string) =>
     request<{
       tool: ToolStatus;
-      discovered?: {
-        identities: Array<{ path: string; size: number }>;
-        rules: Array<{ path: string; size: number }>;
-        skills: Array<{ path: string; size: number }>;
-        mcps: Array<{ path: string; size: number }>;
-      };
+      /** 可收藏文件列表（服务端已按 conflict=none 筛过） */
+      discovered?: DiscoveredFiles;
+      /** 三口径计数；读不到索引/资产清单时为 null，界面不得编数字 */
+      assetCounts?: ToolAssetCounts | null;
     }>(`/tools/${encodeURIComponent(toolName)}/detail`),
 
   // Swap（工具热切换 enable-tool-hot-swap）

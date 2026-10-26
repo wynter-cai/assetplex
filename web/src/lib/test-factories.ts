@@ -5,7 +5,14 @@
  * 收敛到这里，测试只覆盖自己关心的字段（中性示例名，不含本机真实目录）。
  */
 
-import type { Asset, AssetCategoryDescriptor, AssetDistributionInfo } from '@/types/api';
+import type {
+  Asset,
+  AssetCategoryDescriptor,
+  AssetDistributionInfo,
+  DiscoveredFiles,
+  ToolAssetCounts,
+  ToolCategoryCounts,
+} from '@/types/api';
 import type { DistributionsView } from './use-distributions';
 
 export function makeCategoryDescriptor(
@@ -68,4 +75,29 @@ export function makeDistributionsView(
     refresh: async () => undefined,
     ...overrides,
   };
+}
+
+/** 造单类别三口径（缺省全 0，测试只覆盖自己关心的口径） */
+export function makeToolCounts(overrides: Partial<ToolCategoryCounts> = {}): ToolCategoryCounts {
+  return { library: 0, synced: 0, pendingImport: 0, ...overrides };
+}
+
+/** 造工具详情计数（缺省视为普通工具、索引完整） */
+export function makeToolAssetCounts(
+  byCategory: Record<string, ToolCategoryCounts> = {},
+  overrides: Partial<ToolAssetCounts> = {},
+): ToolAssetCounts {
+  return {
+    byCategory,
+    projectCount: null,
+    partial: false,
+    failedTools: [],
+    generatedAt: '2026-10-26T00:00:00.000Z',
+    ...overrides,
+  };
+}
+
+/** 造可收藏文件列表（中性示例路径，不照搬本机真实目录） */
+export function makeDiscoveredFiles(overrides: Partial<DiscoveredFiles> = {}): DiscoveredFiles {
+  return { identities: [], rules: [], skills: [], mcps: [], ...overrides };
 }

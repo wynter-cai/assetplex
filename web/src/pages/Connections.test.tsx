@@ -1,8 +1,9 @@
 /**
- * 连接页测试（fix-ui-trust-gaps T7）
+ * 连接页测试（fix-ui-trust-gaps T7 + fix-trust-and-consistency I4）
  *
- * spec: connections-controls.spec.md
- * 启用开关接线 toggle（失败回退+toast）、重新检测、重新扫描、?tool 深链、导入走 SPA 路由。
+ * spec: connections-controls.spec.md / asset-center-consistency（Scenario 3 已同步来自真实状态）
+ * 启用开关接线 toggle（失败回退+toast）、重新检测、重新扫描、?tool 深链、导入走 SPA 路由；
+ * 三口径数字一律来自接口，页面不得为了计数而请求资产清单。
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -12,6 +13,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Connections from './Connections';
 import { api } from '@/lib/api';
 import type { ToolStatus } from '@/types/api';
+import { makeDiscoveredFiles, makeToolAssetCounts, makeToolCounts } from '@/lib/test-factories';
 import { Toaster } from '@/components/ui/toast';
 import { useToastStore } from '@/lib/toast-store';
 
@@ -20,6 +22,7 @@ vi.mock('@/lib/api', () => ({
     getTools: vi.fn(),
     getToolDetail: vi.fn(),
     listAssets: vi.fn(),
+    getAssetCategories: vi.fn(),
     toggleTool: vi.fn(),
     detectTool: vi.fn(),
   },
@@ -67,6 +70,7 @@ function renderConnections(initialPath = '/connections'): ReturnType<typeof rend
 beforeEach(() => {
   useToastStore.getState().reset();
   vi.clearAllMocks();
+  vi.mocked(api.getAssetCategories).mockResolvedValue({ categories: [], declaredAt: '2026-10-26' } as never);
   vi.mocked(api.getTools).mockResolvedValue({ tools: TOOLS });
   vi.mocked(api.listAssets).mockResolvedValue({ items: [], total: 0 } as never);
   vi.mocked(api.getToolDetail).mockImplementation((name: string) =>
@@ -161,20 +165,17 @@ describe('Connections 页面', () => {
     });
   });
 
-  it('有可导入资产时，导入按钮走 SPA 路由（不整页跳转）', async () => {
+  it('有可收藏的新文件时，「去收藏」走 SPA 路由（不整页跳转）', async () => {
     vi.mocked(api.getToolDetail).mockImplementation((name: string) =>
       Promise.resolve({
         tool: TOOLS.find((t) => t.name === name) ?? TOOLS[0],
-        discovered: {
-          identities: [{ path: `/x/profile.md`, size: 1234 }],
-          rules: [],
-          skills: [],
-          mcps: [],
-        },
+        discovered: makeDiscoveredFiles({
+          identities: [{ path: 'D:/demo/profile.md', size: 1234 }],
+        }),
       }),
     );
     renderConnections('/connections?tool=trae-cn');
-    const link = await screen.findByRole('link', { name: /导入到 Hub/ });
+    const link = await screen.findByRole('link', { name: /去收藏/ });
     await act(async () => {
       fireEvent.click(link);
     });
@@ -188,5 +189,47 @@ describe('Connections 页面', () => {
     expect(await screen.findByText('TRAE 中国版')).toBeInTheDocument();
     expect(container.querySelector('.-mx-4')).toBeNull();
     expect(container.querySelector('.-mt-4')).toBeNull();
+  });
+});
+
+describe('Connections 三口径（I4）', () => {
+  it('详情面板的数字来自接口 assetCounts，页面不再为了计数请求资产清单', async () => {
+    vi.mocked(api.getToolDetail).mockImplementation(() =>
+      Promise.resolve({
+        tool: TOOLS[0],
+        discovered: makeDiscoveredFiles(),
+        assetCounts: makeToolAssetCounts({ skill: makeToolCounts({ library: 100, synced: 96 }) }),
+      }),
+    );
+    renderConnections('/connections?tool=trae-cn');
+    const row = await screen.findByTestId('count-row-skill');
+    expect(row).toHaveTextContent('已同步 96');
+    expect(row).toHaveTextContent('我的库 100');
+    expect(api.listAssets).not.toHaveBeenCalled();
+  });
+
+  it('未安装工具不显示任何已同步数字', async () => {
+    const codex = TOOLS[2];
+    vi.mocked(api.getToolDetail).mockImplementation(() =>
+      Promise.resolve({
+        tool: codex,
+        discovered: undefined,
+        assetCounts: makeToolAssetCounts({ skill: makeToolCounts({ library: 32, synced: 30 }) }),
+      }),
+    );
+    const { container } = renderConnections('/connections?tool=codex');
+    await screen.findByRole('button', { name: /重新检测/ });
+    expect(container.textContent).not.toMatch(/已同步/);
+  });
+
+  it('计数读不到时当面说暂不可用', async () => {
+    vi.mocked(api.getToolDetail).mockImplementation((name: string) =>
+      Promise.resolve({
+        tool: TOOLS.find((t) => t.name === name) ?? TOOLS[0],
+        assetCounts: null,
+      }),
+    );
+    renderConnections('/connections?tool=workbuddy');
+    expect(await screen.findByText(/同步状态暂不可用/)).toBeInTheDocument();
   });
 });

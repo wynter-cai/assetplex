@@ -596,6 +596,47 @@ export interface ConnectionDetail {
   }>;
 }
 
+// ========== 连接页三口径计数 ==========
+
+/**
+ * 单类别三口径（服务端派生：src/server/lib/tool-asset-counts.ts）
+ *
+ * 三者互不可加总，界面数字必须紧跟口径名（proposal D4）；
+ * 前端禁止用 `filter(...).length` 自行统计，否则同一类别又会长出第二个真相。
+ */
+export interface ToolCategoryCounts {
+  /** 我的库：Hub 内该类资产入口数（与工具无关） */
+  library: number;
+  /** 已同步：该工具中状态为 synced 的库内资产数 */
+  synced: number;
+  /** 可收藏：该工具扫到且我的库里没有的条目数 */
+  pendingImport: number;
+}
+
+export interface ToolAssetCounts {
+  /** key = 类别 code；声明源之外的类别照实补上 */
+  byCategory: Record<string, ToolCategoryCounts>;
+  /** 项目级工具已接入项目数；null = 按单资产同步的普通工具（proposal D3） */
+  projectCount: number | null;
+  /** 索引部分工具判定失败，需提示「部分工具状态暂不可用」 */
+  partial: boolean;
+  failedTools: string[];
+  generatedAt: string;
+}
+
+/** 工具里扫到、但我的库还没有的文件（服务端只下发可收藏条目） */
+export interface DiscoveredFileEntry {
+  path: string;
+  size: number;
+}
+
+export interface DiscoveredFiles {
+  identities: DiscoveredFileEntry[];
+  rules: DiscoveredFileEntry[];
+  skills: DiscoveredFileEntry[];
+  mcps: DiscoveredFileEntry[];
+}
+
 // ========== 工具热切换(enable-tool-hot-swap) ==========
 
 /** 切换包覆盖的六类资产(不含 preference) */
