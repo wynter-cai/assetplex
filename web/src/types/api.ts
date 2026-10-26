@@ -161,6 +161,27 @@ export interface DiffContent {
 // ========== 首页 Overview 类型 ==========
 
 export type FrontendCategory = 'identity' | 'skill' | 'rule' | 'mcp';
+
+/**
+ * 资产类别声明源的一条记录（后端 src/core/asset-categories.ts 的唯一真相）
+ *
+ * spec: asset-center-consistency Scenario 1；前端只保留同名字段的 fallback。
+ */
+export interface AssetCategoryDescriptor {
+  code: string;
+  label: string;
+  description: string;
+  hubDir: string;
+  external: boolean;
+  syncable: boolean;
+  doctorSupported: boolean;
+  order: number;
+}
+
+export interface AssetCategoriesResponse {
+  categories: AssetCategoryDescriptor[];
+  declaredAt: string;
+}
 /** 首页资产快照的类别口径：含走专用接口的智能体（external 类别） */
 export type OverviewCategory = FrontendCategory | 'agent';
 export type ConnectionStatus = 'synced' | 'pending' | 'not_connected' | 'not_installed';

@@ -18,6 +18,7 @@ import type {
   Asset,
   AssetDetail,
   AssetListResult,
+  AssetCategoriesResponse,
   FrontendCategory,
   AgentListResult,
   AgentDetailResult,
@@ -91,6 +92,9 @@ export const api = {
     }),
   getHubHealth: () => request<HubHealth>('/hub/health'),
   getOverview: () => request<OverviewData>('/hub/overview'),
+
+  /** 资产类别声明源（唯一真相，前端只作 fallback 覆盖） */
+  getAssetCategories: () => request<AssetCategoriesResponse>('/asset-categories'),
 
   // Tools
   getTools: () => request<{ tools: ToolStatus[] }>('/tools'),
