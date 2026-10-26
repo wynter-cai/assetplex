@@ -20,6 +20,7 @@ import type {
   AssetListResult,
   AssetCategoriesResponse,
   DistributionIndexResponse,
+  AssetCategoryCode,
   FrontendCategory,
   AgentListResult,
   AgentDetailResult,
@@ -158,7 +159,7 @@ export const api = {
     request<{ success: boolean }>(`/files/${path}`, { method: 'DELETE' }),
 
   // Assets
-  listAssets: (params?: { category?: FrontendCategory; search?: string }) => {
+  listAssets: (params?: { category?: AssetCategoryCode; search?: string }) => {
     const qs = new URLSearchParams();
     if (params?.category) qs.set('category', params.category);
     if (params?.search) qs.set('search', params.search);

@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Vault from './Vault';
 import { api } from '@/lib/api';
-import { makeCategoryDescriptor } from '@/lib/test-factories';
+import { makeAsset, makeCategoryDescriptor } from '@/lib/test-factories';
 import type { Asset, SkillListResult } from '@/types/api';
 
 /**
@@ -197,5 +197,79 @@ describe('Vault 分发索引降级提示（I2）', () => {
 
     await screen.findByText('示例规则');
     expect(screen.queryByText('部分工具状态暂不可用')).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * spec: asset-center-consistency Scenario 6/8（全部资产可筛选可分页；空态与失败态不说假话）
+ * 关联: fix-trust-and-consistency tasks I3
+ */
+describe('Vault 筛选、分页与空态/失败态（I3）', () => {
+  it('全部资产页提供类别筛选与同步状态筛选，数量实时可见', async () => {
+    vi.spyOn(api, 'listAssets').mockResolvedValue({
+      items: [
+        makeAsset({ id: 'rules/a.md', name: '规则A', category: 'rule' }),
+        makeAsset({ id: 'identity/me.md', name: '身份', category: 'identity' }),
+      ],
+      total: 2,
+    });
+
+    renderVault('/vault');
+
+    await screen.findByLabelText('按类别筛选');
+    expect(screen.getByLabelText('按同步状态筛选')).toBeInTheDocument();
+    expect(screen.getByText('共 2 项资产')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('按类别筛选'), { target: { value: 'identity' } });
+    expect(screen.getByText('共 1 项资产')).toBeInTheDocument();
+  });
+
+  it('URL 已锁定类别时不给类别筛选，避免与侧栏双轨', async () => {
+    vi.spyOn(api, 'listAssets').mockResolvedValue({
+      items: [makeAsset({ id: 'rules/a.md', name: '规则A', category: 'rule' })],
+      total: 1,
+    });
+
+    renderVault('/vault/rule');
+
+    await screen.findByLabelText('按同步状态筛选');
+    expect(screen.queryByLabelText('按类别筛选')).not.toBeInTheDocument();
+  });
+
+  it('请求失败时给错误与重试，不显示「共 0 项」', async () => {
+    vi.spyOn(api, 'listAssets').mockRejectedValue(new Error('boom'));
+
+    renderVault('/vault/rule');
+
+    const alert = await screen.findByRole('alert');
+    expect(within(alert).getByRole('button', { name: '重试' })).toBeInTheDocument();
+    expect(screen.queryByText(/共 \d+ 项资产/)).not.toBeInTheDocument();
+  });
+
+  it('类别下拉只列列表里真正出现的类别（技能虽走专用视图，但已在全部资产里就要能筛）', async () => {
+    vi.spyOn(api, 'listAssets').mockResolvedValue({
+      items: [
+        makeAsset({ id: 'skills/demo/SKILL.md', name: '示例技能', category: 'skill' }),
+        makeAsset({ id: 'rules/a.md', name: '规则A', category: 'rule' }),
+      ],
+      total: 2,
+    });
+
+    renderVault('/vault');
+
+    const select = await screen.findByLabelText('按类别筛选');
+    expect(within(select).getByRole('option', { name: '技能' })).toBeInTheDocument();
+    expect(within(select).getByRole('option', { name: '规则' })).toBeInTheDocument();
+    // 列表里没有的类别（裁决准则只走专用接口）不进选项
+    expect(within(select).queryByRole('option', { name: '裁决准则' })).not.toBeInTheDocument();
+  });
+
+  it('库为空时说明「还没有资产」并给出主动作「从工具收藏到我的库」', async () => {
+    vi.spyOn(api, 'listAssets').mockResolvedValue({ items: [], total: 0 });
+
+    renderVault('/vault');
+
+    expect(await screen.findByText('还没有资产')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '从工具收藏到我的库' })).toBeInTheDocument();
   });
 });

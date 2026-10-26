@@ -1,17 +1,15 @@
 import { useState, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Search, Plus, Download, Package } from 'lucide-react';
+import { Plus, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
 import { api } from '@/lib/api';
 import { useEscapeKey } from '@/lib/use-escape-key';
 import { pickCategory, useAssetCategories } from '@/lib/use-asset-categories';
+import { categoryOptionsFor } from '@/lib/asset-filter';
 import { distributionsFor, useDistributions } from '@/lib/use-distributions';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { AssetCard } from '@/components/vault/AssetCard';
+import { AssetListPanel } from '@/components/vault/AssetListPanel';
 import { AssetEditor } from '@/components/vault/AssetEditor';
 import { DistributionDialog } from '@/components/vault/DistributionDialog';
 import { AgentsView } from '@/components/agents/AgentsView';
@@ -45,12 +43,12 @@ export default function Vault(): JSX.Element {
   const [distributeAsset, setDistributeAsset] = useState<Asset | null>(null);
 
   // 获取资产列表（外部类别由专用视图自行取数）
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['assets', selectedCategory, search],
     enabled: !isExternalCategory && !categoryPending,
     queryFn: () =>
       api.listAssets({
-        category: (selectedCategory as FrontendCategory | null) ?? undefined,
+        category: selectedCategory ?? undefined,
         search: search || undefined,
       }),
   });
@@ -111,41 +109,13 @@ export default function Vault(): JSX.Element {
     }
   };
 
-  const emptyState = useMemo(() => {
-    if (isLoading || !data) return null;
-    if (data.total > 0) return null;
-    return (
-      <div className="flex flex-col items-center justify-center py-16 text-center">
-        <Package className="h-12 w-12 text-muted-foreground mb-4" />
-        {search ? (
-          <>
-            <h3 className="text-lg font-medium mb-1">未找到匹配的资产</h3>
-            <p className="text-sm text-muted-foreground mb-4">试试其他关键词</p>
-            <Button variant="outline" size="sm" onClick={() => handleSearchChange('')}>
-              清除搜索
-            </Button>
-          </>
-        ) : (
-          <>
-            <h3 className="text-lg font-medium mb-1">
-              {selectedCategory
-                ? `还没有${currentCategory?.label ?? ''}资产`
-                : '资产库为空'}
-            </h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              {selectedCategory
-                ? '从已安装的工具导入，或手动创建一个'
-                : '扫描已安装的工具，开始导入你的 AI 资产'}
-            </p>
-            <Button size="sm" onClick={() => navigate('/import')}>
-              <Download className="h-3.5 w-3.5 mr-1.5" />
-              立即导入
-            </Button>
-          </>
-        )}
-      </div>
-    );
-  }, [isLoading, data, search, selectedCategory, currentCategory, navigate]);
+  // 类别筛选选项 = 当前列表里真正出现的类别，label 取声明源（tasks I3）
+  const categoryOptions = useMemo(
+    () => categoryOptionsFor(data?.items ?? [], categories),
+    [data, categories],
+  );
+  // 查询被禁用（等清单落地 / 外部类别）时 data 还是空的，不能据此报「库是空的」
+  const listLoading = isLoading || categoryPending || (!data && !error);
 
   const showDetail = viewMode !== 'list';
 
@@ -201,67 +171,29 @@ export default function Vault(): JSX.Element {
         <div className="flex min-h-0 min-w-0 flex-1 gap-4">
         <div className="flex min-w-0 flex-1 flex-col">
         <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-        {/* 工具栏 */}
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="搜索资产..."
-              value={search}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              className="pl-8 h-9"
-            />
-          </div>
-        </div>
-
-        {/* 错误 */}
-        {error && (
-          <Card className="p-6 text-center text-destructive">
-            加载失败: {error instanceof Error ? error.message : String(error)}
-          </Card>
-        )}
-
-        {/* 索引降级：失败的工具在索引里没有条目，也不拿它名字冒充状态，界面只给一句诚实提示（Scenario 8） */}
-        {distributionsIndex.partial && (
-          <p className="text-xs text-warning" data-testid="distributions-partial-hint">
-            部分工具状态暂不可用
-          </p>
-        )}
-
-        {/* 加载中 */}
-        {isLoading && (
-          <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(270px,100%),1fr))]">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className="h-36 rounded-md" />
-            ))}
-          </div>
-        )}
-
-        {/* 空状态 */}
-        {emptyState}
-
-        {/* 资产卡片列表 */}
-        {!isLoading && data && data.total > 0 && (
-          <>
-            <p className="text-xs text-muted-foreground mb-2">共 {data.total} 项资产</p>
-            <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(270px,100%),1fr))]">
-              {data.items.map((asset) => (
-                <AssetCard
-                  key={asset.id}
-                  asset={asset}
-                  distributions={distributionsFor(distributionsIndex, asset.id)}
-                  active={selectedAsset?.id === asset.id && viewMode !== 'list'}
-                  onView={handleView}
-                  onEdit={(a) => {
-                    setSelectedAsset(a);
-                    setViewMode('edit');
-                  }}
-                  onDistribute={(a) => setDistributeAsset(a)}
-                />
-              ))}
-            </div>
-          </>
-        )}
+        {/* 筛选、分页、空态与失败态集中在列表区（spec asset-center-consistency Scenario 6/8，tasks I3） */}
+        <AssetListPanel
+          assets={data?.items ?? []}
+          categoryOptions={categoryOptions}
+          lockedCategory={selectedCategory}
+          search={search}
+          distributions={distributionsIndex}
+          isLoading={listLoading}
+          error={error}
+          onRetry={() => {
+            void refetch();
+          }}
+          onSearchChange={handleSearchChange}
+          selectedAssetId={selectedAsset?.id ?? null}
+          detailOpen={showDetail}
+          onView={handleView}
+          onEdit={(asset) => {
+            setSelectedAsset(asset);
+            setViewMode('edit');
+          }}
+          onDistribute={(asset) => setDistributeAsset(asset)}
+          onCollect={() => navigate('/import')}
+        />
         </div>
         </div>
 

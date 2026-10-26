@@ -163,6 +163,14 @@ export interface DiffContent {
 export type FrontendCategory = 'identity' | 'skill' | 'rule' | 'mcp';
 
 /**
+ * 资产类别代码：以后端声明源为准
+ *
+ * 已知值用于自动补全，`string & {}` 让接口新增的类别不需要改前端类型也能接住
+ * （spec asset-center-consistency Scenario 1：新增类别不触碰前端清单）。
+ */
+export type AssetCategoryCode = FrontendCategory | 'memory' | (string & {});
+
+/**
  * 资产类别声明源的一条记录（后端 src/core/asset-categories.ts 的唯一真相）
  *
  * spec: asset-center-consistency Scenario 1；前端只保留同名字段的 fallback。
@@ -259,7 +267,7 @@ export interface DistributionIndexResponse {
 export interface Asset {
   id: string;
   name: string;
-  category: FrontendCategory;
+  category: AssetCategoryCode;
   hubPath: string;
   source: AssetSource;
   lastModifiedAt: string;

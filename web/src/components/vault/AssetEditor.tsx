@@ -5,7 +5,19 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { getCategoryConfig } from '@/config/asset-categories';
 import { DiagnosisPanel } from '@/components/doctor/DiagnosisPanel';
-import type { Asset } from '@/types/api';
+import type { Asset, DoctorAssetKind } from '@/types/api';
+
+/**
+ * 医生入口覆盖的类别（mcp 一期不做诊断，skill 走技能页专属视图）
+ *
+ * 写成闭集查找而不是 `asset.category === 'rule'`：`Asset.category` 已放宽为声明源
+ * 下发的类别代码（tasks I3），字符串比较不会把宽类型收窄成字面量类型。
+ */
+const DOCTOR_KINDS: readonly DoctorAssetKind[] = ['rule', 'identity'];
+
+function doctorKindOf(category: string): DoctorAssetKind | null {
+  return DOCTOR_KINDS.find((kind) => kind === category) ?? null;
+}
 
 interface AssetEditorProps {
   asset?: (Asset & { content?: string }) | null;
@@ -36,12 +48,8 @@ export function AssetEditor({
 
   const cat = getCategoryConfig(asset?.category ?? category ?? 'skill');
 
-  // 医生入口（add-asset-doctor G3 走查缺口）：只读视图的 rule/identity 类提供体检；
-  // mcp 一期不做诊断，skill 走技能页专属视图
-  const doctorKind =
-    isReadOnly && asset && (asset.category === 'rule' || asset.category === 'identity')
-      ? asset.category
-      : null;
+  // 医生入口（add-asset-doctor G3 走查缺口）：只读视图的 rule/identity 类提供体检
+  const doctorKind = isReadOnly && asset ? doctorKindOf(asset.category) : null;
 
   const handleSave = async (): Promise<void> => {
     if (!name.trim()) return;
