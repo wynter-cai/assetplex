@@ -32,6 +32,7 @@ function makeCandidate(over: Partial<SwapToolCandidate>): SwapToolCandidate {
     name: 'faketool',
     displayName: 'Fake Tool',
     installed: true,
+    projectLevel: false,
     supportMatrix: {
       identity: allSupported,
       rule: allSupported,
@@ -261,5 +262,37 @@ describe('切换页-执行、验证与撤销(T9)', () => {
     expect(await screen.findByText(/写入 3/)).toBeInTheDocument();
     expect(screen.getByText('已撤销')).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /撤销/ }).length).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe('切换页-项目级工具呈现（I7）', () => {
+  it('项目级工具显示「按项目同步」而非六类徽章', async () => {
+    const qoder = makeCandidate({
+      name: 'qoder',
+      displayName: 'Qoder',
+      projectLevel: true,
+      supportMatrix: {
+        identity: { supported: false, reason: '不支持' },
+        rule: { supported: false, reason: '不支持' },
+        skill: { supported: false, reason: '不支持' },
+        mcp: { supported: false, reason: '不支持' },
+        memory: { supported: false, reason: '不支持' },
+        agent: { supported: false, reason: '不支持' },
+      },
+    });
+    vi.mocked(api.getSwapTools).mockResolvedValue({ tools: [qoder] });
+    renderSwap();
+    const card = await screen.findByRole('button', { name: /Qoder/ });
+    expect(card).toBeInTheDocument();
+    expect(screen.getByText('本工具按项目同步')).toBeInTheDocument();
+    // 不显示任何类别徽章
+    expect(screen.queryByText(/身份/)).not.toBeInTheDocument();
+  });
+
+  it('普通工具仍然显示支持类别徽章', async () => {
+    renderSwap();
+    const card = await screen.findByRole('button', { name: /WorkBuddy/ });
+    expect(card).toBeInTheDocument();
+    expect(screen.queryByText('本工具按项目同步')).not.toBeInTheDocument();
   });
 });

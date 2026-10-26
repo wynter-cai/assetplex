@@ -43,6 +43,8 @@ export interface ToolAssetCountsInput {
   distribution: DistributionIndexPayload;
   /** 该工具的扫描结果；未安装或扫描失败时传空数组 */
   discovered: ReadonlyArray<Pick<DiscoveredItem, 'category' | 'hubTargetPath' | 'conflict'>>;
+  /** 工具的同步策略（来自配置）；‘per-project’ 表示项目级工具（D3） */
+  syncStrategy?: string;
 }
 
 type CountsByCategory = Record<string, ToolCategoryCounts>;
@@ -108,7 +110,9 @@ export function buildToolAssetCounts(input: ToolAssetCountsInput): ToolAssetCoun
   }
 
   const project = input.distribution.projectTools.find((tool) => tool.toolId === input.toolId);
-  if (input.installed && !project) {
+  // D3：项目级判定由 syncStrategy 或 projectTools 列表共同决定
+  const isProjectLevel = input.syncStrategy === 'per-project' || project !== undefined;
+  if (input.installed && !project && !isProjectLevel) {
     countSynced(byCategory, categoryOf, input.distribution.index, input.toolId);
   }
   if (input.installed) {
@@ -117,7 +121,7 @@ export function buildToolAssetCounts(input: ToolAssetCountsInput): ToolAssetCoun
 
   return {
     byCategory,
-    projectCount: project?.projectCount ?? null,
+    projectCount: isProjectLevel ? (project?.projectCount ?? 0) : null,
     partial: input.distribution.partial,
     failedTools: input.distribution.failedTools,
     generatedAt: input.distribution.generatedAt,

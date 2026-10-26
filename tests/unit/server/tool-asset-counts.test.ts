@@ -136,6 +136,19 @@ describe('buildToolAssetCounts 三口径', () => {
     expect(counts.byCategory.skill.synced).toBe(0);
   });
 
+  it('项目级工具 syncStrategy=per-project + 0 项目仍报 projectCount:0（I7 修复 I4 遗留）', () => {
+    const counts = buildToolAssetCounts({
+      toolId: 'qoder',
+      installed: true,
+      assets: LIBRARY,
+      distribution: payload({}),
+      discovered: [],
+      syncStrategy: 'per-project',
+    });
+    expect(counts.projectCount).toBe(0);
+    expect(counts.byCategory.skill.synced).toBe(0);
+  });
+
   it('非项目级工具 projectCount 为 null，界面据此渲染逐类数字', () => {
     const counts = buildToolAssetCounts({
       toolId: 'trae-cn',

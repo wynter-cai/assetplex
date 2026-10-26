@@ -40,6 +40,12 @@ function buildSupportMatrix(adapter: ToolAdapter, config: HubConfig): Record<Swa
   return matrix;
 }
 
+/** 工具是否为项目级（syncStrategy = 'per-project'，D3） */
+function isProjectLevel(config: HubConfig, toolName: string): boolean {
+  const tools = config.tools as Record<string, Record<string, unknown>>;
+  return tools[toolName]?.syncStrategy === 'per-project';
+}
+
 /** 业务错误 → HTTP 状态：未注册 400 / staleness 与未安装 409 / 其他 500 */
 function statusForError(err: Error): 400 | 409 | 500 {
   const msg = err.message;
@@ -70,6 +76,7 @@ export function swapRoutesFactory(deps: SwapRouteDeps): Hono {
         displayName: adapter.displayName,
         installed,
         supportMatrix: buildSupportMatrix(adapter, config),
+        projectLevel: isProjectLevel(config, adapter.name),
       });
     }
     return c.json({ tools });

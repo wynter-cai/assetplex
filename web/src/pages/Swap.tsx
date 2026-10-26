@@ -22,7 +22,7 @@ import { SwapResultPanel } from '@/components/swap/SwapResultPanel';
 import { SwapHistoryList } from '@/components/swap/SwapHistoryList';
 import { SWAP_CATEGORY_LABELS } from '@/components/swap/swap-labels';
 
-/** 工具候选卡片：未安装禁用并说明 */
+/** 工具候选卡片：未安装禁用并说明；项目级工具显示能力说明而非六类徽章 */
 function ToolCard({
   candidate,
   selected,
@@ -48,13 +48,17 @@ function ToolCard({
         {candidate.displayName}
         {!candidate.installed && <span className="text-xs text-muted-foreground">未安装</span>}
       </span>
-      <span className="mt-1 flex flex-wrap gap-1">
-        {supported.map((c) => (
-          <Badge key={c} variant="outline" className="text-[10px]">
-            {SWAP_CATEGORY_LABELS[c]}
-          </Badge>
-        ))}
-      </span>
+      {candidate.projectLevel ? (
+        <span className="mt-1 block text-xs text-muted-foreground">本工具按项目同步</span>
+      ) : (
+        <span className="mt-1 flex flex-wrap gap-1">
+          {supported.map((c) => (
+            <Badge key={c} variant="outline" className="text-[10px]">
+              {SWAP_CATEGORY_LABELS[c]}
+            </Badge>
+          ))}
+        </span>
+      )}
     </button>
   );
 }

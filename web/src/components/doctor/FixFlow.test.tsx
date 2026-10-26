@@ -87,9 +87,9 @@ beforeEach(() => {
   });
   vi.mocked(api.getSwapTools).mockResolvedValue({
     tools: [
-      { name: 'trae', displayName: 'TRAE', installed: true, supportMatrix: supportAll },
-      { name: 'qoder', displayName: 'Qoder', installed: true, supportMatrix: supportAll },
-      { name: 'gone', displayName: 'Ghost', installed: false, supportMatrix: supportAll },
+      { name: 'trae', displayName: 'TRAE', installed: true, projectLevel: false, supportMatrix: supportAll },
+      { name: 'qoder', displayName: 'Qoder', installed: true, projectLevel: false, supportMatrix: supportAll },
+      { name: 'gone', displayName: 'Ghost', installed: false, projectLevel: false, supportMatrix: supportAll },
     ],
   });
   vi.mocked(api.doctorFixDraft).mockResolvedValue(draftResponse);

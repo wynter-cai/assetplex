@@ -73,12 +73,16 @@ async function loadAssetCounts(
 ): Promise<ToolAssetCounts | null> {
   try {
     const [distribution, assets] = await Promise.all([deps.getDistributions(), deps.listAssets()]);
+    const config = deps.getConfig();
+    const toolsConfig = config.tools as Record<string, Record<string, unknown>>;
+    const syncStrategy = (toolsConfig[toolId]?.syncStrategy as string) ?? undefined;
     return buildToolAssetCounts({
       toolId,
       installed,
       assets: assets.items,
       distribution,
       discovered,
+      syncStrategy,
     });
   } catch {
     return null;
