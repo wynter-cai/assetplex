@@ -29,8 +29,10 @@
 
 ## Phase I — 界面消费（specs/asset-center-consistency、asset-distribution-truth、product-surface-hygiene）
 
-- [ ] I1 `web/src/config/asset-categories.ts`：改为「fallback + 接口覆盖」，侧栏 / 首页快照 / 资产库筛选统一由它派生
+- [x] I1 `web/src/config/asset-categories.ts`：改为「fallback + 接口覆盖」，侧栏 / 首页快照 / 资产库筛选统一由它派生
   > 验收：接口不可用时回退 fallback 且不白屏（mock 失败测试）；接口返回新增类别时侧栏自动出现（组件测试）。
+  > 实测：新增 `web/src/lib/use-asset-categories.ts`（`mergeCategories` + `useAssetCategories` + `pickCategory`，5 分钟 staleTime）与 6 用例；三处消费改吃接口清单 —— `Sidebar` 子项、`AssetSnapshot` 格子与总数、`Vault` 页头 label/description/external 判定。组件测试各条真实断言：接口只下发两类时旧常量类别不再出现（证明吃的不是常量）、接口失败回退 fallback 不白屏、`external` 由接口决定且不打 `/api/assets`。前端 33 文件 / 235 用例全绿，`tsc -b` 退出 0，`vite build` 成功。常量 `ASSET_CATEGORIES` 降级为 `@deprecated` alias，仅供骨架屏与静态兜底文案。
+  > 两个坑：（1）首屏先渲染 fallback，若 URL 上是 fallback 认不出的新类别，会先按「内部类别」发一次不该发的 `listAssets` —— 改为 `categoryPending` 等接口清单落地再决定，但接口已失败（`isError`）时不再无限等；（2）lucide 图标是 `forwardRef` 对象，`typeof icon === 'function'` 恒假，断言改成「等于哪个图标」。
 - [ ] I2 `AssetCard` / `DistributionBadge`：改用真实状态渲染；`partial` 时展示「部分工具状态暂不可用」
   > 验收：五状态各有渲染断言；`distributions: []` 不再渲染「未分发」；失败工具不渲染成任何状态。
 - [ ] I3 `Vault`：类别 + 分发状态筛选、50/页分页、切换筛选回第 1 页、空态/失败态文案按 spec
