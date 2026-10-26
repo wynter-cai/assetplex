@@ -53,8 +53,9 @@
   > 真实数据探针（用完即删）：我的库 37（身份 1 / 技能 32 / 规则 3 / MCP 1）；trae-cn 已同步 37 / 可收藏 0（扫到 190 条全部 `exists`——工具目录与库同源，没有新东西可收藏）；workbuddy 已同步 36（MCP 未同步，即 I3 的那 1 条 pending）、扫到 2 条 memory `conflict=none`；claude-code / codex 未安装 → 不给任何数字。
   > 两个坑：（1）初版把未纳入声明源的类别（memory）也用 code 当 label 列出来，探针显示它给出「memory 已同步 0 / 我的库 0 + 可收藏 2」这种英文直出且文件列表里落不了地的孤立数字 → 改为只渲染声明源类别（与侧栏、资产库同一清单），补一条用例锁死；（2）文件列表原先把工具目录绝对路径整串铺在界面上，改为只显示文件名（技能取目录名）——既是隐私卫生也是可读性。
   > 遗留（交给 I7）：`projectTools` 只在 `projectCount > 0` 时才含该工具，因此**尚未配置项目的 Qoder** 在连接页仍会落到普通分支显示「已同步 0 / 我的库 32」——比旧的「已同步 32」诚实，但项目级身份必须由工具能力声明显式判定（D3），不能靠项目数凑。
-- [ ] I5 `Sync`：未选目标禁用主操作 + 「请先选择目标工具」；影响范围回显；预览开关可访问且文案随状态变化；未安装卡片 `aria-disabled`
+-- [x] I5 `Sync`：未选目标禁用主操作 + 「请先选择目标工具」；影响范围回显；预览开关可访问且文案随状态变化；未安装卡片 `aria-disabled`
   > 验收：四条场景各有组件测试；删除两条互斥空态文案之一。
+  > 实测：新增纯逻辑 `web/src/lib/sync-impact.ts`（79 行：`summarizeImpact` / `impactText` / `derivePrimaryAction` / `modeCaption`）+ 单测 10 条；拆出 `components/sync/TargetToolCard.tsx`（99）、`SyncActionBar.tsx`（56）、`ToolPlanDetail.tsx`（48）、`SyncResultCard.tsx`（30）、已有 `sync-display.ts`（44）；重写 `Sync.tsx` 397 → 164 行。关键改动：（1）主操作由 `derivePrimaryAction` 三态驱动（未选目标 / 无内容 / 可执行），旧「将同步到全部已启用工具」文案清零；（2）Switch 加 `aria-label="预览模式"` + 模式说明由 `modeCaption` 渲染；（3）未安装工具 `aria-disabled={!installed}` + onClick 守卫 + 「安装后重新扫描即可启用」引导；（4）`api.runSync` 始终传 `selectedList`（不再传 undefined）；（5）影响范围逐字「将影响 N 个工具 · M 项变更 · K 项冲突」。新增 18 用例（lib 10 / 页面 8），前端 42 文件 / 316 用例、后端 70 文件 / 882 用例全绿，`tsc -b` 退出 0，`vite build` 成功。
 - [ ] I6 版本号单一来源：vite define 注入，侧栏与设置页共用；设置页把内部枚举改为中文选项
   > 验收：断言界面版本 === `package.json` 版本；设置页无 `hybrid` / 工具 id 直出。
 - [ ] I7 `Swap` / `Connections`：项目级工具展示能力说明；未配置项目时显示「尚未选择项目」+「去配置」，不再六类全标「不支持」；支持矩阵改由工具能力声明推导（D3）
