@@ -4,7 +4,8 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Vault from './Vault';
 import { api } from '@/lib/api';
-import type { Asset, AssetCategoryDescriptor, SkillListResult } from '@/types/api';
+import { makeCategoryDescriptor } from '@/lib/test-factories';
+import type { Asset, SkillListResult } from '@/types/api';
 
 /**
  * 资产库类别页页头（spec refactor-design-system page-headers）：
@@ -109,24 +110,11 @@ describe('Vault 技能页容器高度（spec navigation-consolidation 长列表�
  * spec: asset-center-consistency Scenario 1（后端声明源是唯一真相）
  * 关联: fix-trust-and-consistency tasks I1
  */
-function descriptor(overrides: Partial<AssetCategoryDescriptor> & { code: string }): AssetCategoryDescriptor {
-  return {
-    label: overrides.code,
-    description: '接口下发的类别',
-    hubDir: overrides.code,
-    external: false,
-    syncable: true,
-    doctorSupported: true,
-    order: 10,
-    ...overrides,
-  };
-}
-
 describe('Vault 类别清单以接口为准（I1）', () => {
   it('接口下发的 label 覆盖 fallback 常量', async () => {
     vi.spyOn(api, 'getAssetCategories').mockResolvedValue({
       declaredAt: '2026-10-26T00:00:00.000Z',
-      categories: [descriptor({ code: 'rule', label: '约定', order: 30 })],
+      categories: [makeCategoryDescriptor({ code: 'rule', label: '约定', order: 30 })],
     });
 
     renderVault('/vault/rule');
@@ -139,7 +127,7 @@ describe('Vault 类别清单以接口为准（I1）', () => {
     const listAssets = vi.spyOn(api, 'listAssets');
     vi.spyOn(api, 'getAssetCategories').mockResolvedValue({
       declaredAt: '2026-10-26T00:00:00.000Z',
-      categories: [descriptor({ code: 'memory', label: '记忆', external: true, order: 70 })],
+      categories: [makeCategoryDescriptor({ code: 'memory', label: '记忆', external: true, order: 70 })],
     });
 
     renderVault('/vault/memory');
@@ -156,5 +144,58 @@ describe('Vault 类别清单以接口为准（I1）', () => {
     renderVault('/vault/unknown-code');
 
     await waitFor(() => expect(listAssets).toHaveBeenCalled());
+  });
+});
+
+/**
+ * spec: asset-distribution-truth Scenario 8（判定失败必须诚实降级）
+ * 关联: fix-trust-and-consistency tasks I2
+ */
+describe('Vault 分发索引降级提示（I2）', () => {
+  const asset: Asset = {
+    id: 'rules/safety.md',
+    name: '示例规则',
+    category: 'rule',
+    hubPath: 'rules/safety.md',
+    source: 'manual',
+    lastModifiedAt: '2026-10-01T00:00:00.000Z',
+    size: 100,
+    distributions: [],
+  };
+
+  it('索引 partial 时页面出现一行「部分工具状态暂不可用」', async () => {
+    vi.spyOn(api, 'listAssets').mockResolvedValue({ items: [asset], total: 1 });
+    vi.spyOn(api, 'getDistributions').mockResolvedValue({
+      generatedAt: '2026-10-26T00:00:00.000Z',
+      cached: false,
+      partial: true,
+      failedTools: ['claude'],
+      index: { 'rules/safety.md': [{ toolId: 'trae-cn', toolName: 'TRAE 中国版', status: 'synced' }] },
+      projectTools: [],
+    });
+
+    renderVault('/vault/rule');
+
+    await screen.findByText('部分工具状态暂不可用');
+    // 失败工具不伪装成任何圆点，已有真值的工具照常渲染
+    expect(screen.queryByTestId('distribution-dot-claude')).not.toBeInTheDocument();
+    expect(screen.getByTestId('distribution-dot-trae-cn')).toBeInTheDocument();
+  });
+
+  it('索引完整时不出现降级提示', async () => {
+    vi.spyOn(api, 'listAssets').mockResolvedValue({ items: [asset], total: 1 });
+    vi.spyOn(api, 'getDistributions').mockResolvedValue({
+      generatedAt: '2026-10-26T00:00:00.000Z',
+      cached: false,
+      partial: false,
+      failedTools: [],
+      index: {},
+      projectTools: [],
+    });
+
+    renderVault('/vault/rule');
+
+    await screen.findByText('示例规则');
+    expect(screen.queryByText('部分工具状态暂不可用')).not.toBeInTheDocument();
   });
 });

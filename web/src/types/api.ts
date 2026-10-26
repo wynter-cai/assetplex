@@ -223,6 +223,39 @@ export interface AssetDistribution {
   lastSyncedAt?: string;
 }
 
+/**
+ * 分发索引里的一条记录（真值来自 GET /api/distributions，后端 src/core/distribution-status.ts）
+ *
+ * `Asset.distributions` 已不再供数（/api/assets 恒返回空数组），
+ * 卡片圆点一律从这里取。
+ */
+export interface AssetDistributionInfo {
+  toolId: string;
+  toolName: string;
+  status: AssetSyncStatus;
+  targetPath?: string;
+  detail?: string;
+}
+
+/** 项目级工具（如 Qoder）：不按单资产上报，只报已接入项目数 */
+export interface ProjectToolInfo {
+  toolId: string;
+  toolName: string;
+  projectCount: number;
+}
+
+export interface DistributionIndexResponse {
+  generatedAt: string;
+  /** true = 命中服务端 30s 缓存 */
+  cached: boolean;
+  /** true = 至少一个工具判定失败，界面需提示「部分工具状态暂不可用」 */
+  partial: boolean;
+  failedTools: string[];
+  /** key = 资产在 Hub 中的相对路径（= Asset.id） */
+  index: Record<string, AssetDistributionInfo[]>;
+  projectTools: ProjectToolInfo[];
+}
+
 export interface Asset {
   id: string;
   name: string;

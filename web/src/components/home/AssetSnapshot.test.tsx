@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AssetSnapshot } from './AssetSnapshot';
 import { api } from '@/lib/api';
-import type { AssetCategoryDescriptor } from '@/types/api';
+import { makeCategoryDescriptor } from '@/lib/test-factories';
 
 /**
  * 首页资产快照的类别清单来源测试
@@ -12,19 +12,6 @@ import type { AssetCategoryDescriptor } from '@/types/api';
  * spec: asset-center-consistency Scenario 1（后端加类别，首页快照自动跟随）
  * 关联: fix-trust-and-consistency tasks I1
  */
-
-function descriptor(overrides: Partial<AssetCategoryDescriptor> & { code: string }): AssetCategoryDescriptor {
-  return {
-    label: overrides.code,
-    description: '接口下发的类别',
-    hubDir: overrides.code,
-    external: false,
-    syncable: true,
-    doctorSupported: true,
-    order: 10,
-    ...overrides,
-  };
-}
 
 function renderSnapshot(assetStats: Record<string, number>): ReturnType<typeof render> {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -46,8 +33,8 @@ describe('AssetSnapshot 类别清单来源', () => {
     vi.spyOn(api, 'getAssetCategories').mockResolvedValue({
       declaredAt: '2026-10-26T00:00:00.000Z',
       categories: [
-        descriptor({ code: 'identity', label: '身份', order: 10 }),
-        descriptor({ code: 'memory', label: '记忆', order: 70 }),
+        makeCategoryDescriptor({ code: 'identity', label: '身份', order: 10 }),
+        makeCategoryDescriptor({ code: 'memory', label: '记忆', order: 70 }),
       ],
     });
 

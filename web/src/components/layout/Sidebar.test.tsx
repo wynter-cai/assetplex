@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Sidebar } from './Sidebar';
 import { api } from '@/lib/api';
-import type { AssetCategoryDescriptor } from '@/types/api';
+import { makeCategoryDescriptor } from '@/lib/test-factories';
 
 /**
  * Sidebar 组件测试
@@ -13,20 +13,6 @@ import type { AssetCategoryDescriptor } from '@/types/api';
  * 验证 spec: asset-center-consistency Scenario 1（类别清单唯一声明源在后端，
  *   前端是 fallback + 接口覆盖；tasks I1）
  */
-
-/** 造接口类别（只关心侧栏用到的字段） */
-function descriptor(overrides: Partial<AssetCategoryDescriptor> & { code: string }): AssetCategoryDescriptor {
-  return {
-    label: overrides.code,
-    description: '接口下发的类别',
-    hubDir: overrides.code,
-    external: false,
-    syncable: true,
-    doctorSupported: true,
-    order: 10,
-    ...overrides,
-  };
-}
 
 function renderSidebar(initialPath = '/'): ReturnType<typeof render> {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -120,8 +106,8 @@ describe('Sidebar', () => {
     vi.spyOn(api, 'getAssetCategories').mockResolvedValue({
       declaredAt: '2026-10-26T00:00:00.000Z',
       categories: [
-        descriptor({ code: 'identity', label: '身份', order: 10 }),
-        descriptor({ code: 'memory', label: '记忆', order: 70 }),
+        makeCategoryDescriptor({ code: 'identity', label: '身份', order: 10 }),
+        makeCategoryDescriptor({ code: 'memory', label: '记忆', order: 70 }),
       ],
     });
 

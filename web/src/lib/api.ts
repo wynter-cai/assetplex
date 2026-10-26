@@ -19,6 +19,7 @@ import type {
   AssetDetail,
   AssetListResult,
   AssetCategoriesResponse,
+  DistributionIndexResponse,
   FrontendCategory,
   AgentListResult,
   AgentDetailResult,
@@ -176,6 +177,10 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify({ content }),
     }),
+
+  /** 分发索引（资产状态与计数的唯一真值源）；refresh=true 跳过服务端 30s 缓存 */
+  getDistributions: (refresh = false) =>
+    request<DistributionIndexResponse>(`/distributions${refresh ? '?refresh=1' : ''}`),
 
   // Agents（只读盘点）
   listAgents: (params?: { tool?: AgentTool; kind?: AgentKind; search?: string }) => {

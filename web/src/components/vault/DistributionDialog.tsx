@@ -6,32 +6,37 @@ import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import type { Asset } from '@/types/api';
+import { DISTRIBUTION_STATUS } from './DistributionBadge';
+import type { Asset, AssetDistributionInfo, AssetSyncStatus } from '@/types/api';
 
 interface DistributionDialogProps {
   asset: Asset | null;
   open: boolean;
+  /**
+   * 分发索引里该资产的条目（真值，同资产卡）
+   *
+   * spec asset-distribution-truth：`asset.distributions` 已不再供数，继续读它会把
+   * 每一个已安装工具都说成「未同步」。
+   */
+  distributions?: AssetDistributionInfo[];
   onOpenChange: (open: boolean) => void;
   onSync?: () => void;
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  synced: '已同步',
-  pending: '待更新',
-  conflict: '冲突',
-  not_enabled: '未启用',
-  not_installed: '未安装',
-};
+/** 五值闭集之外的状态一律不编造，只说「状态未知」 */
+function statusOf(status: string | undefined): { text: string; label: string } | undefined {
+  return status && Object.prototype.hasOwnProperty.call(DISTRIBUTION_STATUS, status)
+    ? DISTRIBUTION_STATUS[status as AssetSyncStatus]
+    : undefined;
+}
 
-const STATUS_COLOR: Record<string, string> = {
-  synced: 'text-success',
-  pending: 'text-warning',
-  conflict: 'text-destructive',
-  not_enabled: 'text-slate-400',
-  not_installed: 'text-slate-400',
-};
-
-export function DistributionDialog({ asset, open, onOpenChange, onSync }: DistributionDialogProps): JSX.Element {
+export function DistributionDialog({
+  asset,
+  open,
+  distributions,
+  onOpenChange,
+  onSync,
+}: DistributionDialogProps): JSX.Element {
   const { data: toolsData, isLoading } = useQuery({
     queryKey: ['tools'],
     queryFn: api.getTools,
@@ -61,8 +66,9 @@ export function DistributionDialog({ asset, open, onOpenChange, onSync }: Distri
             </div>
           ) : (
             toolsData?.tools.map((tool) => {
-              const dist = asset.distributions.find((d) => d.toolId === tool.name);
-              const isEnabled = (enabledTools[tool.name] ?? ((dist?.status === 'synced') || tool.enabled)) ?? false;
+              const dist = (distributions ?? asset.distributions).find((d) => d.toolId === tool.name);
+              const status = statusOf(dist?.status);
+              const isEnabled = enabledTools[tool.name] ?? (dist?.status === 'synced' || tool.enabled === true);
               return (
                 <div
                   key={tool.name}
@@ -72,15 +78,8 @@ export function DistributionDialog({ asset, open, onOpenChange, onSync }: Distri
                     <div className="text-sm font-medium">
                       {tool.name === 'trae-cn' ? 'TRAE 中国版' : tool.name}
                     </div>
-                    <div className={`text-xs ${STATUS_COLOR[dist?.status ?? 'not_enabled']}`}>
-                      {tool.installed ? (
-                        <>
-                          {dist?.status ? STATUS_LABEL[dist.status] : '未同步'}
-                          {dist?.lastSyncedAt && ` · ${new Date(dist.lastSyncedAt).toLocaleDateString('zh-CN')}`}
-                        </>
-                      ) : (
-                        '未安装'
-                      )}
+                    <div className={`text-xs ${status?.text ?? 'text-muted-foreground'}`}>
+                      {tool.installed ? (status?.label ?? '状态未知') : '未安装'}
                     </div>
                   </div>
                   <Switch

@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { api } from '@/lib/api';
 import { useEscapeKey } from '@/lib/use-escape-key';
 import { pickCategory, useAssetCategories } from '@/lib/use-asset-categories';
+import { distributionsFor, useDistributions } from '@/lib/use-distributions';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { AssetCard } from '@/components/vault/AssetCard';
 import { AssetEditor } from '@/components/vault/AssetEditor';
@@ -36,6 +37,8 @@ export default function Vault(): JSX.Element {
   // 接口已失败则不再等（拿不到清单已成定局），按内部类别走正常加载/报错路径
   const categoryPending =
     !!selectedCategory && !currentCategory && !isError && (source === 'fallback' || isFetching);
+  // 分发状态真值：页级拉一次索引，逐卡下发条目（spec asset-distribution-truth，tasks I2）
+  const distributionsIndex = useDistributions();
   const [search, setSearch] = useState(searchParams.get('q') ?? '');
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
@@ -218,6 +221,13 @@ export default function Vault(): JSX.Element {
           </Card>
         )}
 
+        {/* 索引降级：失败的工具在索引里没有条目，也不拿它名字冒充状态，界面只给一句诚实提示（Scenario 8） */}
+        {distributionsIndex.partial && (
+          <p className="text-xs text-warning" data-testid="distributions-partial-hint">
+            部分工具状态暂不可用
+          </p>
+        )}
+
         {/* 加载中 */}
         {isLoading && (
           <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(270px,100%),1fr))]">
@@ -239,6 +249,7 @@ export default function Vault(): JSX.Element {
                 <AssetCard
                   key={asset.id}
                   asset={asset}
+                  distributions={distributionsFor(distributionsIndex, asset.id)}
                   active={selectedAsset?.id === asset.id && viewMode !== 'list'}
                   onView={handleView}
                   onEdit={(a) => {
@@ -280,6 +291,7 @@ export default function Vault(): JSX.Element {
       {/* 分发管理对话框 */}
       <DistributionDialog
         asset={distributeAsset}
+        distributions={distributionsFor(distributionsIndex, distributeAsset?.id ?? '')}
         open={!!distributeAsset}
         onOpenChange={(open) => !open && setDistributeAsset(null)}
       />

@@ -5,12 +5,19 @@ import { Button } from '@/components/ui/button';
 import { getCategoryConfig } from '@/config/asset-categories';
 import { cn } from '@/lib/utils';
 import { DistributionBadge } from './DistributionBadge';
-import type { Asset } from '@/types/api';
+import type { Asset, AssetDistributionInfo } from '@/types/api';
 
 interface AssetCardProps {
   asset: Asset;
   /** 是否为当前展开详情的卡片（右侧详情面板对应项） */
   active?: boolean;
+  /**
+   * 分发索引里该资产的条目（页级拉一次、逐卡下发）
+   *
+   * spec asset-distribution-truth：状态真值在 GET /api/distributions，
+   * 不再读 `asset.distributions`（/api/assets 恒返回空数组）。
+   */
+  distributions?: AssetDistributionInfo[];
   onView: (asset: Asset) => void;
   onEdit: (asset: Asset) => void;
   onDistribute: (asset: Asset) => void;
@@ -57,9 +64,19 @@ function SourceBadge({ source }: { source: Asset['source'] }): JSX.Element | nul
 }
 
 /** 资产卡：整卡可点击查看/收起详情（再次点击同一卡片关闭右侧面板） */
-export function AssetCard({ asset, active = false, onView, onEdit, onDistribute }: AssetCardProps): JSX.Element {
+export function AssetCard({
+  asset,
+  active = false,
+  distributions,
+  onView,
+  onEdit,
+  onDistribute,
+}: AssetCardProps): JSX.Element {
   const cat = getCategoryConfig(asset.category);
   const CatIcon = cat?.icon ?? FileText;
+  const entries = distributions ?? asset.distributions;
+  // 已真同步到任一工具 → 分发不再是本页主操作（旧写法看 asset.distributions.length，恒为 0 恒高亮）
+  const hasSynced = entries.some((entry) => entry.status === 'synced');
 
   return (
     <Card
@@ -91,7 +108,7 @@ export function AssetCard({ asset, active = false, onView, onEdit, onDistribute 
             <p className="text-xs text-muted-foreground truncate mb-2">
               {formatSize(asset.size)} · {formatRelativeTime(asset.lastModifiedAt)}
             </p>
-            <DistributionBadge distributions={asset.distributions} />
+            <DistributionBadge distributions={entries} />
           </div>
         </div>
         <div className="flex gap-1 mt-3 pt-3 border-t">
@@ -120,9 +137,10 @@ export function AssetCard({ asset, active = false, onView, onEdit, onDistribute 
             编辑
           </Button>
           <Button
-            variant={asset.distributions.length === 0 ? 'default' : 'ghost'}
+            variant={hasSynced ? 'ghost' : 'default'}
             size="sm"
             className="h-7 px-2 text-xs flex-1"
+            data-testid="distribute-action"
             onClick={(e) => {
               e.stopPropagation();
               onDistribute(asset);
