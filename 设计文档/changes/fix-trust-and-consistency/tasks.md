@@ -46,8 +46,13 @@
   > 真实数据探针（用完即删）：37 项（技能 32 / 规则 3 / 身份 1 / MCP 1）→ 按 50 项/页只有 1 页，分页控件不出现；状态命中数 已同步 37 / 待同步 1 / 冲突 0 / 未启用 0 / 未安装 37（条目总分布 73 synced / 74 not_installed / 1 pending，与 I2 一致）；`ASSETS_WITHOUT_ENTRY=0`，即不会有任何资产在任何状态筛选下凭空消失；`partial=false`。
   > 三个坑：（1）`getByText('共 2 项资产')` 类型的断言会打到 `<option>` 文本上——测试夹具的资产名没有取叫「身份」，改叫「我的人设」；（2）同名两个「清除筛选」按钮（工具条小链接 + 零结果大按钮）逼着测试用 `getAllByRole`，改为零结果时只留大按钮；（3）`Asset.category` 放宽后，`asset.category === 'rule' ? asset.category : null` 不再能收窄成 `DoctorAssetKind`（`string & {}` 不会被字面量比较剔除），`AssetEditor` 的医生入口改为闭集数组查找。
   > 遗留：Scenario 8 的「唯一主动作」只在列表区成立，页头仍有「导入 / 新建」两个按钮；若要全站空态只留一个出口，属 J1 文案与动作收敛范围。
-- [ ] I4 `Connections`：把「已同步资产」改为「已同步 N / 我的库 M」与「可收藏」三口径，删除就地 filter 计数
+- [x] I4 `Connections`：把「已同步资产」改为「已同步 N / 我的库 M」与「可收藏」三口径，删除就地 filter 计数
   > 验收：组件测试断言未安装工具不出现「已同步」数字；页面无 `filter(...).length` 计数。
+  > 实测：数字改为服务端派生。新增 `src/server/lib/tool-asset-counts.ts`（`buildToolAssetCounts` 纯函数：已同步只认分发索引里该工具的 `synced`、未入库资产不参与；可收藏＝`conflict === 'none'` 且按 `hubTargetPath` 去重；未安装工具 synced/pendingImport 全 0；项目级工具只报 `projectCount`）；`routes/tools.ts` 改为 `toolsRoutesFactory(deps)`（默认走 hubContext，与 swap/catalog 同一注入惯例）并让 `/api/tools/:name/detail` 下发 `assetCounts`，索引或资产清单读不到时 `assetCounts = null`。前端拆出 `ToolDetailPanel.tsx`（98）/ `ToolAssetSummary.tsx`（210）/ `tool-display.tsx`（26），`Connections.tsx` 302 → 105 行（原文件已超 300 行上限）；连接页不再请求 `/api/assets`（新用例直接断言 `api.listAssets` 未被调用），`assetsData.items.filter(...).length` 就地计数删除。新增 26 个用例（后端 13 / 前端 13），后端 70 文件 / 882 用例、前端 40 文件 / 298 用例全绿，`tsc -b` 两端退出 0，tsup + vite 构建成功。
+  > 三个决定：（1）「可收藏」＝`conflict === 'none'`——`differs` 意味着我的库里已有同名资产只是内容不同，那是冲突不是「没收藏」；服务端把 `discovered.<cat>` 也按同一口径筛过，保证计数与文件列表同源不打架。（2）区块标题「已同步资产」→「同步情况」，行内 `已同步 N / 我的库 M` + 徽章 `可收藏 K`，数字紧跟口径名（D4）；`Hub 中尚无资产可同步` / `导入到 Hub` / `可导入资产` 等禁用词在本页清零（后者改为「可收藏的新文件」+「去收藏」）。（3）spec 自身的文案冲突按词表卫生优先：asset-distribution-truth Scenario 6 的示例句「…分发在项目页管理」含禁用词 `分发`，界面落地为「本工具按项目同步，请在项目页查看（已接入 N 个项目）」，需同步回 spec。
+  > 真实数据探针（用完即删）：我的库 37（身份 1 / 技能 32 / 规则 3 / MCP 1）；trae-cn 已同步 37 / 可收藏 0（扫到 190 条全部 `exists`——工具目录与库同源，没有新东西可收藏）；workbuddy 已同步 36（MCP 未同步，即 I3 的那 1 条 pending）、扫到 2 条 memory `conflict=none`；claude-code / codex 未安装 → 不给任何数字。
+  > 两个坑：（1）初版把未纳入声明源的类别（memory）也用 code 当 label 列出来，探针显示它给出「memory 已同步 0 / 我的库 0 + 可收藏 2」这种英文直出且文件列表里落不了地的孤立数字 → 改为只渲染声明源类别（与侧栏、资产库同一清单），补一条用例锁死；（2）文件列表原先把工具目录绝对路径整串铺在界面上，改为只显示文件名（技能取目录名）——既是隐私卫生也是可读性。
+  > 遗留（交给 I7）：`projectTools` 只在 `projectCount > 0` 时才含该工具，因此**尚未配置项目的 Qoder** 在连接页仍会落到普通分支显示「已同步 0 / 我的库 32」——比旧的「已同步 32」诚实，但项目级身份必须由工具能力声明显式判定（D3），不能靠项目数凑。
 - [ ] I5 `Sync`：未选目标禁用主操作 + 「请先选择目标工具」；影响范围回显；预览开关可访问且文案随状态变化；未安装卡片 `aria-disabled`
   > 验收：四条场景各有组件测试；删除两条互斥空态文案之一。
 - [ ] I6 版本号单一来源：vite define 注入，侧栏与设置页共用；设置页把内部枚举改为中文选项
