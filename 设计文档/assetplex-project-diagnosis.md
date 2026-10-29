@@ -208,6 +208,7 @@ README / npm description / docs 三处一致地在讲：
 
 分发状态真实化（或明确标注未接入）、计数口径归一、资产类别单一真相、词表收敛、`/vault` 可用性、版本号单一来源、死链与死命令清理、危险动作护栏。
 → 变更规格：`changes/fix-trust-and-consistency/`
+→ **状态：已完成。** Phase H / I / J / K 全部勾选，逐条实测记录与 commit 哈希见该目录 `tasks.md`；验收方式：双端全量测试 + 隔离环境 API 回环 + 9 页浏览器走查（含 800px 窄屏）。遗留：`buildSupportMatrix()` 仍由「当前配置下 `resolveHubItems()` 返回空」反推能力矩阵，待适配器能力声明落地后修（`specs/product-surface-hygiene` Scenario 7 已明写为现存缺陷）。
 
 ### 阶段 1 · 补齐资产中心（2–3 周）
 

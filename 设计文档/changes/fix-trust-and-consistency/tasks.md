@@ -76,11 +76,21 @@
   > 验收：全仓无 `file:///`；旧品牌名命中 0；`node scripts/privacy-check.mjs` 退出码 0。
   > 实测：taxonomy :280-282 三处 `file:///` 坏链接改相对链接（宪法 / UI 方案 / ../AGENTS.md）；全仓余下 `file:///` 均在 spec/tasks 里引用验收措辞或描述 URI scheme 解析技术正文，属元文本保留。旧品牌名：9 个顶层公开设计文档逐处 AgentHub→AssetPlex（ui-redesign :88 box-drawing 框内多 1 字符，减 1 尾随空格保持框宽），复查仅剩 3 处预期保留（project-diagnosis 诊断元讨论、open-source-plan 待办映射、add-vault-connections-ui proposal 历史快照）+ HANDOFF.md（本机私有不入库）；顺手改 home-page.spec:99 错误提示文案。版本号：根/web/docs 三处 package.json 均 0.1.0，README 用 npm 动态 badge、docs 无硬编码，已对齐。`node scripts/privacy-check.mjs` 退出码 0（扫 138 commit + 工作区，0 命中）。
   > 坑：SearchReplace 的 `replace_all` 实测存在只替换首处的不可靠行为，多处同名替换必须逐处精确 original。
-- [ ] J4 分层提交：docs 规格 / core+server / web / 文案与文档 四个 commit，逐个 `git diff` 核对
+- [x] J4 分层提交：docs 规格 / core+server / web / 文案与文档 四个 commit，逐个 `git diff` 核对
+  > 实测：四笔落地——`c3bc9ea` docs（规格示例句回改 + Phase I/J 实测登记）、`d60d143` fix（J2 死命令守卫 + 模板文案）、`940a97b` feat（J1 禁词收敛，30 文件）、`e9e24bc` docs（J3 公开文档卫生，10 文件）。每笔提交前跑 `node scripts/privacy-check.mjs` 均退出 0，`git diff --cached` 逐笔核对；未使用 `git add -A`，工作区只留下 3 个本任务外未跟踪文件（`.handoff-skill.tmp.md`、`web/vitest.config.{d.ts,js}`）。
 
 ## Phase K — 验收
 
-- [ ] K1 双端全量：`npm test`、`npm run typecheck`、`npm run build`；`web` 下 vitest / tsc -b / vite build 全绿
-- [ ] K2 API 回环：造中性示例资产 → 断言索引状态 → 执行同步 → 状态转 `synced` → 手工改坏目标文件 → 状态转 `conflict` → 复原
-- [ ] K3 浏览器走查：9 个页面 + 800px 窄屏，逐条核对三份 spec 的 Scenario，截图留档
-- [ ] K4 本 tasks 勾选与实测记录（每条填 commit 短哈希），并在 `assetplex-project-diagnosis.md` 标注阶段 0 完成
+- [x] K1 双端全量：`npm test`、`npm run typecheck`、`npm run build`；`web` 下 vitest / tsc -b / vite build 全绿
+  > 实测：后端 71 文件 / 885 用例、前端 45 文件 / 333 用例全绿；`tsc --noEmit` 与 web `tsc -b` 均退出 0；tsup（dist/index.js 375.96 KB）与 vite build（index.js 692.44 KB / gzip 209.31 KB）成功。vite 只报 chunk >500 kB 的既有告警，无新增警告。验证时工作区含后续两笔走查修复（`55026a6`、`c897254`）。
+- [x] K2 API 回环：造中性示例资产 → 断言索引状态 → 执行同步 → 状态转 `synced` → 手工改坏目标文件 → 状态转 `conflict` → 复原
+  > 实测：一次性脚本（用完即删，不入库）以 `ASSETPLEX_DIR`（临时 hub）+ `CLAUDE_CONFIG_DIR`（临时 claude）隔离真实环境，起真实服务 `node dist/index.js ui -p 17531`，走真实 HTTP：`GET /api/distributions` 初始 `pending` → `POST /api/sync/run?tool=claude-code` 200 且目标文件写入内容一致 → 状态 `synced` → 手动改坏目标文件 → 状态 `conflict` → 再同步 → 回 `synced`，12 项断言全 PASS。真实 `~/.assetplex` 与 `~/.claude` 未被触碰。
+  > 坑：若目标是指向我的库的 junction/symlink，`rmSync` 会连库源一起删；脚本在破坏前后都重写库源文件，保证第 5 步复原可成功。全程只跑临时目录与临时端口，验证时工作区含后续修复（`55026a6`、`c897254`）。
+- [x] K3 浏览器走查：9 个页面 + 800px 窄屏，逐条核对三份 spec 的 Scenario，截图留档
+  > 实测：两批 Browser 子代理走查 + headless Playwright 复验（截图 18 张存系统临时目录，不入库：9 页 × 1440/800 两档 + 切换页 Qoder 空态）。最终 28 项断言全 PASS：9 页禁用词 0 命中、首页「我的库 N 项」、连接页版本 `v0.1.0`（不再是裸数字）、切换页 Qoder「尚未选择项目」+「去配置」且无六类「已跳过」、同步页「预览模式」可见、设置页学习来源显示中文名、收藏向导标题/步骤术语收敛、800px 九页 `scrollWidth == innerWidth`。
+  > 走查发现并已修的真缺陷（均补用例守护）：① 首页快照裸数字 → 「我的库 {N} 项」；② 连接页版本 `split('.')[0]` 渲染成裸数字 `1` → `v{version}` + title；③ 切换页 Qoder 未配置项目时先显示「本工具按项目同步」、选中后退化成六行「已跳过/不支持」（spec Scenario 7 硬要求）→ 后端候选新增 `projectCount`（未配置 0 / 配置 N），前端零项目时不请求预览、就地给「尚未选择项目 + 去配置」出口；④ 同步页预览开关只有图标无可见标签 → 加「预览模式」文字；⑤ 设置页学习来源直出 `trae-cn, claude-code`、切换历史直出工具 id → 显示中文名、保存时回写 id（新增 `toolIdFromDisplay`/`toolDisplayList`）；⑥ `/import` 全站入口叫「收藏」而页面叫「智能导入」（词表「收藏」是唯一动作名）→ 标题「收藏到我的库」、步骤「确认收藏/收藏完成」、按钮「开始收藏/继续收藏」，并同步 ImportConfirmList / ConflictDialog / ArbitrationPanel / Vault 页头 / QuickActions / RecentActivity 与 5 个测试文件断言。
+  > 涉及提交：`55026a6`（项目级工具出口）、`c897254`（文案与术语收敛）。
+  > 被推翻的误报（派单写过头，不算缺陷）：侧栏无计数（spec 未要求）、技能卡只有圆点无文字徽章（spec 只要求 hover 文案，`title` 已满足）。
+  > 遗留（本轮未改，已在 spec Scenario 7 明写为现存缺陷）：`buildSupportMatrix()` 仍由「当前配置下 `resolveHubItems()` 返回空」反推六类支持矩阵，而非读工具能力声明——因项目级工具前端已不渲染矩阵、非项目级工具映射固定，本轮无可见影响；要修需给每个适配器补能力声明字段。
+- [x] K4 本 tasks 勾选与实测记录（每条填 commit 短哈希），并在 `assetplex-project-diagnosis.md` 标注阶段 0 完成
+  > 实测：J4/K1–K3 逐条填完 commit 短哈希；`assetplex-project-diagnosis.md` 阶段 0 已标注「已完成」并留下唯一遗留项。
