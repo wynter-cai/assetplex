@@ -1,18 +1,18 @@
-# AgentHub 资产分类法（Asset Taxonomy）
+# AssetPlex 资产分类法（Asset Taxonomy）
 
 > 版本: 1.0 | 日期: 2026-08-15 | 状态: 已定稿
 >
-> 本文档定义 AgentHub 产品的资产边界、分类标准和扩展路线。是产品的战略级文档，所有功能设计和技术实现都应以此为准。
+> 本文档定义 AssetPlex 产品的资产边界、分类标准和扩展路线。是产品的战略级文档，所有功能设计和技术实现都应以此为准。
 
 ---
 
 ## 一、设计目标
 
-AgentHub 的核心价值是**让用户掌控自己的AI资产，换工具不丢东西**。
+AssetPlex 的核心价值是**让用户掌控自己的AI资产，换工具不丢东西**。
 
 要达成这个目标，必须回答两个问题：
-1. **AI工具有哪些核心资产？** — 决定 AgentHub 管理什么
-2. **这些资产在切换工具时的迁移成本有多高？** — 决定 AgentHub 优先管理什么
+1. **AI工具有哪些核心资产？** — 决定 AssetPlex 管理什么
+2. **这些资产在切换工具时的迁移成本有多高？** — 决定 AssetPlex 优先管理什么
 
 本文档回答第一个问题，并用"迁移成本"作为分类标准。
 
@@ -23,7 +23,7 @@ AgentHub 的核心价值是**让用户掌控自己的AI资产，换工具不丢�
 我们用"**切换工具时丢失这个资产的痛感**"作为分类标准，因为：
 
 - 用户关心的不是"工具里有什么文件"，而是"我换工具时哪些东西能跟着走"
-- 越痛的资产，越值得 AgentHub 管理
+- 越痛的资产，越值得 AssetPlex 管理
 - 不可迁移的资产，强行管理反而增加复杂度
 
 按这个标准，资产分为 4 个梯队：
@@ -104,7 +104,7 @@ AgentHub 的核心价值是**让用户掌控自己的AI资产，换工具不丢�
 
 **配置目录**: `~/.trae-cn/`
 
-| 资产 | 路径 | 格式 | AgentHub 状态 |
+| 资产 | 路径 | 格式 | AssetPlex 状态 |
 |------|------|------|---------------|
 | 身份 | `memory/user_profile.md` | Markdown | ✅ 已扫 |
 | 长期记忆 | `memory/*.md` (其他) | Markdown | 🟡 部分扫 |
@@ -117,7 +117,7 @@ AgentHub 的核心价值是**让用户掌控自己的AI资产，换工具不丢�
 
 **配置目录**: `~/.claude/`
 
-| 资产 | 路径 | 格式 | AgentHub 状态 |
+| 资产 | 路径 | 格式 | AssetPlex 状态 |
 |------|------|------|---------------|
 | 身份 | `CLAUDE.md` | Markdown | ✅ 已扫 |
 | 技能 | `skills/*.md` | Markdown | ✅ 已扫 |
@@ -132,7 +132,7 @@ AgentHub 的核心价值是**让用户掌控自己的AI资产，换工具不丢�
 
 **配置目录**: `~/.codex/`
 
-| 资产 | 路径 | 格式 | AgentHub 状态 |
+| 资产 | 路径 | 格式 | AssetPlex 状态 |
 |------|------|------|---------------|
 | 身份 | `AGENTS.md` | Markdown | ✅ 已扫 |
 | 技能 | `skills/*.md` | Markdown | ✅ 已扫 |
@@ -144,7 +144,7 @@ AgentHub 的核心价值是**让用户掌控自己的AI资产，换工具不丢�
 
 **配置目录**: 项目级 `.qoder/`（无统一用户级目录）
 
-| 资产 | 路径 | 格式 | AgentHub 状态 |
+| 资产 | 路径 | 格式 | AssetPlex 状态 |
 |------|------|------|---------------|
 | 技能 | `.qoder/skills/` | Markdown | ✅ 已扫 |
 | 规则 | `.qoder/rules/` | Markdown | ✅ 已扫 |
@@ -158,7 +158,7 @@ AgentHub 的核心价值是**让用户掌控自己的AI资产，换工具不丢�
 
 **配置目录**: `~/.workbuddy/`
 
-| 资产 | 路径 | 格式 | AgentHub 状态 |
+| 资产 | 路径 | 格式 | AssetPlex 状态 |
 |------|------|------|---------------|
 | 技能 | `skills/*.md` | Markdown | ✅ 已扫 |
 | 规则 | `rules/*.md` | Markdown | ✅ 已扫 |
@@ -241,7 +241,7 @@ AgentHub 的核心价值是**让用户掌控自己的AI资产，换工具不丢�
 
 **难点**:
 - `knowledge` 各工具格式差异大（Qoder 用 `.qoder/knowledge/`，其他工具可能用向量库）
-- `project-context` 需要引入"项目"概念，AgentHub 需要从"工具级管理"扩展到"项目级管理"
+- `project-context` 需要引入"项目"概念，AssetPlex 需要从"工具级管理"扩展到"项目级管理"
 - `workflow` 概念模型差异大，需要抽象出统一的工作流模型
 
 **建议**: 等 Phase A、B 跑通后再启动，且需要单独的 spec 来定义"项目"这个新概念。
@@ -250,7 +250,7 @@ AgentHub 的核心价值是**让用户掌控自己的AI资产，换工具不丢�
 
 ## 六、设计原则
 
-基于本分类法，AgentHub 在设计时应遵循以下原则：
+基于本分类法，AssetPlex 在设计时应遵循以下原则：
 
 ### 1. 资产类别可扩展
 - 前端导航、后端类型、数据库 schema 都不能写死 4 个类别
@@ -277,9 +277,9 @@ AgentHub 的核心价值是**让用户掌控自己的AI资产，换工具不丢�
 
 | 文档 | 关系 |
 |------|------|
-| [assetplex-constitution.md](file:///d:/demo/my-project/设计文档/assetplex-constitution.md) | 宪法级原则，本文档是其下位文档，定义"管什么" |
-| [assetplex-ui-redesign-v2.md](file:///d:/demo/my-project/设计文档/assetplex-ui-redesign-v2.md) | UI 设计方案，资产库导航要按本文档的分类设计 |
-| [AGENTS.md](file:///d:/demo/my-project/AGENTS.md) | 项目级开发规则，本文档是其引用的资产分类标准 |
+| [assetplex-constitution.md](./assetplex-constitution.md) | 宪法级原则，本文档是其下位文档，定义"管什么" |
+| [assetplex-ui-redesign-v2.md](./assetplex-ui-redesign-v2.md) | UI 设计方案，资产库导航要按本文档的分类设计 |
+| [AGENTS.md](../AGENTS.md) | 项目级开发规则，本文档是其引用的资产分类标准 |
 
 ---
 

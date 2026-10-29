@@ -1,4 +1,4 @@
-# AgentHub — 跨 AI 工具个人身份与 Skill 集中管理 Hub 设计方案
+# AssetPlex — 跨 AI 工具个人身份与 Skill 集中管理 Hub 设计方案
 
 > **状态：🟢 活跃维护** | 最后更新：2026-08-09
 >

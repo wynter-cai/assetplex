@@ -1,4 +1,4 @@
-# AgentHub Stage 2 — 同步引擎 MVP 实施方案
+# AssetPlex Stage 2 — 同步引擎 MVP 实施方案
 
 > **状态：✅ 已完成** | 完成日期：2026-08-09
 >
@@ -14,7 +14,7 @@
 
 ## 一、Summary 概要
 
-**目标**：实现 AgentHub 的核心价值闭环 ——「Hub 一处编辑，5 个工具同步生效」。
+**目标**：实现 AssetPlex 的核心价值闭环 ——「Hub 一处编辑，5 个工具同步生效」。
 
 **范围（核心 sync MVP）**：
 - ✅ Stage 1 runtime 验证（前置必做，确认 init/doctor 真的能跑）

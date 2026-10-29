@@ -96,5 +96,5 @@
 #### Scenario: 数据加载失败
 **Given** 后端服务不可用
 **When** 首页加载失败
-**Then** 显示错误提示"无法连接到 AgentHub 服务"
+**Then** 显示错误提示"无法连接到 AssetPlex 服务"
 **And** 提供"重试"按钮

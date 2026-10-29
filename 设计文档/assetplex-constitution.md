@@ -1,8 +1,8 @@
-# AgentHub 项目宪法 (Constitution)
+# AssetPlex 项目宪法 (Constitution)
 
 > **版本**: 1.0 | **生效**: 2026-08-09 | **最后修订**: 2026-08-09
 >
-> 本文档是 AgentHub 项目的最高开发准则。所有代码、PR、AI Agent 产出必须遵守本文档。
+> 本文档是 AssetPlex 项目的最高开发准则。所有代码、PR、AI Agent 产出必须遵守本文档。
 > 参考：GitHub Spec Kit Constitution 模式 + Superpowers TDD 方法论 + SDD 最佳实践。
 
 ---

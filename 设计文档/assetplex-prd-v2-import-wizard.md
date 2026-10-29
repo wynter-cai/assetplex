@@ -1,4 +1,4 @@
-# AgentHub 产品 PRD v2.0 — 从工具到 Hub 的智能导入
+# AssetPlex 产品 PRD v2.0 — 从工具到 Hub 的智能导入
 
 > **状态：🚧 开发中** | 最后更新：2026-08-09
 >
@@ -42,7 +42,7 @@
 
 ### 2.1 一句话描述
 
-**打开 AgentHub → 自动发现你电脑上所有 AI 编码工具的身份/技能/规则/MCP → 勾选 → 一键汇聚到 Hub 统一管理。**
+**打开 AssetPlex → 自动发现你电脑上所有 AI 编码工具的身份/技能/规则/MCP → 勾选 → 一键汇聚到 Hub 统一管理。**
 
 ### 2.2 用户故事
 
@@ -127,7 +127,7 @@ interface ToolAdapter {
 ### 3.3 导入流程
 
 ```
-用户打开 AgentHub Web UI
+用户打开 AssetPlex Web UI
         │
         ▼
   ┌─────────────────────┐
@@ -298,7 +298,7 @@ interface ToolAdapter {
 ## 七、用户旅程
 
 ```
-1. 用户打开 AgentHub Web UI（http://127.0.0.1:17521）
+1. 用户打开 AssetPlex Web UI（http://127.0.0.1:17521）
 
 2. 首页 Dashboard 提示："发现 2 个已安装工具，可导入内容"
    点击"开始导入"或左侧导航"导入"

@@ -1,4 +1,4 @@
-# AgentHub P0+P1 冲突处理增强 Spec
+# AssetPlex P0+P1 冲突处理增强 Spec
 
 > 版本: 1.0 | 日期: 2026-08-09 | 状态: 开发中
 
