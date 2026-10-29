@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 /**
- * 回归：智能导入 Step 3 冲突项不重复显示。
+ * 回归：收藏向导 Step 3 冲突项不重复显示。
  *
  * 历史 Bug：TRAE 的 mcp.json 与 WorkBuddy 的 .mcp.json 都映射到同一 Hub 目标
  * mcp/mcp.sources.json。前端用 tool:absolutePath 作为 React key，导致 Step 3
@@ -10,10 +10,10 @@ import { test, expect } from '@playwright/test';
  * 修复：Import.tsx 用 groupedConflicts 按 hubTargetPath 分组，同一目标只渲染
  * 一张 ConflictDialog。本测试验证冲突标题中的数量与页面上的冲突卡片数一致。
  */
-test.describe('智能导入 - 冲突去重', () => {
+test.describe('收藏向导 - 冲突去重', () => {
   test('Step 3 同一 hubTargetPath 的冲突只显示一张卡片', async ({ page }) => {
     await page.goto('/import');
-    await expect(page.getByRole('heading', { name: '智能导入' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '收藏到我的库' })).toBeVisible();
 
     // Step 1 -> Step 2
     await page.getByRole('button', { name: '下一步' }).click();
