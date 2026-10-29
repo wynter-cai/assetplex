@@ -65,12 +65,17 @@
 
 ## Phase J — 文案与文档卫生（specs/product-surface-hygiene）
 
-- [ ] J1 全站词表收敛：按禁用词清单替换用户可见文案；扩展术语走查测试覆盖导航/页头/空态/toast/确认框
+- [x] J1 全站词表收敛：按禁用词清单替换用户可见文案；扩展术语走查测试覆盖导航/页头/空态/toast/确认框
   > 验收：禁用词命中 0；测试在引入任一禁用词时失败。
-- [ ] J2 死命令提示：`src/cli/templates.ts` 与 `trae-cn` 适配器提示中的 `profile learn` 改为「即将支持」表述
+  > 实测：守卫走「源码静态扫描」策略（比逐组件渲染覆盖更全，天然阻断未来引入）：新增 `web/src/lib/forbidden-terms.ts`（禁词单一来源 + `findForbiddenInSource` 纯函数）、`forbidden-terms.test.ts`（识别能力 9 用例，含 JSX 注释 `{/* … */}` 剥除）、`terminology-guard.test.ts`（扫 `web/src` 全部 .ts/.tsx，命中即失败并打印 文件:行）。RED 报出 51 处命中 → 逐文件替换约 24 个组件/页面：分发→同步/同步到工具、入库→收藏、未入库→未收藏、投放→同步、保险箱→我的库、沉淀→保存、Hub→库内/我的库；同步更新 5 个测试文件的旧文案断言。回改两处 spec 示例句（asset-distribution-truth Scenario 6、product-surface-hygiene Scenario 7，含禁用词「分发」→已上线界面词）。前端 45 文件 / 333 用例全绿，web `tsc -b` 退出 0，`vite build` 成功。
+  > 三个坑：（1）本 Node/vitest target 不支持 `\p{Han}`，CJK 检测改码位区间 `[\u4e00-\u9fff\u3400-\u4dbf]`；（2）jsdom 下 `import.meta.url` 非 file scheme，守卫定位源码根改 `join(process.cwd(), 'src')`；（3）Hub 误报只限「该行含 CJK 且 Hub 不邻字母」，代码标识（`hubDir`、`/api/hub/*`）按豁免不受词表约束。
+- [x] J2 死命令提示：`src/cli/templates.ts` 与 `trae-cn` 适配器提示中的 `profile learn` 改为「即将支持」表述
   > 验收：全仓 grep 无「可运行的未实现命令」样式文案。
-- [ ] J3 公开文档卫生：修 `设计文档/assetplex-asset-taxonomy.md` 三处 `file:///` 本地链接；批量把公开文档旧品牌名改为 AssetPlex；README/docs 版本号与 package 对齐
+  > 实测：新增 `tests/unit/cli/dead-command-guard.test.ts`，白名单从 `src/cli/index.ts` 的 `.command('…')` 自动派生（当前 init/doctor/sync/ui），防新增命令漂移。RED 报 7 处违规（`profile learn` ×6、`skill search` ×1）→ GREEN：`HUB_README_TEMPLATE` 命令块只留真实命令并补 `> 即将支持：…` 一行；`init.ts` 的 profile.auto.md 模板去命令样式改「即将支持」；`trae-cn.ts` extraInfo 改「AI 自动学习生成，即将支持」。后端 71 文件 / 885 用例全绿，`tsc --noEmit` 与 tsup build 退出 0。
+- [x] J3 公开文档卫生：修 `设计文档/assetplex-asset-taxonomy.md` 三处 `file:///` 本地链接；批量把公开文档旧品牌名改为 AssetPlex；README/docs 版本号与 package 对齐
   > 验收：全仓无 `file:///`；旧品牌名命中 0；`node scripts/privacy-check.mjs` 退出码 0。
+  > 实测：taxonomy :280-282 三处 `file:///` 坏链接改相对链接（宪法 / UI 方案 / ../AGENTS.md）；全仓余下 `file:///` 均在 spec/tasks 里引用验收措辞或描述 URI scheme 解析技术正文，属元文本保留。旧品牌名：9 个顶层公开设计文档逐处 AgentHub→AssetPlex（ui-redesign :88 box-drawing 框内多 1 字符，减 1 尾随空格保持框宽），复查仅剩 3 处预期保留（project-diagnosis 诊断元讨论、open-source-plan 待办映射、add-vault-connections-ui proposal 历史快照）+ HANDOFF.md（本机私有不入库）；顺手改 home-page.spec:99 错误提示文案。版本号：根/web/docs 三处 package.json 均 0.1.0，README 用 npm 动态 badge、docs 无硬编码，已对齐。`node scripts/privacy-check.mjs` 退出码 0（扫 138 commit + 工作区，0 命中）。
+  > 坑：SearchReplace 的 `replace_all` 实测存在只替换首处的不可靠行为，多处同名替换必须逐处精确 original。
 - [ ] J4 分层提交：docs 规格 / core+server / web / 文案与文档 四个 commit，逐个 `git diff` 核对
 
 ## Phase K — 验收
