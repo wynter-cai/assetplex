@@ -1,11 +1,11 @@
 /**
- * API 契约增量：add-memory-command-categories
+ * API 契约增量：add-memory-category
  *
  * 只写本变更新增/变更的字段，完整契约见阶段 0 的 fix-trust-and-consistency/api-contract.ts。
  * 命名与 src/core/asset-categories.ts 保持一致。
  */
 
-/** 资产类别代码（在阶段 0 的六个之上新增 memory、command） */
+/** 资产类别代码（在阶段 0 的六个之上新增 memory；command 不属资产，不进此集合） */
 export type AssetCategoryCode =
   | 'identity'
   | 'skill'
@@ -13,7 +13,6 @@ export type AssetCategoryCode =
   | 'mcp'
   | 'agent'
   | 'memory' // 新增
-  | 'command' // 新增
   | 'criteria';
 
 /**
@@ -43,10 +42,10 @@ export interface ListAssetCategoriesApi {
 }
 
 /**
- * GET /api/assets?category=memory|command 响应
+ * GET /api/assets?category=memory 响应
  *
  * 形状与阶段 0 完全一致（ListAssetsResult），不新增字段；
- * 变化仅在 category 的合法取值集合扩张到八个代码（不含 preference）。
+ * 变化仅在 category 的合法取值集合扩张到七个代码（不含 preference、不含 command）。
  */
 export interface ListAssetsByNewCategoryApi {
   items: Asset[];
@@ -76,19 +75,22 @@ export interface AssetDistribution {
 /**
  * 扫描发现项类别（内部契约，不直接下发到前端）
  *
- * 'preference' 保留为适配器 import 兜底，不再出现在发现列表；新增 'command'。
+ * 'preference' 保留为适配器 import 兜底，不再出现在发现列表；
+ * 'command' 不在集合内——Claude 的 commands/ 已停止扫描（D3）。
  */
 export type DiscoveredCategory =
   | 'identity'
   | 'skill'
   | 'rule'
   | 'mcp'
-  | 'agent' // 本变更起由多个适配器的扫描直接产出
+  | 'agent' // 本变更起由适配器扫描直接产出（原被误标 preference）
   | 'memory'
-  | 'command'
   | 'preference'; // 仅兜底
 
 /**
  * 资产医生检查的资产类别（在既有 identity/skill/rule/agent/command 上新增 memory）
+ *
+ * 注意：这里的 command 是资产医生的历史能力（诊断 Hub 内 commands/ 目录），
+ * 与「命令是否为资产类别」无关——本变更不撤回体检对 commands/ 的支持。
  */
 export type DoctorAssetKind = 'identity' | 'skill' | 'rule' | 'agent' | 'command' | 'memory';
