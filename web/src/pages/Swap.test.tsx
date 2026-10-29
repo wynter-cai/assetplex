@@ -261,6 +261,9 @@ describe('切换页-执行、验证与撤销(T9)', () => {
     expect(await screen.findByText('切换历史')).toBeInTheDocument();
     expect(await screen.findByText(/写入 3/)).toBeInTheDocument();
     expect(screen.getByText('已撤销')).toBeInTheDocument();
+    // 工具名按显示名呈现，不直出内部 id（K3 走查修复）
+    expect(screen.getByText('TRAE 中国版')).toBeInTheDocument();
+    expect(screen.queryByText('trae-cn')).not.toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /撤销/ }).length).toBeGreaterThanOrEqual(1);
   });
 });
@@ -294,5 +297,44 @@ describe('切换页-项目级工具呈现（I7）', () => {
     const card = await screen.findByRole('button', { name: /WorkBuddy/ });
     expect(card).toBeInTheDocument();
     expect(screen.queryByText('本工具按项目同步')).not.toBeInTheDocument();
+  });
+});
+
+describe('切换页-项目级工具未配置项目（K3 走查修复）', () => {
+  function qoder(projectCount: number | undefined): SwapToolCandidate {
+    return makeCandidate({
+      name: 'qoder',
+      displayName: 'Qoder',
+      projectLevel: true,
+      ...(projectCount === undefined ? {} : { projectCount }),
+    });
+  }
+
+  it('未配置项目（projectCount=0）：卡片提示尚未选择项目；选中后给出口而不是请求假预览', async () => {
+    vi.mocked(api.getSwapTools).mockResolvedValue({ tools: [qoder(0)] });
+    renderSwap();
+
+    const card = await screen.findByRole('button', { name: /Qoder/ });
+    expect(card).toHaveTextContent('本工具按项目同步 · 尚未选择项目');
+
+    fireEvent.click(card);
+    expect(await screen.findByText(/尚未选择项目：项目级工具不在我的库层面逐类同步/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '去配置' })).toHaveAttribute('href', '/projects');
+    // 关键：不发预览请求，避免得到六类「已跳过」的假计划
+    expect(api.swapPreview).not.toHaveBeenCalled();
+    expect(screen.queryByText(/此工具不支持.*已跳过/)).not.toBeInTheDocument();
+  });
+
+  it('已配置项目（projectCount>0）：正常请求预览，不显示出口块', async () => {
+    vi.mocked(api.getSwapTools).mockResolvedValue({ tools: [qoder(2)] });
+    renderSwap();
+
+    const card = await screen.findByRole('button', { name: /Qoder/ });
+    expect(card).toHaveTextContent('本工具按项目同步');
+    expect(card).not.toHaveTextContent('尚未选择项目');
+
+    fireEvent.click(card);
+    await waitFor(() => expect(api.swapPreview).toHaveBeenCalledWith('qoder'));
+    expect(screen.queryByRole('link', { name: '去配置' })).not.toBeInTheDocument();
   });
 });

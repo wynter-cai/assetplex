@@ -173,4 +173,6 @@ export interface SwapToolCandidate {
   supportMatrix: Record<SwapCategory, CategorySupport>;
   /** 项目级工具（syncStrategy='per-project'），前端不显示六类徽章而显示能力说明（D3/I7） */
   projectLevel: boolean;
+  /** 项目级工具的已配置项目数；非项目级工具不填（K3：未配置项目时界面给出口而不是六类「不支持」） */
+  projectCount?: number;
 }

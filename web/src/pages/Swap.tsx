@@ -7,6 +7,7 @@
  */
 
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Repeat } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -49,7 +50,10 @@ function ToolCard({
         {!candidate.installed && <span className="text-xs text-muted-foreground">未安装</span>}
       </span>
       {candidate.projectLevel ? (
-        <span className="mt-1 block text-xs text-muted-foreground">本工具按项目同步</span>
+        <span className="mt-1 block text-xs text-muted-foreground">
+          本工具按项目同步
+          {candidate.projectCount === 0 ? ' · 尚未选择项目' : ''}
+        </span>
       ) : (
         <span className="mt-1 flex flex-wrap gap-1">
           {supported.map((c) => (
@@ -85,6 +89,10 @@ export default function Swap(): JSX.Element {
     setErrorMsg(null);
     setSuccessMsg(null);
     setOverwriteMap({});
+    // 项目级工具未配置项目：不请求预览（否则只会得到六类「已跳过」的假计划），改为就地给出口
+    if (candidate.projectLevel && (candidate.projectCount ?? 0) === 0) {
+      return;
+    }
     setPreviewing(true);
     try {
       setPreview(await api.swapPreview(candidate.name));
@@ -184,6 +192,18 @@ export default function Swap(): JSX.Element {
       {previewing && <Skeleton className="h-40 w-full" />}
       {!previewing && !preview && !result && selectedTool === null && (
         <p className="text-sm text-muted-foreground">选择目标工具后，这里会列出六类资产的同步预览与冲突。</p>
+      )}
+
+      {!result && selectedTool?.projectLevel && (selectedTool.projectCount ?? 0) === 0 && (
+        <section className="rounded-lg border bg-card p-4 space-y-2 text-sm">
+          <p className="font-medium">本工具按项目同步</p>
+          <p className="text-muted-foreground">
+            尚未选择项目：项目级工具不在我的库层面逐类同步，请先选定要同步的项目。
+          </p>
+          <Link to="/projects" className="inline-block text-primary underline underline-offset-4">
+            去配置
+          </Link>
+        </section>
       )}
 
       {preview && !result && (

@@ -118,9 +118,8 @@ describe('/api/swap 路由(enable-tool-hot-swap T7)', () => {
     }
   }
 
-  /** 构建被测 app:注入指定适配器集合的 SwapEngine */
-  function buildApp(adapters: ToolAdapter[]): Hono {
-    const config = HubConfigSchema.parse({});
+  /** 构建被测 app:注入指定适配器集合的 SwapEngine(可传自定义 config) */
+  function buildApp(adapters: ToolAdapter[], config: HubConfig = HubConfigSchema.parse({})): Hono {
     let engine: SwapEngine | null = null;
     const getEngine = (): SwapEngine => {
       if (!engine) engine = new SwapEngine(config, adapters);
@@ -300,6 +299,39 @@ describe('/api/swap 路由(enable-tool-hot-swap T7)', () => {
       history: Array<{ swapId: string; rolledBack: boolean }>;
     };
     expect(histBody.history.find((h) => h.swapId === result.swapId)?.rolledBack).toBe(true);
+  });
+
+  it('GET /tools:项目级候选带 projectCount(未配置 0,配置 N 个为 N),非项目级不带该字段', async () => {
+    seedAllCategories();
+    // 项目级适配器(name 与配置里的 per-project 工具对齐)
+    class ProjectLevelAdapter extends FakeToolAdapter {
+      override readonly name = 'qoder';
+      override readonly displayName = 'Qoder';
+    }
+    const emptyTargets = HubConfigSchema.parse({ tools: { qoder: { enabled: true } } });
+    const twoTargets = HubConfigSchema.parse({
+      tools: { qoder: { enabled: true, projectTargets: ['/demo/p1', '/demo/p2'] } },
+    });
+
+    const zero = await buildApp([new ProjectLevelAdapter(toolDir, ALL_CATEGORIES)], emptyTargets).request(
+      '/api/swap/tools',
+    );
+    const zeroTools = (await json(zero)).tools as Array<Record<string, unknown>>;
+    expect(zeroTools[0].projectLevel).toBe(true);
+    expect(zeroTools[0].projectCount).toBe(0);
+
+    const two = await buildApp([new ProjectLevelAdapter(toolDir, ALL_CATEGORIES)], twoTargets).request(
+      '/api/swap/tools',
+    );
+    const twoTools = (await json(two)).tools as Array<Record<string, unknown>>;
+    expect(twoTools[0].projectLevel).toBe(true);
+    expect(twoTools[0].projectCount).toBe(2);
+
+    // 非项目级工具不填 projectCount(避免界面误判)
+    const plain = await buildApp([new FakeToolAdapter(toolDir, ALL_CATEGORIES)]).request('/api/swap/tools');
+    const plainTools = (await json(plain)).tools as Array<Record<string, unknown>>;
+    expect(plainTools[0].projectLevel).toBe(false);
+    expect('projectCount' in plainTools[0]).toBe(false);
   });
 
   it('回滚缺参 400;备份不存在返回 success:false 与明确原因', async () => {

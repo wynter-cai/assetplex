@@ -693,6 +693,8 @@ export interface SwapToolCandidate {
   supportMatrix: Record<SwapCategory, SwapCategorySupport>;
   /** 项目级工具（syncStrategy='per-project'），前端据此渲染能力说明而非六类徽章（D3/I7） */
   projectLevel: boolean;
+  /** 项目级工具的已配置项目数；非项目级工具不填（K3） */
+  projectCount?: number;
 }
 
 /** 回读验证结果(诚实边界:已写入并校验) */

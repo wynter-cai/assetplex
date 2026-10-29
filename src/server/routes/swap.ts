@@ -46,6 +46,13 @@ function isProjectLevel(config: HubConfig, toolName: string): boolean {
   return tools[toolName]?.syncStrategy === 'per-project';
 }
 
+/** 项目级工具已配置的项目目录数（未配置为 0，K3：界面据此给「尚未选择项目」出口） */
+function projectTargetCount(config: HubConfig, toolName: string): number {
+  const tools = config.tools as Record<string, Record<string, unknown>>;
+  const targets = tools[toolName]?.projectTargets;
+  return Array.isArray(targets) ? targets.length : 0;
+}
+
 /** 业务错误 → HTTP 状态：未注册 400 / staleness 与未安装 409 / 其他 500 */
 function statusForError(err: Error): 400 | 409 | 500 {
   const msg = err.message;
@@ -71,12 +78,14 @@ export function swapRoutesFactory(deps: SwapRouteDeps): Hono {
       } catch {
         installed = false;
       }
+      const projectLevel = isProjectLevel(config, adapter.name);
       tools.push({
         name: adapter.name,
         displayName: adapter.displayName,
         installed,
         supportMatrix: buildSupportMatrix(adapter, config),
-        projectLevel: isProjectLevel(config, adapter.name),
+        projectLevel,
+        ...(projectLevel ? { projectCount: projectTargetCount(config, adapter.name) } : {}),
       });
     }
     return c.json({ tools });
