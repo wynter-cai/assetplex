@@ -140,7 +140,7 @@ export default function Swap(): JSX.Element {
 
   return (
     <div className="flex flex-col gap-4 p-6">
-      <PageHeader title="切换" subtitle="把资产一键投放到目标 AI 工具：预览冲突 → 执行 → 验证 → 可撤销" />
+      <PageHeader title="切换" subtitle="把资产一键同步到目标 AI 工具：预览冲突 → 执行 → 验证 → 可撤销" />
 
       {/* 目标工具选择 */}
       <section className="rounded-lg border bg-card p-4 space-y-2">
@@ -183,7 +183,7 @@ export default function Swap(): JSX.Element {
 
       {previewing && <Skeleton className="h-40 w-full" />}
       {!previewing && !preview && !result && selectedTool === null && (
-        <p className="text-sm text-muted-foreground">选择目标工具后，这里会列出六类资产的投放预览与冲突。</p>
+        <p className="text-sm text-muted-foreground">选择目标工具后，这里会列出六类资产的同步预览与冲突。</p>
       )}
 
       {preview && !result && (

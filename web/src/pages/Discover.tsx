@@ -125,7 +125,7 @@ export default function Discover(): JSX.Element {
       setStep('result');
       queryClient.invalidateQueries({ queryKey: ['skills'] });
     } catch (err) {
-      toast.error('入库失败', { description: errorMessage(err) });
+      toast.error('收藏失败', { description: errorMessage(err) });
     } finally {
       setBusy(null);
     }
@@ -146,7 +146,7 @@ export default function Discover(): JSX.Element {
         <Github className="h-6 w-6 text-primary" />
         <div>
           <h1 className="text-3xl font-bold">技能发现</h1>
-          <p className="mt-1 text-muted-foreground">从公开 GitHub 仓库发现技能，预览确认后入库（仅本机手动触发，锁版本）</p>
+          <p className="mt-1 text-muted-foreground">从公开 GitHub 仓库发现技能，预览确认后收藏（仅本机手动触发，锁版本）</p>
         </div>
       </div>
 

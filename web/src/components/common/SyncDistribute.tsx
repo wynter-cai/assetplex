@@ -90,8 +90,8 @@ function ToolPicker({
   return (
     <DialogContent>
       <DialogHeader>
-        <DialogTitle>同步分发</DialogTitle>
-        <DialogDescription>选择要把当前资产分发到的目标工具</DialogDescription>
+        <DialogTitle>同步到工具</DialogTitle>
+        <DialogDescription>选择要把当前资产同步到的目标工具</DialogDescription>
       </DialogHeader>
 
       <div className="space-y-1.5">
@@ -157,7 +157,7 @@ export function SyncDistribute({ onSynced }: SyncDistributeProps): JSX.Element {
         onClick={() => setOpen(true)}
       >
         <Share2 className="h-3.5 w-3.5 mr-1" />
-        同步分发
+        同步到工具
       </Button>
       {open && <ToolPicker onOpenChange={setOpen} onSynced={onSynced} />}
     </Dialog>

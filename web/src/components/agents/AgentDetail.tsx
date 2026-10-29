@@ -54,7 +54,7 @@ function DeleteConfirmDialog({
         <DialogHeader>
           <DialogTitle>删除智能体「{agent.name}」</DialogTitle>
           <DialogDescription>
-            将从我的库及所有已分发工具中删除该智能体，此操作不可撤销。
+            将从我的库及所有已同步工具中删除该智能体，此操作不可撤销。
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
@@ -170,7 +170,7 @@ export function AgentDetail({ agent, onClose }: AgentDetailProps): JSX.Element {
             {!isHub && (
               <p className="text-xs text-muted-foreground">
                 {isBuiltinPersona
-                  ? '内置 Persona 为只读盘点，不支持编辑、删除或分发。'
+                  ? '内置 Persona 为只读盘点，不支持编辑、删除或同步。'
                   : '该智能体为只读盘点，不支持编辑或删除。'}
               </p>
             )}

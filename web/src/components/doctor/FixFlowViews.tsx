@@ -17,7 +17,7 @@ export type FixFlowIssueEntry = { issue: DiagnosisReport['issues'][number]; inde
 const ACTION_LABEL: Record<'written' | 'skipped' | 'failed', string> = {
   written: '已写入并校验',
   skipped: '已跳过',
-  failed: '分发失败',
+  failed: '同步失败',
 };
 
 export function SelectView(props: {
@@ -94,7 +94,7 @@ export function DraftView(props: {
         </Button>
         {props.onConfirm !== undefined && (
           <Button size="sm" className="h-8 text-xs" onClick={props.onConfirm} disabled={props.draftText === ''}>
-            应用并分发
+            应用并同步
           </Button>
         )}
       </div>
@@ -121,9 +121,9 @@ export function ConfirmView(props: {
           <OriginalPeek path={props.originalPath} />
         </div>
         <div>
-          <p className="text-xs font-medium mb-1">分发目标工具（默认全部已安装）</p>
+          <p className="text-xs font-medium mb-1">同步目标工具（默认全部已安装）</p>
           {props.toolCandidates.length === 0 ? (
-            <p className="text-xs text-muted-foreground">未检测到已安装且支持该类别的工具——将只改库不分发。</p>
+            <p className="text-xs text-muted-foreground">未检测到已安装且支持该类别的工具——将只改库不同步。</p>
           ) : (
             <ul className="space-y-1">
               {props.toolCandidates.map((tool) => (
@@ -143,7 +143,7 @@ export function ConfirmView(props: {
         </div>
       </div>
       <Button size="sm" className="h-8 text-xs" onClick={props.onSubmit}>
-        {distribute ? '确认应用并分发' : '确认应用（只改库）'}
+        {distribute ? '确认应用并同步' : '确认应用（只改库）'}
       </Button>
     </div>
   );
@@ -171,7 +171,7 @@ export function ResultView(props: {
               {item.reason !== undefined && <span className="text-destructive">{item.reason}</span>}
               {item.action === 'written' && item.swapId !== undefined && (
                 <Button variant="outline" size="sm" className="h-6 text-xs" onClick={() => props.onRollback(item.swapId ?? '')}>
-                  回滚分发
+                  回滚同步
                 </Button>
               )}
             </li>

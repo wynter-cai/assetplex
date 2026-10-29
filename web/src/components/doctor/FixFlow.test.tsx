@@ -68,13 +68,13 @@ function renderFlow(kind: 'skill' | 'identity' = 'skill'): void {
 /** 推进到草案就绪视图 */
 async function toDraft(): Promise<void> {
   fireEvent.click(screen.getByRole('button', { name: /生成修复草案/ }));
-  await waitFor(() => expect(screen.getByRole('button', { name: /应用并分发/ })).toBeEnabled());
+  await waitFor(() => expect(screen.getByRole('button', { name: /应用并同步/ })).toBeEnabled());
 }
 
 /** 推进到一屏确认视图 */
 async function toConfirm(): Promise<void> {
   await toDraft();
-  fireEvent.click(screen.getByRole('button', { name: /应用并分发/ }));
+  fireEvent.click(screen.getByRole('button', { name: /应用并同步/ }));
   await waitFor(() => expect(screen.getByText(/旧版本将存入备份区/)).toBeInTheDocument());
 }
 
@@ -157,7 +157,7 @@ describe('FixFlow 一屏确认（Scenario 2/6 + identity 警示）', () => {
     await toConfirm();
     fireEvent.click(screen.getByRole('checkbox', { name: /TRAE/ }));
     fireEvent.click(screen.getByRole('checkbox', { name: /Qoder/ }));
-    fireEvent.click(screen.getByRole('button', { name: /确认应用并分发|确认应用（只改库）/ }));
+    fireEvent.click(screen.getByRole('button', { name: /确认应用并同步|确认应用（只改库）/ }));
     await waitFor(() =>
       expect(api.doctorApply).toHaveBeenCalledWith(
         expect.objectContaining({ distribute: false, finalContent: draftResponse.draftContent }),
@@ -170,7 +170,7 @@ describe('FixFlow 一屏确认（Scenario 2/6 + identity 警示）', () => {
     await toConfirm();
     fireEvent.change(screen.getByRole('textbox'), { target: { value: '用户改过的草案\n' } });
     fireEvent.click(screen.getByRole('checkbox', { name: /Qoder/ }));
-    fireEvent.click(screen.getByRole('button', { name: /确认应用并分发/ }));
+    fireEvent.click(screen.getByRole('button', { name: /确认应用并同步/ }));
     await waitFor(() =>
       expect(api.doctorApply).toHaveBeenCalledWith(
         expect.objectContaining({ distribute: true, targets: ['trae'], finalContent: '用户改过的草案\n' }),
@@ -186,7 +186,7 @@ describe('FixFlow 一屏确认（Scenario 2/6 + identity 警示）', () => {
 });
 
 describe('FixFlow 结果与撤销（Scenario 3/4）', () => {
-  it('逐工具结果如实展示，提供撤销本次修复入口并可点回滚分发', async () => {
+  it('逐工具结果如实展示，提供撤销本次修复入口并可点回滚同步', async () => {
     vi.mocked(api.doctorApply).mockResolvedValue({
       saved: true,
       backupRef: 'backup-1',
@@ -198,7 +198,7 @@ describe('FixFlow 结果与撤销（Scenario 3/4）', () => {
     });
     renderFlow();
     await toConfirm();
-    fireEvent.click(screen.getByRole('button', { name: /确认应用并分发/ }));
+    fireEvent.click(screen.getByRole('button', { name: /确认应用并同步/ }));
     await waitFor(() => expect(screen.getByText(/已写入并校验/)).toBeInTheDocument());
     expect(screen.getByText(/目标目录已变化/)).toBeInTheDocument();
 
@@ -206,7 +206,7 @@ describe('FixFlow 结果与撤销（Scenario 3/4）', () => {
     await waitFor(() => expect(api.doctorUndo).toHaveBeenCalledWith('backup-1'));
 
     vi.mocked(api.swapRollback).mockResolvedValue({ swapId: 'swap-1', restored: 1, removed: 0, success: true });
-    fireEvent.click(screen.getByRole('button', { name: /回滚分发/ }));
+    fireEvent.click(screen.getByRole('button', { name: /回滚同步/ }));
     await waitFor(() => expect(api.swapRollback).toHaveBeenCalledWith('swap-1'));
   });
 });

@@ -185,27 +185,27 @@ describe('AgentsView 我的库写管理', () => {
     });
   });
 
-  it('我的库智能体详情提供编辑/删除/同步分发', async () => {
+  it('我的库智能体详情提供编辑/删除/同步到工具', async () => {
     renderView();
     fireEvent.click(await screen.findByText('测试专家'));
     expect(await screen.findByRole('button', { name: '编辑' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '删除' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '同步分发' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '同步到工具' })).toBeInTheDocument();
   });
 
-  it('内置 Persona 详情不提供编辑/删除/同步分发', async () => {
+  it('内置 Persona 详情不提供编辑/删除/同步到工具', async () => {
     renderView();
     fireEvent.click(await screen.findByText('hebe'));
     expect(await screen.findByText(/只读盘点/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '编辑' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '删除' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: '同步分发' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '同步到工具' })).not.toBeInTheDocument();
   });
 
-  it('插件智能体详情只提供同步分发，保持只读', async () => {
+  it('插件智能体详情只提供同步到工具，保持只读', async () => {
     renderView();
     fireEvent.click(await screen.findByText('搜索助手'));
-    expect(await screen.findByRole('button', { name: '同步分发' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: '同步到工具' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '编辑' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '删除' })).not.toBeInTheDocument();
   });
@@ -242,14 +242,14 @@ describe('AgentsView 我的库写管理', () => {
     renderView();
     fireEvent.click(await screen.findByText('测试专家'));
     fireEvent.click(await screen.findByRole('button', { name: '删除' }));
-    expect(await screen.findByText(/将从我的库及所有已分发工具中删除/)).toBeInTheDocument();
+    expect(await screen.findByText(/将从我的库及所有已同步工具中删除/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '确认删除' }));
     await waitFor(() => {
       expect(api.deleteAgent).toHaveBeenCalledWith('hub:custom-subagent:测试专家');
     });
   });
 
-  it('同步分发：选择目标工具执行后展示各工具成功/失败结果', async () => {
+  it('同步到工具：选择目标工具执行后展示各工具成功/失败结果', async () => {
     vi.spyOn(api, 'runSync').mockResolvedValue({
       results: [
         { tool: 'claude-code', success: true, itemCount: 2, skippedCount: 0, errors: [], warnings: [], durationMs: 8 },
@@ -258,7 +258,7 @@ describe('AgentsView 我的库写管理', () => {
     });
     renderView();
     fireEvent.click(await screen.findByText('测试专家'));
-    fireEvent.click(await screen.findByRole('button', { name: '同步分发' }));
+    fireEvent.click(await screen.findByRole('button', { name: '同步到工具' }));
     fireEvent.click(await screen.findByLabelText('选择同步目标 trae'));
     fireEvent.click(screen.getByLabelText('选择同步目标 claude-code'));
     fireEvent.click(screen.getByRole('button', { name: '开始同步' }));

@@ -116,7 +116,7 @@ export function FixFlow(props: FixFlowProps): JSX.Element {
   const rollbackDispatch = (swapId: string): void => {
     api
       .swapRollback(swapId)
-      .then(() => setUndoMessage('已回滚本次分发（swap 历史恢复）'))
+      .then(() => setUndoMessage('已回滚本次同步（swap 历史恢复）'))
       .catch((err: unknown) =>
         setUndoMessage(err instanceof Error ? err.message : String(err)),
       );
@@ -186,7 +186,7 @@ export function FixFlow(props: FixFlowProps): JSX.Element {
       {view.kind === 'applying' && (
         <p className="flex items-center gap-2 text-xs text-muted-foreground">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          正在备份旧版并写入，逐工具分发中…
+          正在备份旧版并写入，逐工具同步中…
         </p>
       )}
 

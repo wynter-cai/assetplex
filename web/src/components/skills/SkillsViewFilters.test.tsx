@@ -1,7 +1,7 @@
 /**
  * SkillsView 出处 × 库状态组合筛选测试（spec refactor-skill-origin-taxonomy）
  *
- * 基线形态：442 = 自建 99 + 市场安装 292 + 插件自带 27 + 官方内置 24；我的库 31 / 未入库 411
+ * 基线形态：442 = 自建 99 + 市场安装 292 + 插件自带 27 + 官方内置 24；我的库 31 / 未收藏 411
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -74,7 +74,7 @@ describe('SkillsView 出处与库状态组合筛选', () => {
     expect(await screen.findByText(/去重后共 442 个技能/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '全部 442' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '我的库 31' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '未入库 411' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '未收藏 411' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '自建 99' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '市场安装 292' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '插件自带 27' })).toBeInTheDocument();
@@ -84,7 +84,7 @@ describe('SkillsView 出处与库状态组合筛选', () => {
   it('未入库 × 市场安装：正交组合查询（待收藏候选）', async () => {
     renderView();
     await screen.findByText(/去重后共 442 个技能/);
-    fireEvent.click(screen.getByRole('button', { name: '未入库 411' }));
+    fireEvent.click(screen.getByRole('button', { name: '未收藏 411' }));
     await waitFor(() => {
       expect(api.listSkills).toHaveBeenLastCalledWith({ scope: 'asset', function: undefined, provenance: undefined, status: 'out', search: undefined });
     });

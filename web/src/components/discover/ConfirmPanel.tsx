@@ -55,7 +55,7 @@ export function ConfirmPanel({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">确认入库（{rows.length} 条）</h2>
+        <h2 className="text-lg font-semibold">确认收藏（{rows.length} 条）</h2>
         <Button size="sm" variant="outline" onClick={onBack}>
           <ArrowLeft className="mr-1 h-4 w-4" />
           返回候选
@@ -88,12 +88,12 @@ export function ConfirmPanel({
                   </Link>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">入库名</span>
+                  <span className="text-xs text-muted-foreground">收藏名</span>
                   <Input
                     value={d.name}
                     onChange={(e) => onRename(c.skillPath, e.target.value)}
                     className="max-w-xs"
-                    aria-label={`入库名 ${c.name}`}
+                    aria-label={`收藏名 ${c.name}`}
                   />
                 </div>
                 {nameError !== null && <p className="text-xs text-destructive">{nameError}</p>}
@@ -116,10 +116,10 @@ export function ConfirmPanel({
       <div className="flex items-center justify-between border-t pt-3">
         <p className="flex items-center gap-1 text-xs text-muted-foreground">
           <ShieldCheck className="h-3.5 w-3.5" />
-          仅写入保险箱 skills/，绝不改动任何工具目录
+          仅写入我的库 skills/，绝不改动任何工具目录
         </p>
         <Button onClick={onConfirm} disabled={submitting || anyInvalid || rows.length === 0}>
-          {submitting ? '入库中…' : '确认入库'}
+          {submitting ? '收藏中…' : '确认收藏'}
         </Button>
       </div>
     </div>

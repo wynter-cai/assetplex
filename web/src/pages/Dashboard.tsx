@@ -18,7 +18,7 @@ export default function Dashboard() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">总览</h1>
-        <p className="text-muted-foreground mt-1">AssetPlex Hub 状态一览</p>
+        <p className="text-muted-foreground mt-1">AssetPlex 库状态一览</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -36,7 +36,7 @@ export default function Dashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Hub 文件数</CardTitle>
+            <CardTitle className="text-sm font-medium">库内文件数</CardTitle>
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -58,7 +58,7 @@ export default function Dashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Hub 健康度</CardTitle>
+            <CardTitle className="text-sm font-medium">库健康度</CardTitle>
             <Heart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>

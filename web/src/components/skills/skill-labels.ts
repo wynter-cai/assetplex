@@ -29,7 +29,7 @@ export const PROVENANCE_LABELS: Record<SkillProvenance, string> = {
 export const LIBRARY_STATUS_LABELS: Record<LibraryStatus | 'all', string> = {
   all: '全部',
   in: '我的库',
-  out: '未入库',
+  out: '未收藏',
 };
 
 /** 分类来源标注（spec add-skill-ai-classification：手动 / AI / 关键词） */

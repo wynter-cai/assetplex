@@ -49,19 +49,19 @@ const options: StrategyOption[] = [
     value: 'merge',
     label: '智能合并',
     icon: Merge,
-    title: '智能合并：保留 Hub 内容，将工具中新增/不同的部分合并进来（身份文件字段级更新，规则/MCP自动去重）',
+    title: '智能合并：保留库内内容，将工具中新增/不同的部分合并进来（身份文件字段级更新，规则/MCP自动去重）',
   },
   {
     value: 'overwrite',
     label: '覆盖',
     icon: FileDown,
-    title: '覆盖：用工具中的文件完全替换 Hub 现有内容',
+    title: '覆盖：用工具中的文件完全替换库内现有内容',
   },
   {
     value: 'skip',
     label: '跳过',
     icon: Forward,
-    title: '跳过：保留 Hub 现有内容，不导入此文件',
+    title: '跳过：保留库内现有内容，不导入此文件',
   },
 ];
 
@@ -74,11 +74,11 @@ function getStrategyHint(strategy: ConflictStrategy, category: string, multiSour
   }
   switch (strategy) {
     case 'merge':
-      return '保留 Hub 内容，追加新内容，自动标注来源';
+      return '保留库内内容，追加新内容，自动标注来源';
     case 'overwrite':
       return '将完全替换为工具中的文件内容';
     case 'skip':
-      return '保留 Hub 现有内容，不做任何更改';
+      return '保留库内现有内容，不做任何更改';
   }
 }
 

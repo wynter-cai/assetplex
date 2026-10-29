@@ -62,7 +62,7 @@ function CandidateRow({
             {candidate.functionCategory && (
               <Badge variant="secondary">{FUNCTION_LABELS[candidate.functionCategory]}</Badge>
             )}
-            {blocked && <Badge variant="warning">超限·不可入库</Badge>}
+            {blocked && <Badge variant="warning">超限·不可收藏</Badge>}
           </div>
           <p className="mt-0.5 truncate text-sm text-muted-foreground">{candidate.description || '（无描述）'}</p>
           <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
@@ -167,7 +167,7 @@ export function CandidateList({
       <div className="flex items-center justify-between border-t pt-3">
         <span className="text-sm text-muted-foreground">已选 {selectedCount} / {result.candidates.length} 条</span>
         <Button onClick={onProceed} disabled={selectedCount === 0}>
-          下一步：确认入库
+          下一步：确认收藏
           <ArrowRight className="ml-1 h-4 w-4" />
         </Button>
       </div>

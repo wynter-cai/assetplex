@@ -175,7 +175,7 @@ export function ReportView({ report }: { report: DiagnosisReport }): JSX.Element
       )}
       {!report.mechanicalOnly && report.criteriaUsed.length === 0 && (
         <p className="text-xs text-muted-foreground">
-          当前无自定义准则，结论基于内置基线——沉淀准则后诊断会更贴合你的标准
+          当前无自定义准则，结论基于内置基线——保存准则后诊断会更贴合你的标准
         </p>
       )}
     </div>

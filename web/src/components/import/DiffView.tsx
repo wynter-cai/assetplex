@@ -216,7 +216,7 @@ export function DiffView({ sourcePath, hubTargetPath }: Props) {
         </div>
         <div className="flex-1 px-3 py-1.5 text-success font-medium flex items-center gap-1.5">
           <span className="inline-block w-2 h-2 rounded-full bg-success" />
-          Hub 文件（当前内容）
+          库内文件（当前内容）
         </div>
       </div>
       {/* 行内容 */}

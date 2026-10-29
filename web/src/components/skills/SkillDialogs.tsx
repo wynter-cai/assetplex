@@ -38,7 +38,7 @@ export function DeleteConfirmDialog({
         <DialogHeader>
           <DialogTitle>删除技能「{skill.name}」</DialogTitle>
           <DialogDescription>
-            将从我的库及所有已分发工具中删除该技能，此操作不可撤销。
+            将从我的库及所有已同步工具中删除该技能，此操作不可撤销。
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

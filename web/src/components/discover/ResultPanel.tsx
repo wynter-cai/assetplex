@@ -20,7 +20,7 @@ export function ResultPanel({ result, onRestart }: ResultPanelProps): JSX.Elemen
     <div className="space-y-4">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-base">入库结果</CardTitle>
+          <CardTitle className="text-base">收藏结果</CardTitle>
           <div className="flex gap-2">
             <Badge variant="success">成功 {result.created.length}</Badge>
             <Badge variant="secondary">跳过 {result.skipped.length}</Badge>
@@ -30,7 +30,7 @@ export function ResultPanel({ result, onRestart }: ResultPanelProps): JSX.Elemen
         <CardContent className="space-y-3 text-sm">
           {result.created.length > 0 && (
             <div>
-              <div className="mb-1 text-xs font-medium text-muted-foreground">已入库</div>
+              <div className="mb-1 text-xs font-medium text-muted-foreground">已收藏</div>
               <ul className="list-disc pl-5">
                 {result.created.map((s) => (
                   <li key={s.id}>{s.name}</li>
@@ -70,7 +70,7 @@ export function ResultPanel({ result, onRestart }: ResultPanelProps): JSX.Elemen
 
       {result.suggestDoctor && (
         <div className="rounded-md border border-warning/40 bg-warning-soft px-4 py-3 text-sm text-warning">
-          刚入库 {result.created.length} 条外部技能，建议立即体检以确认无冲突与规范问题。
+          刚收藏 {result.created.length} 条外部技能，建议立即体检以确认无冲突与规范问题。
         </div>
       )}
 
@@ -84,7 +84,7 @@ export function ResultPanel({ result, onRestart }: ResultPanelProps): JSX.Elemen
           <Button variant="outline">去库内查看</Button>
         </Link>
         <Link to="/sync">
-          <Button variant="outline">分发到工具</Button>
+          <Button variant="outline">同步到工具</Button>
         </Link>
         <Button variant="ghost" onClick={onRestart}>
           再发现一批

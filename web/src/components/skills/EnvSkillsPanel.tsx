@@ -73,7 +73,7 @@ export function EnvSkillsPanel({
             </div>
           )}
           {!isLoading && groups.length === 0 && (
-            <p className="text-sm text-muted-foreground">环境中暂无未入库技能</p>
+            <p className="text-sm text-muted-foreground">环境中暂无未收藏技能</p>
           )}
           {groups.map((group) => (
             <div key={group.key}>

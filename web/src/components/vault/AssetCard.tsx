@@ -147,7 +147,7 @@ export function AssetCard({
             }}
           >
             <Settings2 className="h-3 w-3 mr-1" />
-            分发
+            同步
           </Button>
         </div>
       </CardContent>

@@ -269,18 +269,18 @@ describe('SkillsView 我的库写管理', () => {
     });
   });
 
-  it('库内技能详情提供编辑/删除/同步分发', async () => {
+  it('库内技能详情提供编辑/删除/同步到工具', async () => {
     renderView();
     fireEvent.click(await screen.findByRole('button', { name: '展开 周报助手 卡片' }));
     expect(await screen.findByRole('button', { name: '编辑' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '删除' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '同步分发' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '同步到工具' })).toBeInTheDocument();
   });
 
-  it('未入库技能详情只读，仅提供同步分发', async () => {
+  it('未入库技能详情只读，仅提供同步到工具', async () => {
     renderView();
     fireEvent.click(await screen.findByRole('button', { name: '展开 pdf 卡片' }));
-    expect(await screen.findByRole('button', { name: '同步分发' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: '同步到工具' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '编辑' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '删除' })).not.toBeInTheDocument();
   });
@@ -317,14 +317,14 @@ describe('SkillsView 我的库写管理', () => {
     renderView();
     fireEvent.click(await screen.findByRole('button', { name: '展开 周报助手 卡片' }));
     fireEvent.click(await screen.findByRole('button', { name: '删除' }));
-    expect(await screen.findByText(/将从我的库及所有已分发工具中删除/)).toBeInTheDocument();
+    expect(await screen.findByText(/将从我的库及所有已同步工具中删除/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '确认删除' }));
     await waitFor(() => {
       expect(api.deleteSkill).toHaveBeenCalledWith('周报助手');
     });
   });
 
-  it('同步分发：选择目标工具执行后展示各工具成功/失败结果', async () => {
+  it('同步到工具：选择目标工具执行后展示各工具成功/失败结果', async () => {
     const results: SyncResult[] = [
       { tool: 'trae', success: true, itemCount: 1, skippedCount: 0, errors: [], warnings: [], durationMs: 5 },
       { tool: 'codex', success: false, itemCount: 0, skippedCount: 0, errors: ['写入失败'], warnings: [], durationMs: 3 },
@@ -332,7 +332,7 @@ describe('SkillsView 我的库写管理', () => {
     vi.spyOn(api, 'runSync').mockResolvedValue({ results });
     renderView();
     fireEvent.click(await screen.findByRole('button', { name: '展开 周报助手 卡片' }));
-    fireEvent.click(await screen.findByRole('button', { name: '同步分发' }));
+    fireEvent.click(await screen.findByRole('button', { name: '同步到工具' }));
     fireEvent.click(await screen.findByLabelText('选择同步目标 trae'));
     fireEvent.click(screen.getByLabelText('选择同步目标 codex'));
     fireEvent.click(screen.getByRole('button', { name: '开始同步' }));

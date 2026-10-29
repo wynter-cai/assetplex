@@ -65,7 +65,7 @@ export function PreviewDialog({ open, onOpenChange, repo, sha, skillPath }: Prev
                       <span className="truncate">{f.path}</span>
                       <span className="shrink-0 text-muted-foreground">
                         {formatBytes(f.sizeBytes)}
-                        {f.binary && <Badge variant="secondary" className="ml-2">二进制·入库跳过</Badge>}
+                        {f.binary && <Badge variant="secondary" className="ml-2">二进制·收藏跳过</Badge>}
                       </span>
                     </li>
                   ))}

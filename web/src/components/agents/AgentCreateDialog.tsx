@@ -70,7 +70,7 @@ export function AgentCreateDialog({ open, onOpenChange, onCreated }: AgentCreate
       <DialogContent>
         <DialogHeader>
           <DialogTitle>新建智能体</DialogTitle>
-          <DialogDescription>保存到我的库 agents/&lt;名称&gt;.md（子代理格式），可再分发到各工具</DialogDescription>
+          <DialogDescription>保存到我的库 agents/&lt;名称&gt;.md（子代理格式），可再同步到各工具</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">

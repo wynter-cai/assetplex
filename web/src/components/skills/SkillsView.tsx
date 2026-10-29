@@ -179,7 +179,7 @@ export function SkillsView(): JSX.Element {
       {/* 页头（spec refactor-design-system page-headers：类别 H1 + 主操作） */}
       <PageHeader
         title="技能"
-        subtitle="盘点各工具安装的技能，收藏到我的库后统一同步分发"
+        subtitle="盘点各工具安装的技能，收藏到我的库后统一同步到工具"
         actions={
           <div className="flex items-center gap-3">
             <SkillsCheckupSection />

@@ -69,7 +69,7 @@ export function SkillCreateDialog({ open, onOpenChange, onCreated }: SkillCreate
       <DialogContent>
         <DialogHeader>
           <DialogTitle>新建技能</DialogTitle>
-          <DialogDescription>保存到我的库 skills/&lt;名称&gt;/SKILL.md，可再分发到各工具</DialogDescription>
+          <DialogDescription>保存到我的库 skills/&lt;名称&gt;/SKILL.md，可再同步到各工具</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">

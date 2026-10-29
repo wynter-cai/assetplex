@@ -86,13 +86,13 @@ describe('Discover 页', () => {
     (api.listSkills as ReturnType<typeof vi.fn>).mockResolvedValue({ items: [{ id: 'foo', name: 'foo', inLibrary: true }], total: 1 });
     renderPage();
     await toCandidateStep();
-    fireEvent.click(screen.getByRole('button', { name: /下一步：确认入库/ }));
+    fireEvent.click(screen.getByRole('button', { name: /下一步：确认收藏/ }));
     await screen.findByText('同名已存在');
-    fireEvent.click(screen.getByRole('button', { name: '确认入库' }));
+    fireEvent.click(screen.getByRole('button', { name: '确认收藏' }));
     await waitFor(() => expect(github.curate).toHaveBeenCalledTimes(1));
     const arg = github.curate.mock.calls[0][0] as { items: { skillPath: string; name: string; action?: string }[] };
     expect(arg.items[0]).toEqual({ skillPath: 'skills/foo/SKILL.md', name: 'foo', action: 'skip' });
-    await screen.findByText('入库结果');
+    await screen.findByText('收藏结果');
     expect(screen.getByText('立即体检')).toBeInTheDocument();
   });
 

@@ -53,7 +53,7 @@ export function DistributionDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            分发管理: <span className="font-mono text-sm">{asset.name}</span>
+            同步管理: <span className="font-mono text-sm">{asset.name}</span>
           </DialogTitle>
         </DialogHeader>
 
