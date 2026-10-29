@@ -150,10 +150,12 @@ export const HUB_README_TEMPLATE = `# AssetPlex — 个人 AI 工具配置中心
 
 ## 常用命令
 \`\`\`bash
+assetplex init              # 初始化 Hub 与模板
 assetplex sync              # 同步到所有工具
 assetplex sync --dry-run    # 预览变更
 assetplex doctor            # 体检
-assetplex profile learn     # 让 AI 学习最近行为
-assetplex skill search <q>  # 搜索社区 skills
+assetplex ui                # 打开可视化管理界面
 \`\`\`
+
+> 即将支持：让 AI 学习近期行为、社区技能搜索。
 `;

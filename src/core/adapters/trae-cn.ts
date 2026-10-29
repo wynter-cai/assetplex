@@ -53,7 +53,7 @@ export class TraeCnAdapter extends BaseAdapter {
     // 将 hasProfile 状态附加到 error 字段（若已安装但 profile 缺失）
     let extraInfo: string | undefined;
     if (installed && !hasProfile) {
-      extraInfo = '已安装，但 memory/user_profile.md 缺失（可运行 assetplex profile learn 生成）';
+      extraInfo = '已安装，但 memory/user_profile.md 缺失（AI 自动学习生成，即将支持）';
     }
 
     // 读取 ide_version.json 获取版本（如存在）
