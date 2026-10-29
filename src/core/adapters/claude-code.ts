@@ -358,11 +358,11 @@ export class ClaudeCodeAdapter extends BaseAdapter {
     // rules/ 目录
     items.push(...this.scanDirectory(resolve(base, 'rules'), base, 'rules', 'rule'));
 
-    // commands/ 目录 → commands/（preference 类别）
-    items.push(...this.scanDirectory(resolve(base, 'commands'), base, 'commands', 'preference'));
+    // commands/ 不扫描：Claude 专属 slash command 模板，其他工具无等价机制，
+    // 不构成跨工具资产（2026-10-29 拍板，add-memory-category D3）
 
-    // agents/ 目录 → agents/（preference 类别）
-    items.push(...this.scanDirectory(resolve(base, 'agents'), base, 'agents', 'preference'));
+    // agents/ 目录 → agents/（智能体类别，不再伪装成 preference）
+    items.push(...this.scanDirectory(resolve(base, 'agents'), base, 'agents', 'agent'));
 
     // ~/.claude.json → mcp/mcp.sources.json
     const claudeJsonPath = resolve(home, '.claude.json');

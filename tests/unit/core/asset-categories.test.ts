@@ -27,6 +27,7 @@ interface WebFallbackEntry {
   description: string;
   order: number;
   external: boolean;
+  legacyHubDirs: string[];
 }
 
 /** 解析前端 fallback 清单（仅取同名字段，图标由 code 映射不参与比对） */
@@ -41,17 +42,26 @@ function parseWebFallback(): WebFallbackEntry[] {
       description: match[3],
       order: Number(match[4]),
       external: match[5].includes('external: true'),
+      legacyHubDirs: [...match[5].matchAll(/'([a-z]+)'/g)].map((m) => m[1]),
     });
   }
   return entries;
 }
 
 describe('资产类别声明源', () => {
-  it('覆盖资产中心可见的 6 类且 code 唯一', () => {
-    expect(ASSET_CATEGORIES).toHaveLength(6);
+  it('覆盖资产中心可见的 7 类且 code 唯一', () => {
+    expect(ASSET_CATEGORIES).toHaveLength(7);
     const codes = ASSET_CATEGORIES.map((c) => c.code);
-    expect(new Set(codes).size).toBe(6);
-    expect(codes).toEqual(['identity', 'skill', 'rule', 'mcp', 'agent', 'criteria']);
+    expect(new Set(codes).size).toBe(7);
+    expect(codes).toEqual([
+      'identity',
+      'skill',
+      'rule',
+      'mcp',
+      'agent',
+      'memory',
+      'criteria',
+    ]);
   });
 
   it('每类八个字段齐全且取值合法', () => {
@@ -86,6 +96,7 @@ describe('资产类别声明源', () => {
       expect(own?.description).toBe(category.description);
       expect(own?.order).toBe(category.order);
       expect(own?.external).toBe(category.external);
+      expect(own?.legacyHubDirs).toEqual([...(category.legacyHubDirs ?? [])]);
     }
   });
 
@@ -94,22 +105,44 @@ describe('资产类别声明源', () => {
     expect(getAssetCategory('skill')?.external).toBe(true);
     expect(getAssetCategory('agent')?.external).toBe(true);
     expect(getAssetCategory('criteria')?.external).toBe(true);
-    // 其余三类是 Hub 目录直读
+    // 其余四类是 Hub 目录直读
     expect(getAssetCategory('identity')?.external).toBe(false);
     expect(getAssetCategory('rule')?.external).toBe(false);
     expect(getAssetCategory('mcp')?.external).toBe(false);
+    expect(getAssetCategory('memory')?.external).toBe(false);
+    // 记忆可跨工具同步，且在资产医生范围内
+    expect(getAssetCategory('memory')?.syncable).toBe(true);
+    expect(getAssetCategory('memory')?.doctorSupported).toBe(true);
+    // 命令不是资产：Claude 专属模板不作为类别暴露（2026-10-29 拍板）
+    expect(getAssetCategory('command')).toBeUndefined();
     // 准则不参与分发（只用于仲裁与诊断），也不在资产医生范围
     expect(getAssetCategory('criteria')?.syncable).toBe(false);
     expect(getAssetCategory('criteria')?.doctorSupported).toBe(false);
   });
 
   it('查询函数与类型守卫行为明确', () => {
-    expect(getAssetCategoryCodes()).toEqual(['identity', 'skill', 'rule', 'mcp', 'agent', 'criteria']);
+    expect(getAssetCategoryCodes()).toEqual([
+      'identity',
+      'skill',
+      'rule',
+      'mcp',
+      'agent',
+      'memory',
+      'criteria',
+    ]);
     expect(getAssetCategory('skill')?.hubDir).toBe('skills');
-    expect(getAssetCategory('memory')).toBeUndefined();
+    expect(getAssetCategory('memory')?.hubDir).toBe('memory');
     expect(getAssetCategory('nope')).toBeUndefined();
     expect(isAssetCategory('identity')).toBe(true);
-    expect(isAssetCategory('memory')).toBe(false);
+    expect(isAssetCategory('memory')).toBe(true);
+    expect(isAssetCategory('command')).toBe(false);
+    expect(isAssetCategory('preference')).toBe(false);
+  });
+
+  it('历史 preferences/ 目录只并入记忆，不单独成类', () => {
+    expect(getAssetCategory('memory')?.legacyHubDirs).toEqual(['preferences']);
+    expect(ASSET_CATEGORIES.filter((c) => (c.legacyHubDirs ?? []).length > 0)).toHaveLength(1);
+    expect(getAssetCategory('preference')).toBeUndefined();
   });
 
   it('声明源不可被运行时改写', () => {

@@ -8,13 +8,21 @@
  * 都必须从这里派生。前端 `web/src/config/asset-categories.ts` 只保留
  * 同名字段的 fallback 常量（首屏渲染 + 接口不可用时兜底），接口返回后覆盖。
  *
- * 边界：本清单只覆盖「资产中心可见的类别」。Hub 里存在但尚未开放的
- * 条目类型（memory / command / preference）仍由 `types.ts` 的 HubItemType
- * 表达，等阶段 1 接入时在这里追加一条即可。
+ * 边界：本清单只覆盖「资产中心可见的类别」。memory 已并入（阶段 1）；
+ * Hub 里仍存在的内部兜底类型 preference 不在此暴露——它的内容并入 memory 展示。
+ * command 不并入：Claude Code 的 slash command 模板在其他工具里没有等价机制，
+ * 单工具专属目录不构成「换工具能带走」的资产（2026-10-29 拍板）。
  */
 
 /** 资产中心类别代码（URL 与 API 参数使用） */
-export type AssetCategoryCode = 'identity' | 'skill' | 'rule' | 'mcp' | 'agent' | 'criteria';
+export type AssetCategoryCode =
+  | 'identity'
+  | 'skill'
+  | 'rule'
+  | 'mcp'
+  | 'agent'
+  | 'memory'
+  | 'criteria';
 
 /** 资产类别描述符（字段与 api-contract.ts 的 AssetCategoryDescriptor 一致） */
 export interface AssetCategoryDescriptor {
@@ -26,6 +34,13 @@ export interface AssetCategoryDescriptor {
   readonly description: string;
   /** Hub 内目录名 */
   readonly hubDir: string;
+  /**
+   * 兼容目录（只读并入，不参与新建）。
+   *
+   * memory 用承接历史 preferences/：旧文件仍可见，但新建一律写 hubDir。
+   * 禁止做破坏性目录迁移——旧目录可能已被工具的软链占用。
+   */
+  readonly legacyHubDirs?: readonly string[];
   /** true = 由专用接口供数，不走 /api/assets */
   readonly external: boolean;
   /** 是否支持跨工具分发 */
@@ -94,6 +109,17 @@ const DECLARED_CATEGORIES: readonly AssetCategoryDescriptor[] = [
     order: 50,
   },
   {
+    code: 'memory',
+    label: '记忆',
+    description: '跨会话保留的事实、决定与偏好',
+    hubDir: 'memory',
+    legacyHubDirs: ['preferences'],
+    external: false,
+    syncable: true,
+    doctorSupported: true,
+    order: 55,
+  },
+  {
     code: 'criteria',
     label: '裁决准则',
     description: '冲突仲裁与资产诊断依据的最佳实践准则——准则本身也是资产',
@@ -112,7 +138,7 @@ export const ASSET_CATEGORIES: readonly AssetCategoryDescriptor[] = Object.freez
 );
 
 /** 声明源版本（GET /api/asset-categories 的 declaredAt） */
-export const ASSET_CATEGORY_DECLARED_AT = '2026-10-25';
+export const ASSET_CATEGORY_DECLARED_AT = '2026-10-29';
 
 const CATEGORY_BY_CODE = new Map<string, AssetCategoryDescriptor>(
   ASSET_CATEGORIES.map((category) => [category.code, category]),

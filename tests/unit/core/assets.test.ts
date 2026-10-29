@@ -30,8 +30,14 @@ vi.mock('../../../src/core/hub-files.js', () => ({
         { relativePath: 'memory/preferences.md', size: 600, modified: '2026-08-16T09:00:00Z', isDirectory: false, absolutePath: '/hub/memory/preferences.md' },
         { relativePath: 'memory/pitfalls.md', size: 700, modified: '2026-08-16T10:00:00Z', isDirectory: false, absolutePath: '/hub/memory/pitfalls.md' },
       ],
-      preferences: [],
-      commands: [],
+      preferences: [
+        { relativePath: 'preferences/old-note.md', size: 300, modified: '2026-08-11T09:00:00Z', isDirectory: false, absolutePath: '/hub/preferences/old-note.md' },
+      ],
+      commands: [
+        // 命令不是资产：目录里即使有文件也不应计入列表（2026-10-29 拍板）
+        { relativePath: 'commands/review-diff.md', size: 400, modified: '2026-08-17T09:00:00Z', isDirectory: false, absolutePath: '/hub/commands/review-diff.md' },
+        { relativePath: 'commands/commit.md', size: 350, modified: '2026-08-17T10:00:00Z', isDirectory: false, absolutePath: '/hub/commands/commit.md' },
+      ],
       agents: [],
     };
     return files[category] ?? [];
@@ -73,15 +79,29 @@ describe('listAssets', () => {
 
   it('无 category 参数时返回所有类别的资产', async () => {
     const result = await listAssets();
-    // identity(1) + skills(3) + rules(1) + mcp(1) + memory(2) = 8
-    expect(result.total).toBe(8);
-    expect(result.items).toHaveLength(8);
+    // identity(1) + skills(3) + rules(1) + mcp(1) + memory(2) + preferences(1 并入记忆) = 9，commands 不计
+    expect(result.total).toBe(9);
+    expect(result.items).toHaveLength(9);
   });
 
   it('memory 作为一等公民类别可被列出（enable-tool-hot-swap T1）', async () => {
     const result = await listAssets({ category: 'memory' });
-    expect(result.total).toBe(2);
+    // memory/ 下 2 个 + 历史 preferences/ 下 1 个（只读并入，proposal D2）
+    expect(result.total).toBe(3);
     expect(result.items.every((a) => a.category === 'memory')).toBe(true);
+  });
+
+  it('历史 preferences/ 内容并入记忆，但 id 保留原路径（不搬家）', async () => {
+    const result = await listAssets({ category: 'memory' });
+    const legacy = result.items.find((a) => a.hubPath.startsWith('preferences/'));
+    expect(legacy).toBeDefined();
+    expect(legacy?.category).toBe('memory');
+    expect(legacy?.hubPath).toBe('preferences/old-note.md');
+  });
+
+  it('commands/ 目录即使有文件也不计入资产（命令不是资产）', async () => {
+    const result = await listAssets();
+    expect(result.items.some((a) => a.hubPath.startsWith('commands/'))).toBe(false);
   });
 
   it('搜索过滤：只返回名称匹配的资产', async () => {

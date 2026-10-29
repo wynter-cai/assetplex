@@ -222,7 +222,7 @@ export class TraeCnAdapter extends BaseAdapter {
     const profileItem = this.makeDiscoveredItem(profilePath, base, 'identity/profile.md', 'identity');
     if (profileItem) items.push(profileItem);
 
-    // memory/ 下其他 .md 文件 → preferences/（如 session_memory、topics 等）
+    // memory/ 下其他 .md 文件 → memory/（跨会话记忆，add-memory-command-categories D5）
     const memoryDir = resolve(base, 'memory');
     if (existsSync(memoryDir)) {
       const { readdirSync } = await import('node:fs');
@@ -231,7 +231,7 @@ export class TraeCnAdapter extends BaseAdapter {
         for (const entry of memoryEntries) {
           if (entry.isFile() && entry.name.endsWith('.md') && entry.name !== 'user_profile.md') {
             const fullPath = resolve(memoryDir, entry.name);
-            const item = this.makeDiscoveredItem(fullPath, base, `preferences/${entry.name}`, 'preference');
+            const item = this.makeDiscoveredItem(fullPath, base, `memory/${entry.name}`, 'memory');
             if (item) items.push(item);
           }
         }

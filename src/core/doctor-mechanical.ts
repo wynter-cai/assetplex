@@ -8,13 +8,14 @@
 
 import type { DiagnosisIssue, DoctorAssetKind } from './types.js';
 
-/** 各类别 frontmatter 必填字段（rule/identity 无必填，不为凑数报缺失） */
+/** 各类别 frontmatter 必填字段（rule/identity/memory 无必填，不为凑数报缺失） */
 const REQUIRED_FIELDS: Record<DoctorAssetKind, string[]> = {
   skill: ['name', 'description'],
   agent: ['name', 'description'],
   command: ['description'],
   rule: [],
   identity: [],
+  memory: [],
 };
 
 /** 正文长度阈值（字符数）：超长警示与草案 contentTruncated 联动（fix spec Scenario 7） */
@@ -24,6 +25,7 @@ const BODY_LENGTH_LIMIT: Record<DoctorAssetKind, number> = {
   rule: 4_000,
   identity: 8_000,
   command: 2_000,
+  memory: 8_000,
 };
 
 /** shouting 判定：连续 2 个及以上全大写词（≥2 字母）出现的处数阈值 */

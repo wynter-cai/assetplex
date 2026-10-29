@@ -59,7 +59,7 @@ describe('GET /api/asset-categories', () => {
     const res = await routes.request('/asset-categories');
     expect(res.status).toBe(200);
     const body = (await res.json()) as { categories: Array<Record<string, unknown>>; declaredAt: string };
-    expect(body.categories).toHaveLength(6);
+    expect(body.categories).toHaveLength(7);
     expect(body.declaredAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(body.categories[0]).not.toHaveProperty('icon');
   });
@@ -136,12 +136,12 @@ describe('buildCounts 计数口径', () => {
     projectTools: [{ toolId: 'tool-per-project', toolName: 'P', projectCount: 2 }],
   };
 
-  it('我的库按类别计数，六类齐全且互不串类', () => {
+  it('我的库按类别计数，七类齐全且互不串类', () => {
     const { counts } = buildCounts(items, distribution);
     expect(counts.skill.library).toBe(2);
     expect(counts.rule.library).toBe(1);
     expect(counts.identity.library).toBe(0);
-    expect(Object.keys(counts)).toHaveLength(6);
+    expect(Object.keys(counts)).toHaveLength(7);
   });
 
   it('已同步数只数 synced，并带类别细分', () => {
@@ -159,15 +159,17 @@ describe('buildCounts 计数口径', () => {
 
   it('overview.assetStats 与 counts.library 同源，未纳入声明源的类别保留原值', () => {
     const { counts } = buildCounts(items, distribution);
-    const raw = { identity: 9, skill: 87, rule: 12, mcp: 3, agent: 5, memory: 2 };
+    const raw = { identity: 9, skill: 87, rule: 12, mcp: 3, agent: 5, memory: 2, legacy: 7 };
     expect(alignAssetStats(raw, counts)).toEqual({
       identity: 0,
       skill: 2,
       rule: 1,
       mcp: 0,
       agent: 0,
-      // memory 尚未进声明源（阶段 1），无同源计数→不强行改写，避免用错口径冒充真值
-      memory: 2,
+      // memory 已进声明源（阶段 1），用同源计数覆盖，不用概况接口的粗值
+      memory: 0,
+      // 未纳入声明源的键不走同源覆盖，保留原值（不假装自己是真值）
+      legacy: 7,
     });
   });
 });

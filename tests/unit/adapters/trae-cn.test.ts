@@ -137,6 +137,42 @@ describe('TraeCnAdapter', () => {
     });
   });
 
+  describe('scan 归类（add-memory-command-categories T6）', () => {
+    it('user_profile.md 归身份，其余 memory/*.md 归记忆并落 memory/', async () => {
+      const traeCnDir = makeTraeCnInstalled();
+      writeFileSync(join(traeCnDir, 'memory/user_profile.md'), '# Profile');
+      writeFileSync(join(traeCnDir, 'memory/session_memory.md'), '# Session');
+      writeFileSync(join(traeCnDir, 'memory/topics.md'), '# Topics');
+
+      const adapter = new TraeCnAdapter();
+      (adapter as unknown as { defaultConfigDir: string }).defaultConfigDir = traeCnDir;
+
+      const items = await adapter.scan();
+      const profile = items.find((i) => i.absolutePath.endsWith('user_profile.md'));
+      const session = items.find((i) => i.absolutePath.endsWith('session_memory.md'));
+      const topics = items.find((i) => i.absolutePath.endsWith('topics.md'));
+
+      expect(profile?.category).toBe('identity');
+      expect(profile?.hubTargetPath).toBe('identity/profile.md');
+      expect(session?.category).toBe('memory');
+      expect(session?.hubTargetPath).toBe('memory/session_memory.md');
+      expect(topics?.category).toBe('memory');
+      expect(topics?.hubTargetPath).toBe('memory/topics.md');
+    });
+
+    it('扫描结果不再产出 preference 类别', async () => {
+      const traeCnDir = makeTraeCnInstalled();
+      writeFileSync(join(traeCnDir, 'memory/session_memory.md'), '# Session');
+
+      const adapter = new TraeCnAdapter();
+      (adapter as unknown as { defaultConfigDir: string }).defaultConfigDir = traeCnDir;
+
+      const items = await adapter.scan();
+      expect(items.some((i) => i.category === 'preference')).toBe(false);
+      expect(items.every((i) => !i.hubTargetPath.startsWith('preferences/'))).toBe(true);
+    });
+  });
+
   describe('apply / import', () => {
     it('apply 后 mcp.json 是普通文件（copy 策略）', async () => {
       const traeCnDir = makeTraeCnInstalled();

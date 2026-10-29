@@ -32,6 +32,8 @@ const CATEGORY_MAP: Record<string, FrontendCategory> = {
   mcp: 'mcp',
   agents: 'agent',
   memory: 'memory',
+  // 历史兜底目录并入记忆（与 assets.ts 同口径，不单独计数）
+  preferences: 'memory',
 };
 
 /** 工具连接状态（前端用） */
@@ -85,7 +87,8 @@ export async function getOverview(deps: OverviewDeps): Promise<OverviewData> {
   for (const cat of HUB_CATEGORIES) {
     const frontendCat = CATEGORY_MAP[cat];
     if (frontendCat) {
-      assetStats[frontendCat] = health.fileCountByCategory[cat] ?? 0;
+      // 多个后端目录可能并入同一前端类别（preferences → memory），故累加而非覆盖
+      assetStats[frontendCat] += health.fileCountByCategory[cat] ?? 0;
     }
   }
 

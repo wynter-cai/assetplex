@@ -50,6 +50,7 @@ const KIND_LABEL: Record<DoctorAssetKind, string> = {
   rule: '规则（rule）',
   agent: '子代理（agent）',
   command: '斜杠命令（command）',
+  memory: '记忆（memory）',
 };
 
 /** 选中的待修复问题：index = 在诊断报告 issues 数组中的下标（changeNotes 对齐用） */

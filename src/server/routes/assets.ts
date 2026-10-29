@@ -54,7 +54,7 @@ assetsRoutes.post('/', async (c) => {
     return c.json({ error: `无效类别：${body.category}` }, 400);
   }
 
-  // 前端类别 → 后端目录
+  // 前端类别 → 后端目录（新建只写主目录，兼容目录 preferences/ 不参与写入，proposal D2）
   const dirMap: Record<AssetCategory, string> = {
     identity: 'identity',
     skill: 'skills',

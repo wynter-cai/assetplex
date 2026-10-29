@@ -130,8 +130,21 @@ export interface SyncOptions {
 
 // ========== 扫描/导入相关类型（智能导入向导 Phase A） ==========
 
-/** 扫描发现的文件类别 */
-export type DiscoveredCategory = 'identity' | 'skill' | 'rule' | 'mcp' | 'preference' | 'memory';
+/**
+ * 扫描发现的文件类别
+ *
+ * `preference` 仅作适配器 import 兜底（历史目录 preferences/），
+ * 不再出现在收藏向导的分组里（add-memory-category D5）。
+ * `command` 不列入：Claude 专属 slash command 模板已不再扫描（同 D3）。
+ */
+export type DiscoveredCategory =
+  | 'identity'
+  | 'skill'
+  | 'rule'
+  | 'mcp'
+  | 'agent'
+  | 'memory'
+  | 'preference';
 
 /** 冲突状态 */
 export type ConflictStatus = 'none' | 'exists' | 'differs';
@@ -223,7 +236,7 @@ export type ArbitrationCategory = (typeof ARBITRATION_CATEGORIES)[number];
 // ========== 资产医生类型（add-asset-doctor，共享基座） ==========
 
 /** 医生服务的资产类别闭集（mcp 一期不做模型诊断，见 proposal 非目标） */
-export const DOCTOR_ASSET_KINDS = ['identity', 'skill', 'rule', 'agent', 'command'] as const;
+export const DOCTOR_ASSET_KINDS = ['identity', 'skill', 'rule', 'agent', 'command', 'memory'] as const;
 export type DoctorAssetKind = (typeof DOCTOR_ASSET_KINDS)[number];
 
 /** 诊断结论闭集（闭集外一律解析失败，Scenario 8） */

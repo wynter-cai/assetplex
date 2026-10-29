@@ -43,6 +43,7 @@ const KIND_TO_HUB_DIR: Record<DoctorAssetKind, HubFileCategory> = {
   rule: 'rules',
   agent: 'agents',
   command: 'commands',
+  memory: 'memory',
 };
 
 /**

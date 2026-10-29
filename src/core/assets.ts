@@ -15,7 +15,7 @@ import {
   type HubFileCategory,
 } from './hub-files.js';
 
-/** 前端资产类别 */
+/** 前端资产类别（命令不在内：Claude 专属模板不构成跳工具资产） */
 export type AssetCategory = 'identity' | 'skill' | 'rule' | 'mcp' | 'memory';
 
 /**
@@ -62,13 +62,24 @@ export interface AssetDetail extends Asset {
   content: string;
 }
 
-/** 后端目录到前端类别的映射 */
+/** 后端目录到前端类别的映射（含历史兼容目录） */
 const DIR_TO_CATEGORY: Record<string, AssetCategory> = {
   identity: 'identity',
   skills: 'skill',
   rules: 'rule',
   mcp: 'mcp',
   memory: 'memory',
+  // 历史兜底目录：内容并入「记忆」只读展示，不参与新建（proposal D2）
+  preferences: 'memory',
+};
+
+/** 类别 → 需扫描的 Hub 目录（首个为新建落点，其余为兼容目录） */
+const CATEGORY_TO_DIRS: Record<AssetCategory, HubFileCategory[]> = {
+  identity: ['identity'],
+  skill: ['skills'],
+  rule: ['rules'],
+  mcp: ['mcp'],
+  memory: ['memory', 'preferences'],
 };
 
 /** 查询参数 */
@@ -91,17 +102,7 @@ export async function listAssets(params: ListAssetsParams = {}): Promise<ListAss
 
   // 确定要扫描的后端目录
   const categoriesToScan: HubFileCategory[] = category
-    ? (() => {
-        // 前端类别 → 后端目录名（反向映射）
-        const reverse: Record<AssetCategory, HubFileCategory> = {
-          identity: 'identity',
-          skill: 'skills',
-          rule: 'rules',
-          mcp: 'mcp',
-          memory: 'memory',
-        };
-        return [reverse[category]];
-      })()
+    ? CATEGORY_TO_DIRS[category]
     : HUB_CATEGORIES.filter((c) => c in DIR_TO_CATEGORY);
 
   // 收集所有文件
