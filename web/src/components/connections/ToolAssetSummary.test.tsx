@@ -122,16 +122,25 @@ describe('ToolAssetSummary 三口径', () => {
     expect(screen.getByText(/部分工具状态暂不可用/)).toBeInTheDocument();
   });
 
-  it('未纳入声明源的类别（memory）不直出英文 code，也不留孤立数字', () => {
+  it('未纳入声明源的类别不直出英文 code，也不留孤立数字', () => {
     const { container } = renderSummary({
       counts: makeToolAssetCounts({
-        memory: makeToolCounts({ pendingImport: 2 }),
+        plugin: makeToolCounts({ pendingImport: 2 }),
         skill: makeToolCounts({ library: 2, synced: 2 }),
       }),
     });
-    expect(container.textContent).not.toMatch(/memory/);
-    expect(screen.queryByTestId('count-row-memory')).toBeNull();
+    expect(container.textContent).not.toMatch(/plugin/);
+    expect(screen.queryByTestId('count-row-plugin')).toBeNull();
     expect(screen.queryByText(/可收藏 2/)).toBeNull();
+  });
+
+  it('记忆已进声明源，按中文名正常展示', () => {
+    renderSummary({
+      counts: makeToolAssetCounts({ memory: makeToolCounts({ library: 3 }) }),
+    });
+    expect(screen.getByText('记忆')).toBeInTheDocument();
+    expect(screen.getByTestId('count-row-memory')).toBeInTheDocument();
+    expect(screen.queryByText(/memory/)).toBeNull();
   });
 
   it('本组件文案不含禁用词', () => {

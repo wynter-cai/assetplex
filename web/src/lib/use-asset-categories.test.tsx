@@ -61,20 +61,22 @@ describe('mergeCategories', () => {
   it('接口新增类别自动出现，未知 code 用默认图标', () => {
     const merged = mergeCategories([
       ...FALLBACK_ASSET_CATEGORIES.map((c) => descriptor({ code: c.code, label: c.label, order: c.order })),
-      descriptor({ code: 'memory', label: '记忆', order: 70 }),
+      descriptor({ code: 'plugin', label: '插件', order: 70 }),
     ]);
-    const memory = merged.find((c) => c.code === 'memory');
-    expect(memory?.label).toBe('记忆');
+    const added = merged.find((c) => c.code === 'plugin');
+    expect(added?.label).toBe('插件');
     // lucide 图标是 forwardRef 对象，不能按 typeof === 'function' 断言
-    expect(memory?.icon).toBe(DEFAULT_CATEGORY_ICON);
+    expect(added?.icon).toBe(DEFAULT_CATEGORY_ICON);
   });
 
   it('已知 code 用自己的图标，未知 code 才降级到默认图标', () => {
     const merged = mergeCategories([
       descriptor({ code: 'skill', order: 10 }),
-      descriptor({ code: 'weird-code', order: 20 }),
+      descriptor({ code: 'memory', order: 20 }),
+      descriptor({ code: 'weird-code', order: 30 }),
     ]);
     expect(merged.find((c) => c.code === 'skill')?.icon).toBe(CATEGORY_ICONS.skill);
+    expect(merged.find((c) => c.code === 'memory')?.icon).toBe(CATEGORY_ICONS.memory);
     expect(merged.find((c) => c.code === 'weird-code')?.icon).toBe(DEFAULT_CATEGORY_ICON);
   });
 });

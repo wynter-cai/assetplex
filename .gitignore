@@ -14,6 +14,8 @@ build/
 # 构建生成（tsc -b 产物，勿入库）
 web/vite.config.js
 web/vite.config.d.ts
+web/vitest.config.js
+web/vitest.config.d.ts
 
 # Test coverage
 coverage/

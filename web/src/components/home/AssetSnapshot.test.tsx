@@ -40,9 +40,10 @@ describe('AssetSnapshot 类别清单来源', () => {
 
     renderSnapshot({ identity: 1, memory: 3, skill: 32 });
 
-    await waitFor(() => expect(screen.getByText('记忆')).toBeInTheDocument());
-    // memory 是接口类别 → 计入；skill 不在接口清单 → 不渲染格子，也不计入总数
-    expect(screen.queryByText('技能')).not.toBeInTheDocument();
+    // 等接口清单生效：fallback 里有「技能」，接口未下发 → 格子消失即证明已覆盖
+    await waitFor(() => expect(screen.queryByText('技能')).not.toBeInTheDocument());
+    // memory 在接口清单里 → 计入；skill 不在接口清单 → 不渲染格子，也不计入总数
+    expect(screen.getByText('记忆')).toBeInTheDocument();
     expect(screen.getByText('我的库 4 项')).toBeInTheDocument();
   });
 

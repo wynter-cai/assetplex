@@ -9,7 +9,17 @@
  * 会逐字段比对两边的 label / description / order / external）。
  */
 
-import { User, Sparkles, BookOpen, Server, Bot, Scale, Package, type LucideIcon } from 'lucide-react';
+import {
+  User,
+  Sparkles,
+  BookOpen,
+  Server,
+  Bot,
+  Brain,
+  Scale,
+  Package,
+  type LucideIcon,
+} from 'lucide-react';
 import type { AssetCategoryDescriptor } from '@/types/api';
 
 /** 前端消费形态 = 声明源字段 + 图标（图标属于表现层，不进声明源） */
@@ -22,6 +32,7 @@ export const CATEGORY_ICONS: Record<string, LucideIcon> = {
   rule: BookOpen,
   mcp: Server,
   agent: Bot,
+  memory: Brain,
   criteria: Scale,
 };
 
@@ -40,6 +51,7 @@ export const FALLBACK_ASSET_CATEGORIES: AssetCategoryConfig[] = [
   { code: 'rule', label: '规则', description: '约束 AI 行为的规则与约定', hubDir: 'rules', syncable: true, doctorSupported: true, order: 30, external: false, icon: BookOpen },
   { code: 'mcp', label: 'MCP', description: 'MCP 服务器配置资产', hubDir: 'mcp', syncable: true, doctorSupported: false, order: 40, external: false, icon: Server },
   { code: 'agent', label: '智能体', description: '盘点各工具中的子智能体配置', hubDir: 'agents', syncable: true, doctorSupported: true, order: 50, external: true, icon: Bot },
+  { code: 'memory', label: '记忆', description: '跨会话保留的事实、决定与偏好', hubDir: 'memory', syncable: true, doctorSupported: true, order: 55, external: false, icon: Brain, legacyHubDirs: ['preferences'] },
   { code: 'criteria', label: '裁决准则', description: '冲突仲裁与资产诊断依据的最佳实践准则——准则本身也是资产', hubDir: 'criteria', syncable: false, doctorSupported: false, order: 60, external: true, icon: Scale },
 ];
 

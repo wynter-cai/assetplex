@@ -99,8 +99,8 @@ describe('categoryOptionsFor 类别下拉选项', () => {
   });
 
   it('声明源认不出的新类别用代码本身作 label，不编中文名', () => {
-    const future = makeAsset({ id: 'commands/x.md', category: 'command' });
-    expect(categoryOptionsFor([future], declared)).toEqual([{ code: 'command', label: 'command' }]);
+    const future = makeAsset({ id: 'plugins/x.md', category: 'plugin' });
+    expect(categoryOptionsFor([future], declared)).toEqual([{ code: 'plugin', label: 'plugin' }]);
   });
 
   it('同一类别只出现一次', () => {

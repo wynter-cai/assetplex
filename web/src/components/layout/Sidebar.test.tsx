@@ -108,16 +108,16 @@ describe('Sidebar', () => {
       declaredAt: '2026-10-26T00:00:00.000Z',
       categories: [
         makeCategoryDescriptor({ code: 'identity', label: '身份', order: 10 }),
-        makeCategoryDescriptor({ code: 'memory', label: '记忆', order: 70 }),
+        makeCategoryDescriptor({ code: 'plugin', label: '插件', order: 70 }),
       ],
     });
 
     renderSidebar();
 
-    await waitFor(() => expect(screen.getByText('记忆')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('插件')).toBeInTheDocument());
     // 接口只下发 2 类，未下发的旧类别不应再出现——证明侧栏吃的是接口清单而非常量
     expect(screen.queryByText('规则')).not.toBeInTheDocument();
-    expect(screen.getByText('记忆').closest('a')).toHaveAttribute('href', '/vault/memory');
+    expect(screen.getByText('插件').closest('a')).toHaveAttribute('href', '/vault/plugin');
   });
 
   it('接口不可用时回退 fallback 且不白屏（I1）', async () => {

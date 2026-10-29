@@ -127,10 +127,11 @@ describe('Vault 类别清单以接口为准（I1）', () => {
     const listAssets = vi.spyOn(api, 'listAssets');
     vi.spyOn(api, 'getAssetCategories').mockResolvedValue({
       declaredAt: '2026-10-26T00:00:00.000Z',
-      categories: [makeCategoryDescriptor({ code: 'memory', label: '记忆', external: true, order: 70 })],
+      // 用 fallback 里没有的类别，确保初始渲染处于“等接口清单”状态
+      categories: [makeCategoryDescriptor({ code: 'plugin', label: '插件', external: true, order: 70 })],
     });
 
-    renderVault('/vault/memory');
+    renderVault('/vault/plugin');
 
     await screen.findByTestId('external-view-host');
     await new Promise((resolve) => setTimeout(resolve, 0));

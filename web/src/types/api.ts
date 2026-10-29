@@ -180,6 +180,8 @@ export interface AssetCategoryDescriptor {
   label: string;
   description: string;
   hubDir: string;
+  /** 兼容目录（只读并入，不参与新建）：memory 用它承接历史 preferences/ */
+  legacyHubDirs?: string[];
   external: boolean;
   syncable: boolean;
   doctorSupported: boolean;
