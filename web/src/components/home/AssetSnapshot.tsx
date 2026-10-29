@@ -19,7 +19,7 @@ export function AssetSnapshot({ assetStats }: AssetSnapshotProps): JSX.Element {
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base">资产快照</CardTitle>
-          <span className="text-sm text-muted-foreground">共 {total} 项</span>
+          <span className="text-sm text-muted-foreground">我的库 {total} 项</span>
         </div>
       </CardHeader>
       <CardContent>

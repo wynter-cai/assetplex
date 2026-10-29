@@ -61,7 +61,7 @@ const options: StrategyOption[] = [
     value: 'skip',
     label: '跳过',
     icon: Forward,
-    title: '跳过：保留库内现有内容，不导入此文件',
+    title: '跳过：保留库内现有内容，不收藏此文件',
   },
 ];
 

@@ -111,6 +111,13 @@ describe('Sync 影响范围（Scenario 4）', () => {
 });
 
 describe('Sync 预览开关（Scenario 5）', () => {
+  it('开关旁边有可见的「预览模式」文字标签，不只靠 aria-label', async () => {
+    renderPage();
+    await screen.findByRole('switch', { name: '预览模式' });
+    // K3 走查：图标按钮旁必须有可见文字，否则用户不知道这是什么开关
+    expect(screen.getByText('预览模式')).toBeInTheDocument();
+  });
+
   it('开关具备可访问名称，状态变化时文案与按钮文案同时跟着变', async () => {
     renderPage();
     const sw = await screen.findByRole('switch', { name: '预览模式' });

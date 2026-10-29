@@ -83,6 +83,7 @@ export default function Sync(): JSX.Element {
         actions={
           <>
             <div className="flex items-center gap-2 rounded-md border px-3 py-1.5">
+              <span className="text-xs text-muted-foreground select-none">预览模式</span>
               <Switch
                 checked={dryRun}
                 onCheckedChange={setDryRun}

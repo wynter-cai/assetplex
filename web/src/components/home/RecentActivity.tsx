@@ -44,7 +44,7 @@ export function RecentActivity({ activities }: RecentActivityProps): JSX.Element
       <CardContent>
         {activities.length === 0 ? (
           <p className="text-sm text-muted-foreground py-4 text-center">
-            还没有活动记录，开始导入资产后会显示在这里
+            还没有活动记录，开始收藏资产后会显示在这里
           </p>
         ) : (
           <div className="space-y-3">

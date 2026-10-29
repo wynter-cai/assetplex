@@ -16,6 +16,7 @@ import { toast } from '@/lib/toast-store';
 import { errorMessage } from '@/lib/error-message';
 import { APP_VERSION } from '@/lib/app-version';
 import { STRATEGY_OPTIONS } from '@/lib/sync-strategy-labels';
+import { toolDisplayList, toolIdFromDisplay } from '@/components/connections/tool-display';
 
 export default function Settings() {
   const queryClient = useQueryClient();
@@ -160,18 +161,22 @@ export default function Settings() {
             />
           </div>
           <div>
-            <Label>学习来源</Label>
+            <Label htmlFor="learn-sources">学习来源</Label>
             <Input
-              value={draft.identity.learnSources.join(', ')}
+              id="learn-sources"
+              value={toolDisplayList(draft.identity.learnSources)}
               onChange={(e) => {
                 draft.identity.learnSources = e.target.value
-                  .split(',')
-                  .map((s) => s.trim())
+                  .split(/[,，、]/)
+                  .map(toolIdFromDisplay)
                   .filter(Boolean);
                 setDraft({ ...draft });
                 setDirty(true);
               }}
             />
+            <p className="mt-1 text-xs text-muted-foreground">
+              可填工具显示名（如 TRAE 中国版、Claude Code），多个用逗号或顿号分隔
+            </p>
           </div>
         </CardContent>
       </Card>

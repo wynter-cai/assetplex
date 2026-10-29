@@ -152,7 +152,7 @@ export default function Vault(): JSX.Element {
             <>
               <Button variant="outline" size="sm" onClick={() => navigate('/import')}>
                 <Download className="h-3.5 w-3.5 mr-1.5" />
-                导入
+                收藏
               </Button>
               <Button
                 size="sm"

@@ -233,3 +233,14 @@ describe('Connections 三口径（I4）', () => {
     expect(await screen.findByText(/同步状态暂不可用/)).toBeInTheDocument();
   });
 });
+
+describe('工具列表元信息（K3 走查修复）', () => {
+  it('版本号显示完整版本且带 v 前缀，不再是裸主版本数字', async () => {
+    const { container } = renderConnections();
+    const version = await screen.findByText('v3.2.1');
+    expect(version).toBeInTheDocument();
+    expect(version).toHaveAttribute('title', '版本 3.2.1');
+    // 侧栏不得出现孤零零的主版本号（旧实现取 version.split('.')[0]）
+    expect(container.textContent).not.toMatch(/已连接3|未启用3/);
+  });
+});

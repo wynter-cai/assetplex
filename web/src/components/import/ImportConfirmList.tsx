@@ -26,7 +26,7 @@ export function ImportConfirmList({ items }: Props): JSX.Element {
   return (
     <div className="space-y-2">
       <p className="text-sm text-muted-foreground">
-        共 {items.length} 个文件：{willCreate} 个将写入资产库，{willSkip} 个因内容一致将跳过；点「开始导入」前不会有任何变化。
+        共 {items.length} 个文件：{willCreate} 个将写入我的库，{willSkip} 个因内容一致将跳过；点「开始收藏」前不会有任何变化。
       </p>
       <div className="max-h-72 overflow-y-auto rounded-md border divide-y">
         {items.map((item) => {

@@ -43,7 +43,7 @@ describe('AssetSnapshot 类别清单来源', () => {
     await waitFor(() => expect(screen.getByText('记忆')).toBeInTheDocument());
     // memory 是接口类别 → 计入；skill 不在接口清单 → 不渲染格子，也不计入总数
     expect(screen.queryByText('技能')).not.toBeInTheDocument();
-    expect(screen.getByText('共 4 项')).toBeInTheDocument();
+    expect(screen.getByText('我的库 4 项')).toBeInTheDocument();
   });
 
   it('接口失败时回退 fallback 清单，快照不空白（I1）', async () => {
@@ -52,6 +52,6 @@ describe('AssetSnapshot 类别清单来源', () => {
     renderSnapshot({ rule: 2 });
 
     await waitFor(() => expect(screen.getByText('规则')).toBeInTheDocument());
-    expect(screen.getByText('共 2 项')).toBeInTheDocument();
+    expect(screen.getByText('我的库 2 项')).toBeInTheDocument();
   });
 });

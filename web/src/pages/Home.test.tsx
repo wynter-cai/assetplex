@@ -63,7 +63,7 @@ describe('Home 页面', () => {
     expect(screen.getByText('MCP')).toBeInTheDocument();
     expect(screen.getByText('智能体')).toBeInTheDocument();
     expect(screen.getByText('4')).toBeInTheDocument();
-    expect(screen.getByText(/共 15 项/)).toBeInTheDocument();
+    expect(screen.getByText(/我的库 15 项/)).toBeInTheDocument();
   });
 
   it('渲染连接状态区域（含工具列表）', async () => {
@@ -75,10 +75,10 @@ describe('Home 页面', () => {
     expect(screen.getByText('Codex')).toBeInTheDocument();
   });
 
-  it('渲染快速动作区域（含导入按钮）', async () => {
+  it('渲染快速动作区域（含收藏按钮）', async () => {
     renderHome();
     expect(await screen.findByText('快速动作')).toBeInTheDocument();
-    expect(screen.getByText('导入资产')).toBeInTheDocument();
+    expect(screen.getByText('收藏资产')).toBeInTheDocument();
     expect(screen.getByText('同步')).toBeInTheDocument();
     expect(screen.getByText('新建技能')).toBeInTheDocument();
   });

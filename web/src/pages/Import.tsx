@@ -24,7 +24,7 @@ import type { DiscoveredItem, ConflictStrategy, ImportItem } from '@/types/api';
 
 type Step = 1 | 2 | 3 | 4;
 
-const stepLabels = ['检测工具', '发现内容', '确认导入', '导入完成'];
+const stepLabels = ['检测工具', '发现内容', '确认收藏', '收藏完成'];
 
 /** 按 hubTargetPath 分组的冲突项 */
 interface GroupedConflict {
@@ -209,8 +209,8 @@ export default function Import() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="智能导入"
-        subtitle="从已安装的 AI 编码工具中自动发现身份、技能、规则和 MCP 配置，一键导入到 AssetPlex 统一管理"
+        title="收藏到我的库"
+        subtitle="从已安装的 AI 编码工具中自动发现身份、技能、规则和 MCP 配置，选中后收藏进我的库统一管理"
         actions={
           step === 1 && (
             <Button variant="outline" onClick={() => rescan()} disabled={scanLoading}>
@@ -336,7 +336,7 @@ export default function Import() {
               {allItems.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
                   <FileText className="h-8 w-8 mx-auto mb-2" />
-                  未发现可导入的文件
+                  未发现可收藏的文件
                 </div>
               )}
             </CardContent>
@@ -381,7 +381,7 @@ export default function Import() {
                 ) : (
                   <>
                     <CheckCircle className="h-4 w-4 text-success" />
-                    确认导入
+                    确认收藏
                   </>
                 )}
               </CardTitle>
@@ -423,17 +423,17 @@ export default function Import() {
               ) : (
                 <Download className="h-4 w-4 mr-1" />
               )}
-              开始导入
+              开始收藏
             </Button>
           </div>
         </>
       )}
 
-      {/* Step 4: 导入完成 */}
+      {/* Step 4: 收藏完成 */}
       {step === 4 && result && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">导入完成</CardTitle>
+            <CardTitle className="text-base">收藏完成</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* 汇总 */}
@@ -495,7 +495,7 @@ export default function Import() {
 
             <div className="flex gap-2 justify-end">
               <Button variant="outline" onClick={() => setStep(1)}>
-                重新导入
+                继续收藏
               </Button>
               <Button onClick={() => (window.location.href = '/sync')}>
                 前往同步中心

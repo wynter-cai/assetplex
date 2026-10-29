@@ -7,6 +7,7 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { TOOL_DISPLAY_NAME } from '@/components/connections/tool-display';
 import type { SwapHistoryEntry } from '@/types/api';
 
 interface SwapHistoryListProps {
@@ -31,7 +32,7 @@ export function SwapHistoryList({ history, onRollback, rollingBackId }: SwapHist
           {history.map((entry) => (
             <li key={entry.swapId} className="flex items-center gap-2 rounded border bg-background px-3 py-1.5 text-xs">
               <span className="text-muted-foreground">{formatTime(entry.createdAt)}</span>
-              <span className="font-medium">{entry.tool}</span>
+              <span className="font-medium">{TOOL_DISPLAY_NAME[entry.tool] ?? entry.tool}</span>
               <span>
                 写入 {entry.counts.written} · 跳过 {entry.counts.skipped} · 失败 {entry.counts.failed}
               </span>

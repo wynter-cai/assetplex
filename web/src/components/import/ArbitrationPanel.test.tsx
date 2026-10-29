@@ -49,7 +49,7 @@ describe('ArbitrationPanel', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'AI 仲裁' }));
 
-    expect(await screen.findByText('保留导入版')).toBeInTheDocument();
+    expect(await screen.findByText('保留工具版')).toBeInTheDocument();
     expect(arbitrate).toHaveBeenCalledWith({
       category: 'rule',
       leftPath: 'd:/demo/tool/rules/rule.md',
@@ -69,7 +69,7 @@ describe('ArbitrationPanel', () => {
     await userEvent.click(await screen.findByRole('button', { name: '采纳建议' }));
 
     expect(props.onAdopt).toHaveBeenCalledWith('overwrite', undefined);
-    expect(screen.getByText(/确认导入后生效/)).toBeInTheDocument();
+    expect(screen.getByText(/确认收藏后生效/)).toBeInTheDocument();
   });
 
   it('keep-right 采纳→onAdopt("skip")', async () => {
@@ -149,6 +149,6 @@ describe('ArbitrationPanel', () => {
     await userEvent.click(screen.getByRole('button', { name: 'AI 仲裁' }));
     expect(screen.getByRole('button', { name: /仲裁中/ })).toBeDisabled();
     resolveFn(response());
-    expect(await screen.findByText('保留导入版')).toBeInTheDocument();
+    expect(await screen.findByText('保留工具版')).toBeInTheDocument();
   });
 });

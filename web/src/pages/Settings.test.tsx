@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, type RenderResult } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, type RenderResult } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Settings from './Settings';
 import { api } from '@/lib/api';
@@ -92,5 +92,24 @@ describe('设置页同步策略中文枚举（I6）', () => {
     expect(labels).toEqual(
       expect.arrayContaining(['原生导入', '符号链接', '复制', '混合', '按项目']),
     );
+  });
+});
+
+describe('设置页学习来源中文化（K3 走查修复）', () => {
+  it('默认值显示工具中文名，页面不直出 trae-cn 等内部标识', async () => {
+    const { container } = renderPage();
+    const input = await screen.findByLabelText('学习来源');
+    expect(input).toHaveValue('TRAE 中国版、Claude Code');
+    expect(container.textContent).not.toMatch(/trae-cn|claude-code/);
+  });
+
+  it('用户按中文名编辑后，保存时回写为工具 id', async () => {
+    renderPage();
+    const input = await screen.findByLabelText('学习来源');
+    fireEvent.change(input, { target: { value: 'Claude Code、OpenAI Codex' } });
+    fireEvent.click(screen.getByRole('button', { name: /保存配置/ }));
+    await waitFor(() => expect(api.saveHubConfig).toHaveBeenCalled());
+    const saved = vi.mocked(api.saveHubConfig).mock.calls[0][0];
+    expect(saved.identity.learnSources).toEqual(['claude-code', 'codex']);
   });
 });

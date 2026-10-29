@@ -2,7 +2,7 @@
  * 冲突仲裁面板（add-llm-conflict-arbitration C1-C3）
  *
  * 导入向导 Step 3 differs 冲突项展开区：「AI 仲裁」→ 结构化建议卡 → 采纳仅改前端待确认状态，
- * 落盘永远由「确认导入」触发（advisory-only 信任红线，spec Scenario 3/4）。
+ * 落盘永远由「确认收藏」触发（advisory-only 信任红线，spec Scenario 3/4）。
  * spec: 设计文档/changes/add-llm-conflict-arbitration/specs/conflict-arbitration.spec.md
  */
 
@@ -32,8 +32,8 @@ export interface ArbitrationPanelProps {
 }
 
 const DECISION_LABEL: Record<ArbitrationDecision, string> = {
-  'keep-left': '保留导入版',
-  'keep-right': '保留现有版',
+  'keep-left': '保留工具版',
+  'keep-right': '保留库内版',
   merge: '智能合并',
   'manual-review': '需人工复核',
 };
@@ -156,7 +156,7 @@ export function ArbitrationPanel({ category, leftPath, rightPath, leftLabel, onA
           )}
 
           {adopted && (
-            <p className="text-xs text-success">已采纳，确认导入后生效</p>
+            <p className="text-xs text-success">已采纳，确认收藏后生效</p>
           )}
         </div>
       )}
