@@ -2,8 +2,9 @@
  * AssetEditor 资产医生入口测试（add-asset-doctor G3 走查缺口回灌）
  *
  * 浏览器走查发现 /vault/rule 主视图详情无体检入口（医生只接了旧 /rules 页）。
- * 口径：view 模式下 rule/identity 类别提供「资产医生」；mcp/skill 类别不提供
+ * 口径：view 模式下 rule/identity/memory 类别提供「资产医生」；mcp/skill 类别不提供
  * （mcp 一期不做诊断；skill 走技能页专属视图）。
+ * 关联：add-memory-category T12 走查前的补齐（memory-visible Scenario 7）
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -60,6 +61,11 @@ describe('AssetEditor 医生入口', () => {
 
   it('view 模式 identity 类别：同样提供入口', () => {
     renderEditor(asset('identity', 'identity/profile.md'), 'view');
+    expect(screen.getByRole('button', { name: '资产医生' })).toBeInTheDocument();
+  });
+
+  it('view 模式 memory 类别：提供入口（记忆也要能体检，Scenario 7）', () => {
+    renderEditor(asset('memory', 'memory/demo-session.md'), 'view');
     expect(screen.getByRole('button', { name: '资产医生' })).toBeInTheDocument();
   });
 

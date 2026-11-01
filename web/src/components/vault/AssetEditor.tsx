@@ -13,7 +13,7 @@ import type { Asset, DoctorAssetKind } from '@/types/api';
  * 写成闭集查找而不是 `asset.category === 'rule'`：`Asset.category` 已放宽为声明源
  * 下发的类别代码（tasks I3），字符串比较不会把宽类型收窄成字面量类型。
  */
-const DOCTOR_KINDS: readonly DoctorAssetKind[] = ['rule', 'identity'];
+const DOCTOR_KINDS: readonly DoctorAssetKind[] = ['rule', 'identity', 'memory'];
 
 function doctorKindOf(category: string): DoctorAssetKind | null {
   return DOCTOR_KINDS.find((kind) => kind === category) ?? null;
