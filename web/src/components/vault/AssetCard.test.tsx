@@ -75,3 +75,37 @@ describe('AssetCard 分发状态', () => {
     expect(screen.getByTestId('distribute-action').className).not.toContain('bg-primary');
   });
 });
+
+/**
+ * spec: memory-visible Scenario 5（旧目录内容仍可见，并标注来源为旧目录）
+ * 关联: add-memory-category T11/T15 走查前补齐
+ */
+describe('AssetCard 旧目录标记', () => {
+  const memoryAsset: Asset = {
+    ...asset,
+    id: 'memory/team-decisions.md',
+    name: '团队决定',
+    category: 'memory',
+    hubPath: 'memory/team-decisions.md',
+  };
+
+  it('preferences/ 下的历史文件标注「旧目录」', () => {
+    render(
+      <AssetCard
+        asset={{ ...memoryAsset, id: 'preferences/session_memory.md', hubPath: 'preferences/session_memory.md' }}
+        onView={noop}
+        onEdit={noop}
+        onDistribute={noop}
+        distributions={[]}
+      />,
+    );
+
+    expect(screen.getByText('旧目录')).toBeInTheDocument();
+  });
+
+  it('memory/ 下的文件不标注旧目录', () => {
+    render(<AssetCard asset={memoryAsset} onView={noop} onEdit={noop} onDistribute={noop} distributions={[]} />);
+
+    expect(screen.queryByText('旧目录')).not.toBeInTheDocument();
+  });
+});

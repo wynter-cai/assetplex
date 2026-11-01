@@ -34,6 +34,7 @@ interface PanelOptions {
   distributions?: Record<string, AssetDistributionInfo[]>;
   partial?: boolean;
   lockedCategory?: string | null;
+  lockedCategoryLabel?: string;
   error?: Error | null;
   isLoading?: boolean;
 }
@@ -47,6 +48,7 @@ function renderPanel(options: PanelOptions = {}): void {
       assets={assets}
       categoryOptions={categoryOptions}
       lockedCategory={options.lockedCategory ?? null}
+      lockedCategoryLabel={options.lockedCategoryLabel}
       search=""
       onSearchChange={vi.fn()}
       distributions={makeDistributionsView({ index: options.distributions ?? {}, partial: options.partial ?? false })}
@@ -194,5 +196,37 @@ describe('AssetListPanel 空态与失败态', () => {
     renderPanel({ partial: true });
 
     expect(screen.getByText('部分工具状态暂不可用')).toBeInTheDocument();
+  });
+});
+
+/**
+ * spec: memory-visible Scenario 3（空态给唯一出口）+ Scenario 9（不回归）
+ * 关联: add-memory-category tasks T11
+ */
+describe('AssetListPanel 类别页空态与失败态', () => {
+  it('记忆类别页空态：文案说明库里没有记忆，唯一动作是从工具收藏记忆', () => {
+    renderPanel({ assets: [], lockedCategory: 'memory', lockedCategoryLabel: '记忆' });
+
+    expect(screen.getByText('我的库里还没有记忆')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '从已安装的工具收藏记忆' })).toBeInTheDocument();
+    // 唯一主动作：空态区域不得并列第二个按钮，也不谎称「共 0 项」
+    expect(screen.getAllByRole('button')).toHaveLength(1);
+    expect(screen.queryByText(/共 \d+ 项资产/)).not.toBeInTheDocument();
+  });
+
+  it('记忆类别页请求失败：给错误与重试，不显示空态文案与假计数', () => {
+    renderPanel({ assets: [], lockedCategory: 'memory', lockedCategoryLabel: '记忆', error: new Error('boom') });
+
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '重试' })).toBeInTheDocument();
+    expect(screen.queryByText('我的库里还没有记忆')).not.toBeInTheDocument();
+    expect(screen.queryByText(/共 \d+ 项资产/)).not.toBeInTheDocument();
+  });
+
+  it('未锁定类别的空态文案不回归', () => {
+    renderPanel({ assets: [] });
+
+    expect(screen.getByText('还没有资产')).toBeInTheDocument();
+    expect(screen.queryByText(/我的库里还没有/)).not.toBeInTheDocument();
   });
 });

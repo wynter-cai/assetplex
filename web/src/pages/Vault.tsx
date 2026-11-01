@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
 import { useEscapeKey } from '@/lib/use-escape-key';
 import { pickCategory, useAssetCategories } from '@/lib/use-asset-categories';
+import { toast } from '@/lib/toast-store';
 import { categoryOptionsFor } from '@/lib/asset-filter';
 import { distributionsFor, useDistributions } from '@/lib/use-distributions';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -18,6 +19,11 @@ import { CriteriaView } from '@/components/criteria/CriteriaView';
 import type { Asset, FrontendCategory } from '@/types/api';
 
 type ViewMode = 'list' | 'view' | 'edit' | 'create';
+
+/** 接口错误统一取文案：api 抛 Error，未知值兜底为字符串 */
+function errorText(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
 
 export default function Vault(): JSX.Element {
   const params = useParams<{ category?: string }>();
@@ -69,6 +75,10 @@ export default function Vault(): JSX.Element {
       queryClient.invalidateQueries({ queryKey: ['overview'] });
       setViewMode('list');
     },
+    // 失败必须说清原因（重名/名称非法）：静默停住会让人误以为已保存（memory-visible Scenario 4）
+    onError: (err: unknown) => {
+      toast.error('新建失败', { description: errorText(err) });
+    },
   });
 
   // 更新资产
@@ -79,13 +89,20 @@ export default function Vault(): JSX.Element {
       queryClient.invalidateQueries({ queryKey: ['asset', selectedAsset?.id] });
       setViewMode('list');
     },
+    onError: (err: unknown) => {
+      toast.error('保存失败', { description: errorText(err) });
+    },
   });
 
   const handleSave = async (saveData: { name: string; category: string; content: string }): Promise<void> => {
-    if (viewMode === 'create') {
-      await createMutation.mutateAsync(saveData);
-    } else if (selectedAsset) {
-      await updateMutation.mutateAsync({ id: selectedAsset.id, content: saveData.content });
+    try {
+      if (viewMode === 'create') {
+        await createMutation.mutateAsync(saveData);
+      } else if (selectedAsset) {
+        await updateMutation.mutateAsync({ id: selectedAsset.id, content: saveData.content });
+      }
+    } catch {
+      // 提示已由 mutation onError 的 toast 给出；这里吞掉避免冒成未处理的 rejection 并保住面板
     }
   };
 
@@ -176,6 +193,7 @@ export default function Vault(): JSX.Element {
           assets={data?.items ?? []}
           categoryOptions={categoryOptions}
           lockedCategory={selectedCategory}
+          lockedCategoryLabel={currentCategory?.label}
           search={search}
           distributions={distributionsIndex}
           isLoading={listLoading}

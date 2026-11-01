@@ -77,6 +77,8 @@ export function AssetCard({
   const entries = distributions ?? asset.distributions;
   // 已真同步到任一工具 → 分发不再是本页主操作（旧写法看 asset.distributions.length，恒为 0 恒高亮）
   const hasSynced = entries.some((entry) => entry.status === 'synced');
+  // 历史目录 preferences/ 下的文件仍可见，但得说清它没搬家（memory-visible Scenario 5、D2）
+  const fromLegacyDir = asset.id.startsWith('preferences/');
 
   return (
     <Card
@@ -103,6 +105,15 @@ export function AssetCard({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <h3 className="text-sm font-medium truncate">{asset.name}</h3>
+              {fromLegacyDir && (
+                <Badge
+                  variant="outline"
+                  className="text-xs h-5 px-1 shrink-0"
+                  title="该文件仍在历史目录 preferences/ 下，不会自动搬进 memory/"
+                >
+                  旧目录
+                </Badge>
+              )}
               <SourceBadge source={asset.source} />
             </div>
             <p className="text-xs text-muted-foreground truncate mb-2">

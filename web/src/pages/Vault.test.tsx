@@ -4,6 +4,7 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Vault from './Vault';
 import { api } from '@/lib/api';
+import { useToastStore } from '@/lib/toast-store';
 import { makeAsset, makeCategoryDescriptor } from '@/lib/test-factories';
 import type { Asset, SkillListResult } from '@/types/api';
 
@@ -272,5 +273,44 @@ describe('Vault 筛选、分页与空态/失败态（I3）', () => {
 
     expect(await screen.findByText('还没有资产')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '从工具收藏到我的库' })).toBeInTheDocument();
+  });
+});
+
+/**
+ * memory-visible Scenario 4：重名（大小写不敏感）拒绝保存并提示，磁盘不留半成品
+ *
+ * 后端 createHubFile 抛「文件已存在」，但之前前端 onError 缺位：
+ * 保存失败时面板静默停住、用户看不到任何提示（T15 走查回灌）。
+ */
+describe('Vault 新建/保存失败提示（memory-visible Scenario 4）', () => {
+  it('重名时弹出错误提示，且新建面板不静默关闭', async () => {
+    vi.spyOn(api, 'listAssets').mockResolvedValue({
+      items: [makeAsset({ id: 'memory/team-decisions.md', name: 'team-decisions', category: 'memory' })],
+      total: 1,
+    });
+    vi.spyOn(api, 'createAsset').mockRejectedValue(
+      new Error('文件已存在：memory/team-decisions.md（与 team-decisions.md 重名）'),
+    );
+    useToastStore.getState().reset();
+
+    renderVault('/vault/memory');
+
+    fireEvent.click(await screen.findByRole('button', { name: '新建' }));
+    fireEvent.change(screen.getByPlaceholderText('资产名称（如 react-expert）'), {
+      target: { value: 'Team-Decisions' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('在此输入 Markdown 内容...'), {
+      target: { value: '# 正文' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '保存' }));
+
+    await waitFor(() => {
+      const toasts = useToastStore.getState().toasts;
+      expect(
+        toasts.some((t) => t.variant === 'error' && (t.description ?? '').includes('文件已存在')),
+      ).toBe(true);
+    });
+    // 失败不关面板：用户能改名重试，不会误以为已保存
+    expect(screen.getByText('新建资产')).toBeInTheDocument();
   });
 });

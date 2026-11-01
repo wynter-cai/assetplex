@@ -25,6 +25,8 @@ interface AssetListPanelProps {
   categoryOptions: AssetCategoryOption[];
   /** URL 锁定的类别；非空时不再提供类别下拉 */
   lockedCategory: string | null;
+  /** 锁定类别的中文名（取声明源）；空态文案据此说出「我的库里还没有记忆」这类具体话 */
+  lockedCategoryLabel?: string;
   search: string;
   distributions: DistributionsView;
   isLoading: boolean;
@@ -107,6 +109,7 @@ export function AssetListPanel({
   assets,
   categoryOptions,
   lockedCategory,
+  lockedCategoryLabel,
   search,
   distributions,
   isLoading,
@@ -160,12 +163,21 @@ export function AssetListPanel({
         </StateBlock>
       );
     }
+    // 类别页空态说具体话（memory-visible Scenario 3）：说清缺哪类，出口仍只有一个
+    const scopedLabel = lockedCategory ? lockedCategoryLabel : undefined;
     return (
-      <StateBlock icon={<Package className="h-12 w-12" />} title="还没有资产">
-        <p className="text-sm text-muted-foreground mb-4">从已安装的工具里把资产收藏进我的库</p>
+      <StateBlock
+        icon={<Package className="h-12 w-12" />}
+        title={scopedLabel ? `我的库里还没有${scopedLabel}` : '还没有资产'}
+      >
+        <p className="text-sm text-muted-foreground mb-4">
+          {scopedLabel
+            ? `从已安装的工具里把${scopedLabel}收藏进我的库，换工具也能带走`
+            : '从已安装的工具里把资产收藏进我的库'}
+        </p>
         <Button size="sm" onClick={onCollect}>
           <Download className="h-3.5 w-3.5 mr-1.5" />
-          从工具收藏到我的库
+          {scopedLabel ? `从已安装的工具收藏${scopedLabel}` : '从工具收藏到我的库'}
         </Button>
       </StateBlock>
     );
