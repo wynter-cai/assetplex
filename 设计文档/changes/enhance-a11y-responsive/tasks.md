@@ -6,14 +6,14 @@
 
 ## 组 1 · 令牌与全局 CSS
 
-- [ ] **T1** `web/src/lib/contrast.ts` + `contrast.test.ts`：实现 `hexToRgb`、`relativeLuminance`、`contrastRatio`，单测用 4 组已知值（黑白 21:1、同色 1:1、中灰对白、品牌色对白）先红后绿
-  - 验收：单测通过，函数无副作用、无 `any`
-- [ ] **T2** 实测并校准令牌：用 T1 的纯函数计算现有 `--muted-foreground` / `--foreground` / `--primary-foreground` 在三种底色上的比值，不足则调 `index.css` 令牌值；结论写进本文件末尾「实测记录」
-  - 验收：Scenario 6 全部达标；不改任何组件内颜色
-- [ ] **T3** `index.css` base 层焦点环：`a, button, [role='button'], [tabindex]:not([tabindex='-1']), summary` 的 `:focus-visible` 使用 `outline: 2px solid hsl(var(--ring)); outline-offset: 2px`
-  - 验收：侧栏链接、toast「查看详情」、卡片文本按钮聚焦时均可见；不引起布局抖动（`outline` 不占布局）
-- [ ] **T4** `index.css` 增加 `@media (prefers-reduced-motion: reduce)`：动画/过渡时长压到 `0.01ms`、`animation-iteration-count: 1`、`scroll-behavior: auto`
-  - 验收：抽屉与 toast 动效基本消失但状态照常（toast 仍自动消失）
+- [x] **T1** `web/src/lib/contrast.ts` + `contrast.test.ts`：实现 `hexToRgb`、`relativeLuminance`、`contrastRatio`，单测用 4 组已知值（黑白 21:1、同色 1:1、中灰对白、品牌色对白）先红后绿
+  - 验收：单测通过，函数无副作用、无 `any` ✅（5 用例绿；另补 `hslToHex` 供令牌换算）
+- [x] **T2** 实测并校准令牌：用 T1 的纯函数计算现有 `--muted-foreground` / `--foreground` / `--primary-foreground` 在三种底色上的比值，不足则调 `index.css` 令牌值；结论写进本文件末尾「实测记录」
+  - 验收：Scenario 6 全部达标；不改任何组件内颜色 ✅（L 46.9%→43.5%，仅动令牌；断言固化进单测）
+- [x] **T3** `index.css` base 层焦点环：`a, button, [role='button'], [tabindex]:not([tabindex='-1']), summary` 的 `:focus-visible` 使用 `outline: 2px solid hsl(var(--ring)); outline-offset: 2px`
+  - 验收：侧栏链接、toast「查看详情」、卡片文本按钮聚焦时均可见；不引起布局抖动（`outline` 不占布局） ✅（可见性在 T14 走查复核）
+- [x] **T4** `index.css` 增加 `@media (prefers-reduced-motion: reduce)`：动画/过渡时长压到 `0.01ms`、`animation-iteration-count: 1`、`scroll-behavior: auto`
+  - 验收：抽屉与 toast 动效基本消失但状态照常（toast 仍自动消失） ✅（走查时 Playwright `reducedMotion: 'reduce'` 复核）
 
 ## 组 2 · 布局骨架与语义
 
@@ -57,5 +57,8 @@
 
 | 令牌 | on `--background` | on `--card` | on `--muted` | 结论 |
 |---|---|---|---|---|
-| `--muted-foreground` 初值 | 待测 | 待测 | 待测 | — |
-| 调整后 | — | — | — | — |
+| `--muted-foreground` 初值（L 46.9%） | 4.76 | 4.76 | **4.34** | 在 `--muted` 上不达标 |
+| 调整后（L 43.5%） | 5.35 | 5.35 | 4.88 | 三底色均 ≥ 4.5，达标（拍板点 B：微调到标，无局部覆写） |
+
+其余实测均达标，未动：`--foreground` 20.01 / 20.01 / 18.26（≥ 7）；`--primary-foreground` on `--primary` 5.90；语义色文字 on 白：success 5.15、warning 5.02、destructive 4.80、info 6.66（均 ≥ 4.5）。
+实测方式：`web/src/lib/contrast.ts` 纯函数经 esbuild 临时打包后直接计算；达标断言已固化进 `contrast.test.ts`「设计令牌对比度」describe。
