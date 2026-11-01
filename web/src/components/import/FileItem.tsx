@@ -1,22 +1,8 @@
 import { Badge } from '@/components/ui/badge';
-import { User, Sparkles, BookOpen, Server, Settings, File, AlertTriangle } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
+import { DEFAULT_CATEGORY_ICON } from '@/config/asset-categories';
+import { pickCategory, useAssetCategories } from '@/lib/use-asset-categories';
 import type { DiscoveredItem } from '@/types/api';
-
-const categoryIcons: Record<string, typeof File> = {
-  identity: User,
-  skill: Sparkles,
-  rule: BookOpen,
-  mcp: Server,
-  preference: Settings,
-};
-
-const categoryLabels: Record<string, string> = {
-  identity: '身份',
-  skill: '技能',
-  rule: '规则',
-  mcp: 'MCP',
-  preference: '偏好',
-};
 
 interface Props {
   item: DiscoveredItem;
@@ -31,7 +17,10 @@ function formatSize(bytes: number): string {
 }
 
 export function FileItem({ item, selected, onToggle }: Props) {
-  const Icon = categoryIcons[item.category] ?? File;
+  // 类别图标与中文名一律取声明源（接口清单优先，查不到回退 fallback 清单）
+  const { categories } = useAssetCategories();
+  const category = pickCategory(categories, item.category);
+  const Icon = category?.icon ?? DEFAULT_CATEGORY_ICON;
 
   return (
     <div
@@ -48,7 +37,7 @@ export function FileItem({ item, selected, onToggle }: Props) {
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium truncate">{item.hubTargetPath}</span>
           <Badge variant="secondary" className="text-xs shrink-0">
-            {categoryLabels[item.category] ?? item.category}
+            {category?.label ?? item.category}
           </Badge>
         </div>
         <div className="text-xs text-muted-foreground mt-0.5">

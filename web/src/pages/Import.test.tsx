@@ -17,6 +17,8 @@ vi.mock('@/lib/api', () => ({
   api: {
     scanTools: vi.fn(),
     executeImport: vi.fn(),
+    // FileItem 的类别徽章走声明源（add-memory-category T10）
+    getAssetCategories: vi.fn(),
   },
 }));
 
@@ -82,6 +84,8 @@ beforeEach(() => {
   vi.mocked(api.scanTools).mockReset();
   vi.mocked(api.executeImport).mockReset();
   vi.mocked(api.executeImport).mockResolvedValue(makeResult());
+  vi.mocked(api.getAssetCategories).mockReset();
+  vi.mocked(api.getAssetCategories).mockRejectedValue(new Error('清单接口不可用'));
 });
 
 describe('Import 无冲突确认屏', () => {

@@ -99,7 +99,20 @@ export interface FileContent {
 
 // ========== 智能导入向导类型 ==========
 
-export type DiscoveredCategory = 'identity' | 'skill' | 'rule' | 'mcp' | 'preference';
+/**
+ * 扫描发现的文件类别（与后端 src/core/types.ts 的 DiscoveredCategory 对齐）
+ *
+ * `preference` 仅作适配器兜底（历史 preferences/ 目录），不进收藏向导分组
+ * （add-memory-category D5）；`command` 不列入：单工具专属，已停止扫描（D3）。
+ */
+export type DiscoveredCategory =
+  | 'identity'
+  | 'skill'
+  | 'rule'
+  | 'mcp'
+  | 'agent'
+  | 'memory'
+  | 'preference';
 export type ConflictStatus = 'none' | 'exists' | 'differs';
 export type ConflictStrategy = 'merge' | 'overwrite' | 'skip';
 
@@ -825,7 +838,7 @@ export interface ArbitrationResponse {
 // ========== 资产医生（add-asset-doctor Phase E） ==========
 
 /** 医生服务的资产类别（与后端 DOCTOR_ASSET_KINDS 闭集对齐；mcp 一期不做） */
-export type DoctorAssetKind = 'identity' | 'skill' | 'rule' | 'agent' | 'command';
+export type DoctorAssetKind = 'identity' | 'skill' | 'rule' | 'agent' | 'command' | 'memory';
 
 export type DiagnosisOverall = 'healthy' | 'needs-attention' | 'at-risk';
 
