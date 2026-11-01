@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -6,8 +6,9 @@ import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { pickCategory, useAssetCategories } from '@/lib/use-asset-categories';
 import { DISTRIBUTION_STATUS } from './DistributionBadge';
-import type { Asset, AssetDistributionInfo, AssetSyncStatus } from '@/types/api';
+import type { Asset, AssetDistributionInfo, AssetSyncStatus, SwapCategorySupport } from '@/types/api';
 
 interface DistributionDialogProps {
   asset: Asset | null;
@@ -43,6 +44,24 @@ export function DistributionDialog({
     enabled: open,
   });
 
+  // 类别支持矩阵真值（与切换页同一份，后端按适配器 resolveHubItems 派生）：
+  // 不支持的类别必须说出原因并禁用，不静默跳过（memory-visible Scenario 6、D6）
+  const { data: swapData } = useQuery({
+    queryKey: ['swap-tools'],
+    queryFn: api.getSwapTools,
+    enabled: open,
+  });
+  const { categories } = useAssetCategories();
+  const categoryLabel = asset ? pickCategory(categories, asset.category)?.label ?? asset.category : '';
+  // 矩阵拿不到（接口失败/未落地）时不编造「不支持」，只按安装状态处理
+  const supportByTool = useMemo(() => {
+    const map = new Map<string, Record<string, SwapCategorySupport>>();
+    for (const candidate of swapData?.tools ?? []) {
+      map.set(candidate.name, candidate.supportMatrix as Record<string, SwapCategorySupport>);
+    }
+    return map;
+  }, [swapData]);
+
   // 本地维护哪些工具启用了同步（Phase 1 不持久化，Phase 2 实现）
   const [enabledTools, setEnabledTools] = useState<Record<string, boolean>>({});
 
@@ -69,6 +88,8 @@ export function DistributionDialog({
               const dist = (distributions ?? asset.distributions).find((d) => d.toolId === tool.name);
               const status = statusOf(dist?.status);
               const isEnabled = enabledTools[tool.name] ?? (dist?.status === 'synced' || tool.enabled === true);
+              const support = supportByTool.get(tool.name)?.[asset.category];
+              const unsupported = support?.supported === false;
               return (
                 <div
                   key={tool.name}
@@ -78,14 +99,18 @@ export function DistributionDialog({
                     <div className="text-sm font-medium">
                       {tool.name === 'trae-cn' ? 'TRAE 中国版' : tool.name}
                     </div>
-                    <div className={`text-xs ${status?.text ?? 'text-muted-foreground'}`}>
-                      {tool.installed ? (status?.label ?? '状态未知') : '未安装'}
+                    <div className={`text-xs ${unsupported ? 'text-warning' : status?.text ?? 'text-muted-foreground'}`}>
+                      {unsupported
+                        ? `此工具不支持${categoryLabel}类别，无法同步`
+                        : tool.installed
+                          ? status?.label ?? '状态未知'
+                          : '未安装'}
                     </div>
                   </div>
                   <Switch
-                    checked={isEnabled}
+                    checked={isEnabled && !unsupported}
                     onCheckedChange={(v) => setEnabledTools((prev) => ({ ...prev, [tool.name]: v }))}
-                    disabled={!tool.installed}
+                    disabled={!tool.installed || unsupported}
                   />
                 </div>
               );
