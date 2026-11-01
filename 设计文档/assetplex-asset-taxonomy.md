@@ -50,6 +50,9 @@ AssetPlex 的核心价值是**让用户掌控自己的AI资产，换工具不丢
 | **规则** | `rule` | 编码规范、安全约束、输出要求 | ⭐⭐⭐⭐⭐ 极高（规则可转译） | ✅ 已管理 |
 | **MCP服务器** | `mcp` | 外部工具集成（数据库、API、文件系统） | ⭐⭐⭐⭐ 高（MCP 是标准协议） | ✅ 已管理 |
 
+> 注：`agent`（只读盘点）与 `memory`（完整写管理，add-memory-category）已作为一等类别接入资产中心，
+> 所以声明源合计 7 条而非 4 条；类别清单以 `src/core/asset-categories.ts` 为唯一真相。
+
 ### 🧭 元资产：裁决准则（criterion，跨梯队）
 
 不是喂给工具的业务资产，而是「管理其他资产的依据」：存在 Hub 的 `criteria/<slug>.md`，
@@ -68,7 +71,7 @@ AssetPlex 的核心价值是**让用户掌控自己的AI资产，换工具不丢
 
 | 资产类别 | Code | 说明 | 跨工具兼容性 | 当前状态 |
 |---------|------|------|-------------|---------|
-| **斜杠命令** | `command` | 自定义命令（如 `/generate-test`、`/commit`） | ⭐⭐⭐⭐ 高（本质是"提示词+参数"） | 🟡 仅扫了 Claude Code |
+| **斜杠命令** | `command` | 自定义命令（如 `/generate-test`、`/commit`） | ⭐⭐⭐⭐ 高（本质是"提示词+参数"） | ❌ 不做（单工具专属，D3 拍板）：仅 Claude Code 有等价机制，已从扫描器移除 `commands/`，资产中心任何位置不出现该类别 |
 | **子代理** | `agent` | 子代理配置（专门处理某类任务的子 AI） | ⭐⭐⭐ 中（模型选择可能不同） | 🟢 只读盘点已覆盖多工具（TRAE 内置 persona / 用户自建、Claude、Codex、CodeBuddy expert、插件 agent），暂未纳入保险箱写管理 |
 | **提示词模板** | `prompt` | 复杂提示词模板库（重复使用的） | ⭐⭐⭐⭐ 高（文本即可） | 🔴 未管理 |
 | **智能体定义** | `agent-config` | 完整智能体定义（模型/温度/工具集） | ⭐⭐ 低（工具专属字段多） | 🔴 未管理 |
@@ -79,7 +82,7 @@ AssetPlex 的核心价值是**让用户掌控自己的AI资产，换工具不丢
 
 | 资产类别 | Code | 说明 | 跨工具兼容性 | 当前状态 |
 |---------|------|------|-------------|---------|
-| **长期记忆** | `memory` | 用户偏好、项目决策、踩过的坑 | ⭐⭐⭐⭐ 高（文本即可） | 🔴 TRAE 扫了一部分 |
+| **长期记忆** | `memory` | 用户偏好、项目决策、踩过的坑 | ⭐⭐⭐⭐ 高（文本即可） | ✅ 已管理（add-memory-category）：Hub `memory/` 为一等类别（order 55），历史 `preferences/` 只读并入并标「旧目录」，可查看/新建/编辑/同步/体检；TRAE `memory/*.md` 已归位 |
 | **知识库** | `knowledge` | 项目知识库、文档索引、RAG 数据 | ⭐⭐ 低（格式差异大） | 🔴 未管理 |
 | **项目上下文** | `project-context` | 项目级规则、技术栈约束 | ⭐⭐⭐⭐ 高（文本即可） | 🟡 已有「项目」只读视图（TRAE 项目清单 + AI 工具标记 + 项目内规则/技能/文档统计 + git 状态 + 快捷打开），项目级资产本身尚未入库管理 |
 | **工作流** | `workflow` | 自定义工作流（多步骤AI任务） | ⭐⭐ 低（概念模型差异大） | 🔴 未管理 |
@@ -107,7 +110,7 @@ AssetPlex 的核心价值是**让用户掌控自己的AI资产，换工具不丢
 | 资产 | 路径 | 格式 | AssetPlex 状态 |
 |------|------|------|---------------|
 | 身份 | `memory/user_profile.md` | Markdown | ✅ 已扫 |
-| 长期记忆 | `memory/*.md` (其他) | Markdown | 🟡 部分扫 |
+| 长期记忆 | `memory/*.md` (其他) | Markdown | ✅ 已扫并归入 `memory` 类别（`user_profile.md` 仍属身份） |
 | 技能 | `skills/*.md` | Markdown | ✅ 已扫 |
 | 规则 | `rules/*.md` | Markdown | ✅ 已扫 |
 | MCP | `mcp.json` | JSON | ✅ 已扫 |
@@ -122,7 +125,7 @@ AssetPlex 的核心价值是**让用户掌控自己的AI资产，换工具不丢
 | 身份 | `CLAUDE.md` | Markdown | ✅ 已扫 |
 | 技能 | `skills/*.md` | Markdown | ✅ 已扫 |
 | 规则 | `rules/*.md` | Markdown | ✅ 已扫 |
-| 斜杠命令 | `commands/*.md` | Markdown | ✅ 已扫 |
+| 斜杠命令 | `commands/*.md` | Markdown | ❌ 不再扫描（D3：命令不是资产） |
 | 子代理 | `agents/*.md` | Markdown | ✅ 已扫 |
 | MCP | `.claude.json` | JSON | ✅ 已扫 |
 | 长期记忆 | `memory/*.md` | Markdown | ❌ 未扫 |
@@ -191,7 +194,7 @@ AssetPlex 的核心价值是**让用户掌控自己的AI资产，换工具不丢
 
 ### Phase B：扩展3类（UI 重构完成后）
 
-新增：`command`、`agent`、`memory`
+新增：`command`、`agent`、`memory`——**现状：`memory` ✅ 已落地（add-memory-category）、`agent` 🟢 只读盘点已接入、`command` ❌ 不做（D3）**
 
 **目标**: 解决"换工具能不能恢复原工作流"的问题。
 
@@ -199,22 +202,18 @@ AssetPlex 的核心价值是**让用户掌控自己的AI资产，换工具不丢
 
 | 改动点 | 详情 |
 |--------|------|
-| 类型定义 | `AssetCategory` 加 `'command' \| 'agent' \| 'memory'` |
-| Adapter | 每个工具补全 scan 范围（Claude Code 已有 command/agent，其他工具按实际情况补） |
-| Scanner | 扫描 `commands/`、`agents/`、`memory/` 目录 |
-| 前端 | 资产库左侧导航支持动态类别，不是写死 4 个 |
-| 数据迁移 | 无需迁移旧数据（向后兼容） |
+| 类型定义 | `AssetCategory` 已加 `'memory'`（`agent` 走只读盘点；`command` 不加，D3） |
+| Adapter | 每个工具补全 scan 范围（WorkBuddy/CodeBuddy/TRAE 已接 memory 映射；Claude 的 `commands/` 规则已移除） |
+| Scanner | 扫 `memory/`（含兼容目录 `preferences/`）与 `agents/`；**不扫** `commands/` |
+| 前端 | 资产库左侧导航支持动态类别，不是写死 4 个（已实现：清单唯一声明源在后端，侧栏/快照/筛选自动跟随） |
+| 数据迁移 | 无需迁移旧数据（向后兼容；`preferences/` 只读并入不搬家） |
 
 **新增资产类别详细定义**:
 
-#### `command`（斜杠命令）
-- **是什么**: 用户自定义的高频操作，如 `/generate-test`、`/commit`
-- **格式**: Markdown 文件，含命令名、参数定义、提示词模板
-- **扫描位置**:
-  - Claude Code: `~/.claude/commands/*.md`（已扫）
-  - Codex: `~/.codex/commands/`（待确认）
-  - TRAE: 暂无对应概念
-- **跨工具兼容性**: 高，本质是"参数化提示词"
+#### `command`（斜杠命令）——❌ 不做（D3 拍板）
+- **不做的理由**: 只有 Claude Code 有等价机制，其他工具无对应概念，强行入库只会得到一套"只能给一个工具用"的类别；它更接近单工具的高频操作入口，不是跨工具可迁移的能力资产
+- **现状口径**: 扫描器已移除 `commands/` 规则；资产中心侧栏/快照/筛选/收藏向导/切换页均不出现「命令」；Hub 里已有的 `commands/` 历史文件仍在磁盘，只是不再作为资产呈现
+- **原设想**（存档）: 用户自定义的高频操作，如 `/generate-test`、`/commit`；Markdown 格式，含命令名、参数定义、提示词模板
 
 #### `agent`（子代理配置）
 - **是什么**: 专门处理某类任务的子 AI 配置（如"代码审查专家"）
@@ -225,12 +224,15 @@ AssetPlex 的核心价值是**让用户掌控自己的AI资产，换工具不丢
   - TRAE: 暂无对应概念
 - **跨工具兼容性**: 中（模型选择/工具集可能不同，但角色定义可迁移）
 
-#### `memory`（长期记忆）
+#### `memory`（长期记忆）——✅ 已管理（add-memory-category）
 - **是什么**: 用户偏好、项目决策、踩过的坑
 - **格式**: Markdown 文件
-- **扫描位置**:
-  - TRAE: `~/.trae-cn/memory/*.md`（部分已扫）
-  - Claude Code: `~/.claude/memory/*.md`（未扫）
+- **Hub 位置**: `memory/`（新建只写这里）；历史 `preferences/` 作为兼容目录只读并入，卡片标「旧目录」，不自动搬家（D2）
+- **扫描/分发位置**:
+  - TRAE: `~/.trae-cn/memory/*.md`（`user_profile.md` 仍归身份）
+  - WorkBuddy / CodeBuddy: `~/.workbuddy/memory/`（已接入映射）
+  - Claude Code: `~/.claude/memory/*.md`（未扫，待后续变更）
+- **能力口径**: 查看/筛选/搜索、新建与编辑、同步（仅支持的工具，不支持则显示原因并禁用）、资产医生体检（正文 8000 字符阈值）
 - **跨工具兼容性**: 高（纯文本）
 
 ### Phase C：隐性资产（远期）

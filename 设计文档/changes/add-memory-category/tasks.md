@@ -29,21 +29,21 @@
 
 - [x] **T8** `web/src/config/asset-categories.ts`：补 fallback 一条（同字段）+ `CATEGORY_ICONS` 增加 `memory`（Brain）；`web/src/types/api.ts` 的 `AssetCategoryDescriptor` 增加 `legacyHubDirs?`
   - 验收：后端声明源与 fallback 逐字段比对单测通过（含 `legacyHubDirs`）
-- [ ] **T9** `web/src/types/api.ts`：`DiscoveredCategory` 与后端对齐（补 `agent`、`memory`）
+- [x] **T9** `web/src/types/api.ts`：`DiscoveredCategory` 与后端对齐（补 `agent`、`memory`）【2f6346b】
   - 验收：`tsc -b` 0 错；收藏向导不会因为类型缺失而把新类别当未知
-- [ ] **T10** `web/src/components/import/FileItem.tsx`：删掉本地 `categoryLabels` 与图标硬编码，改用声明源（`useAssetCategories` 或 `CATEGORY_ICONS` + 接口清单），未知类别回退默认图标
+- [x] **T10** `web/src/components/import/FileItem.tsx`：删掉本地 `categoryLabels` 与图标硬编码，改用声明源（`useAssetCategories` 或 `CATEGORY_ICONS` + 接口清单），未知类别回退默认图标【2f6346b】
   - 验收：收藏向导中「记忆」分组显示正确中文名；既有类别显示不变；新增守护用例防止再写死
-- [ ] **T11** 「记忆」类别页空态与失败态：空态文案「我的库里还没有记忆」+ 唯一动作「从已安装的工具收藏记忆」；错误态给重试，不显示「共 0 项」
+- [x] **T11** 「记忆」类别页空态与失败态：空态文案「我的库里还没有记忆」+ 唯一动作「从已安装的工具收藏记忆」；错误态给重试，不显示「共 0 项」【10cffa7，附带补齐 Scenario 5 旧目录标注与 Scenario 4 重名失败提示】
   - 验收：RTL 用例覆盖空态与错误态文案（memory-visible Scenario 3）
-- [ ] **T12** 同步对话框对不支持记忆的工具显示具体原因并禁用（复用既有支持矩阵原因文案机制）
+- [x] **T12** 同步对话框对不支持记忆的工具显示具体原因并禁用（复用既有支持矩阵原因文案机制）【5cb6690】
   - 验收：用例断言不支持行禁用 + 文案存在（memory-visible Scenario 6）
 
 ## 组 4 · 验收与档案
 
-- [ ] **T13** 全量验证：后端 `npm.cmd test` / `npm.cmd run typecheck` / `npm.cmd run build`；`web` 下 `vitest run` / `tsc -b` / `vite build`
-- [ ] **T14** API 回环：造中性示例文件 → `GET /api/assets?category=memory` 计数正确（含 `preferences/` 并入）→ 同步到 WorkBuddy → 状态转 `synced` → 清理测试数据
-- [ ] **T15** 浏览器走查 Scenario 1–9（含 800px 窄屏），截图落系统临时目录（不入库），走查完关闭标签页
-- [ ] **T16** 文档同步：`assetplex-asset-taxonomy.md` 第三梯队 memory 状态列改为「✅ 已管理」，并在 `command` 行标注「不做（单工具专属，D3）」；本文件勾选并填 commit 短哈希
+- [x] **T13** 全量验证：后端 `npm.cmd test` / `npm.cmd run typecheck` / `npm.cmd run build`；`web` 下 `vitest run` / `tsc -b` / `vite build`【后端 73 文件 899 用例全绿、tsc --noEmit 0 错、tsup build 成功；前端 46 文件 353 用例全绿、tsc -b 0 错、vite build 成功】
+- [x] **T14** API 回环：造中性示例文件 → `GET /api/assets?category=memory` 计数正确（含 `preferences/` 并入）→ 同步到 WorkBuddy → 状态转 `synced` → 清理测试数据【在临时沙箱 Hub 跑通（不碰维护者真实数据）：memory 计数含旧目录、声明源 order 55 且无 command、`POST /api/sync/run?tool=workbuddy` 成功 5 项 0 跳过、分发索引该文件对 workbuddy 为 `synced`；沙箱与脚本已清理】
+- [x] **T15** 浏览器走查 Scenario 1–9（含 800px 窄屏），截图落系统临时目录（不入库），走查完关闭标签页【playwright-core 脚本 39/39 断言通过，截图 17 张存 `%TEMP%\assetplex-t15\shots`；走查发现并当场补齐两处 spec 缺口：Scenario 7 记忆无体检入口【6b1caa2】、Scenario 4 重名不跨平台【2d278ac】】
+- [x] **T16** 文档同步：`assetplex-asset-taxonomy.md` 第三梯队 memory 状态列改为「✅ 已管理」，并在 `command` 行标注「不做（单工具专属，D3）」；本文件勾选并填 commit 短哈希【本笔 docs 提交】
 - [x] **T17** 拍板点复核：A（命令是否进资产中心）→ 已拍板**不做**，`command` 整项退出；B（`preferences/` 迁移）留阶段 2；C（legacy 路由）另立 `retire-legacy-routes`
 
 ## 预估与风险
