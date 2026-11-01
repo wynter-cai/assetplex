@@ -125,3 +125,34 @@ describe('criteria 裁决准则类别（add-llm-conflict-arbitration A1）', () 
     expect(() => writeHubFile('../outside.md', 'x')).toThrow(/越界/);
   });
 });
+
+/**
+ * memory-visible Scenario 4：重名（大小写不敏感）拒绝保存，磁盘不留半成品
+ * 大小写敏感文件系统（Linux/macOS 默认）上必须靠本层比对兜住，不能只依赖 existsSync。
+ */
+describe('createHubFile 记忆重名保护（add-memory-category T15 走查回灌）', () => {
+  let hubRoot: string;
+  let originalEnv: string | undefined;
+
+  beforeEach(() => {
+    hubRoot = mkdtempSync(join(tmpdir(), 'hub-memory-test-'));
+    originalEnv = process.env.ASSETPLEX_DIR;
+    process.env.ASSETPLEX_DIR = hubRoot;
+  });
+
+  afterEach(() => {
+    if (originalEnv === undefined) delete process.env.ASSETPLEX_DIR;
+    else process.env.ASSETPLEX_DIR = originalEnv;
+    rmSync(hubRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  });
+
+  it('仅大小写不同的同名记忆文件拒绝创建，原文件内容不变', () => {
+    createHubFile('memory/team-decisions.md', '第一版');
+
+    expect(() => createHubFile('memory/Team-Decisions.md', '第二版')).toThrow(/已存在/);
+    expect(readHubFile('memory/team-decisions.md')?.content).toBe('第一版');
+    expect(listHubFiles('memory').map((f) => f.relativePath)).toEqual([
+      'memory/team-decisions.md',
+    ]);
+  });
+});

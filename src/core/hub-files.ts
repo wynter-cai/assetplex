@@ -216,8 +216,26 @@ export function createHubFile(relativePath: string, content: string): void {
     throw new Error(`文件已存在：${relativePath}`);
   }
 
+  // 重名比对不依赖文件系统大小写规则（memory-visible Scenario 4）：
+  // Linux 默认大小写敏感，只靠 existsSync 会放过 Team-Decisions.md 与 team-decisions.md 并存。
+  const fileName = relativePath.split('/').pop() ?? relativePath;
+  const siblings = safeReaddir(dirname(fullPath));
+  const clash = siblings.find((entry) => entry.toLowerCase() === fileName.toLowerCase());
+  if (clash !== undefined) {
+    throw new Error(`文件已存在：${relativePath}（与 ${clash} 重名）`);
+  }
+
   ensureDir(dirname(fullPath));
   writeFileSync(fullPath, content, 'utf-8');
+}
+
+/** 目录不存在或不可读时返回空数组：新建路径首次落盘不因读目录失败而中断 */
+function safeReaddir(dir: string): string[] {
+  try {
+    return readdirSync(dir);
+  } catch {
+    return [];
+  }
 }
 
 /**
