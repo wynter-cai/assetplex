@@ -12,14 +12,13 @@ import {
   Download,
   CheckCircle,
   XCircle,
-  AlertTriangle,
   FileText,
   Loader2,
 } from 'lucide-react';
 import { ToolCard } from '@/components/import/ToolCard';
 import { FileItem } from '@/components/import/FileItem';
 import { ConflictDialog } from '@/components/import/ConflictDialog';
-import { ImportConfirmList } from '@/components/import/ImportConfirmList';
+import { ConfirmGroup, ConfirmGroupRow } from '@/components/import/ConfirmGroup';
 import type { DiscoveredItem, ConflictStrategy, ImportItem } from '@/types/api';
 
 type Step = 1 | 2 | 3 | 4;
@@ -31,6 +30,8 @@ interface GroupedConflict {
   hubTargetPath: string;
   category: string;
   existingSize?: number;
+  /** 多来源里有任一二进制即整组按二进制处理（不提供合并） */
+  binary: boolean;
   sources: Array<{
     tool: string;
     sourcePath: string;
@@ -74,6 +75,9 @@ export default function Import() {
     [inventories],
   );
 
+  // 可一键全选的条目：二进制默认不勾选（spec import-wizard-noise Scenario Step 2 默认选择）
+  const selectableItems = useMemo(() => allItems.filter((i) => !i.binary), [allItems]);
+
   // 有冲突的项（conflict === 'differs'），仅包含已选中的
   const selectedConflictItems = useMemo(
     () => allItems.filter((i) => i.conflict === 'differs' && selectedItemKeys.has(itemKey(i))),
@@ -86,12 +90,23 @@ export default function Import() {
     [allItems, selectedItemKeys],
   );
 
+  // 确认屏后两组：已存在（保持不动）/ 新增（将写入）
+  const existingItems = useMemo(
+    () => selectedNonConflictItems.filter((i) => i.conflict === 'exists'),
+    [selectedNonConflictItems],
+  );
+  const newItems = useMemo(
+    () => selectedNonConflictItems.filter((i) => i.conflict === 'none'),
+    [selectedNonConflictItems],
+  );
+
   // 按 hubTargetPath 分组冲突项（避免多工具映射同一目标时重复显示）
   const groupedConflicts = useMemo<GroupedConflict[]>(() => {
     const map = new Map<string, GroupedConflict>();
     for (const item of selectedConflictItems) {
       const existing = map.get(item.hubTargetPath);
       if (existing) {
+        existing.binary = existing.binary || item.binary;
         existing.sources.push({
           tool: item.tool,
           sourcePath: item.absolutePath,
@@ -103,6 +118,7 @@ export default function Import() {
           hubTargetPath: item.hubTargetPath,
           category: item.category,
           existingSize: item.existingSize,
+          binary: item.binary,
           sources: [{
             tool: item.tool,
             sourcePath: item.absolutePath,
@@ -115,16 +131,16 @@ export default function Import() {
     return Array.from(map.values());
   }, [selectedConflictItems]);
 
-  // 全选/取消全选
+  // 全选/取消全选（只作用于非二进制条目）
   const toggleAll = useCallback(() => {
-    if (allItems.length === 0) return;
-    const allSelected = allItems.length === selectedItemKeys.size;
+    if (selectableItems.length === 0) return;
+    const allSelected = selectableItems.every((i) => selectedItemKeys.has(itemKey(i)));
     if (allSelected) {
       setSelectedItemKeys(new Set());
     } else {
-      setSelectedItemKeys(new Set(allItems.map(itemKey)));
+      setSelectedItemKeys(new Set(selectableItems.map(itemKey)));
     }
-  }, [allItems, selectedItemKeys]);
+  }, [selectableItems, selectedItemKeys]);
 
   const toggleItem = useCallback((item: DiscoveredItem) => {
     const key = itemKey(item);
@@ -188,12 +204,13 @@ export default function Import() {
       });
   }, [allItems, selectedItemKeys, conflictResolutions]);
 
-  // 进入 Step 3 时，为冲突项设置默认策略（按 hubTargetPath 分组）
+  // 进入 Step 3 时，为冲突项设置默认策略（按 hubTargetPath 分组）：
+  // 二进制冲突默认跳过（不默认覆盖库内已有的图标），文本冲突仍默认智能合并
   const goToStep3 = useCallback(() => {
     const newResolutions = new Map(conflictResolutions);
     for (const gc of groupedConflicts) {
       if (!newResolutions.has(gc.hubTargetPath)) {
-        newResolutions.set(gc.hubTargetPath, { strategy: 'merge' });
+        newResolutions.set(gc.hubTargetPath, { strategy: gc.binary ? 'skip' : 'merge' });
       }
     }
     setConflictResolutions(newResolutions);
@@ -281,9 +298,9 @@ export default function Import() {
                 <div className="flex justify-end pt-2">
                   <Button
                     onClick={() => {
-                      // 进入 Step 2 前，自动全选
-                      if (allItems.length > 0 && selectedItemKeys.size === 0) {
-                        setSelectedItemKeys(new Set(allItems.map(itemKey)));
+                      // 进入 Step 2 前自动全选，但二进制条目默认不勾选
+                      if (selectableItems.length > 0 && selectedItemKeys.size === 0) {
+                        setSelectedItemKeys(new Set(selectableItems.map(itemKey)));
                       }
                       setStep(2);
                     }}
@@ -308,7 +325,9 @@ export default function Import() {
                 发现 {allItems.length} 个文件
               </CardTitle>
               <Button variant="outline" size="sm" onClick={toggleAll}>
-                {selectedItemKeys.size === allItems.length ? '取消全选' : '全选'}
+                {selectableItems.length > 0 && selectableItems.every((i) => selectedItemKeys.has(itemKey(i)))
+                  ? '取消全选'
+                  : '全选'}
               </Button>
             </CardHeader>
             <CardContent>
@@ -372,25 +391,19 @@ export default function Import() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
-                {groupedConflicts.length > 0 ? (
-                  <>
-                    <AlertTriangle className="h-4 w-4 text-warning" />
-                    {groupedConflicts.length} 个文件存在冲突
-                    {groupedConflicts.some((g) => g.sources.length > 1) && (
-                      <Badge variant="outline" className="text-xs ml-1">含多来源</Badge>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle className="h-4 w-4 text-success" />
-                    确认收藏
-                  </>
-                )}
+                <CheckCircle className="h-4 w-4 text-success" />
+                确认收藏
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              {groupedConflicts.length > 0 ? (
-                <>
+              {groupedConflicts.length > 0 && (
+                <ConfirmGroup
+                  testId="confirm-group-conflict"
+                  title="内容冲突"
+                  count={groupedConflicts.length}
+                  summary="需逐项选择处理方式"
+                  defaultOpen
+                >
                   {groupedConflicts.map((gc) => (
                     <ConflictDialog
                       key={gc.hubTargetPath}
@@ -398,19 +411,49 @@ export default function Import() {
                       sources={gc.sources}
                       existingSize={gc.existingSize}
                       category={gc.category}
-                      strategy={conflictResolutions.get(gc.hubTargetPath)?.strategy ?? 'merge'}
+                      strategy={conflictResolutions.get(gc.hubTargetPath)?.strategy ?? (gc.binary ? 'skip' : 'merge')}
                       hasAdoptedDraft={conflictResolutions.get(gc.hubTargetPath)?.draft !== undefined}
+                      binary={gc.binary}
                       onChange={(s, draft) => setConflictStrategy(gc.hubTargetPath, s, draft)}
                     />
                   ))}
-                  {selectedNonConflictItems.length > 0 && (
-                    <p className="text-xs text-muted-foreground pt-1">
-                      另有 {selectedNonConflictItems.length} 个无冲突文件，将按新增/跳过一并处理
-                    </p>
-                  )}
-                </>
-              ) : (
-                <ImportConfirmList items={selectedNonConflictItems} />
+                </ConfirmGroup>
+              )}
+              {existingItems.length > 0 && (
+                <ConfirmGroup
+                  testId="confirm-group-exists"
+                  title="库内已存在"
+                  count={existingItems.length}
+                  summary="已存在，跳过不覆盖"
+                >
+                  {existingItems.map((item) => (
+                    <ConfirmGroupRow
+                      key={itemKey(item)}
+                      path={item.hubTargetPath}
+                      tool={item.tool}
+                      label="已存在，跳过不覆盖"
+                      className="text-muted-foreground border-muted"
+                    />
+                  ))}
+                </ConfirmGroup>
+              )}
+              {newItems.length > 0 && (
+                <ConfirmGroup
+                  testId="confirm-group-new"
+                  title="新增文件"
+                  count={newItems.length}
+                  summary="将写入我的库"
+                >
+                  {newItems.map((item) => (
+                    <ConfirmGroupRow
+                      key={itemKey(item)}
+                      path={item.hubTargetPath}
+                      tool={item.tool}
+                      label="将写入我的库"
+                      className="text-success border-success/40"
+                    />
+                  ))}
+                </ConfirmGroup>
               )}
             </CardContent>
           </Card>

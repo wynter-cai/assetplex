@@ -39,9 +39,15 @@ export function FileItem({ item, selected, onToggle }: Props) {
           <Badge variant="secondary" className="text-xs shrink-0">
             {category?.label ?? item.category}
           </Badge>
+          {item.binary && (
+            <Badge variant="outline" className="text-xs shrink-0 text-info border-info/40">
+              二进制
+            </Badge>
+          )}
         </div>
         <div className="text-xs text-muted-foreground mt-0.5">
           {formatSize(item.size)} · {item.tool}
+          {item.binary && ' · 收藏时按原样复制'}
         </div>
       </div>
       {item.conflict === 'differs' && (

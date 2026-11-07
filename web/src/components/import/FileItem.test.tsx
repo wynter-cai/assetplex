@@ -100,3 +100,22 @@ describe('FileItem 类别徽章跟随声明源', () => {
     expect(await screen.findByText('unknown-code')).toBeDefined();
   });
 });
+
+describe('FileItem 二进制标注（spec import-wizard-noise）', () => {
+  it('二进制条目显示「二进制」徽章与「收藏时按原样复制」说明', async () => {
+    vi.mocked(api.getAssetCategories).mockResolvedValue({ categories: [descriptor()], declaredAt: '2026-10-29' });
+    renderItem(makeItem({ binary: true, hubTargetPath: 'skills/demo/_icon.png', category: 'skill' }));
+
+    expect(await screen.findByText('二进制')).toBeDefined();
+    expect(screen.getByText(/收藏时按原样复制/)).toBeDefined();
+  });
+
+  it('文本条目不出二进制徽章与说明', async () => {
+    vi.mocked(api.getAssetCategories).mockResolvedValue({ categories: [descriptor()], declaredAt: '2026-10-29' });
+    renderItem(makeItem());
+
+    expect(await screen.findByText('规则')).toBeDefined();
+    expect(screen.queryByText('二进制')).toBeNull();
+    expect(screen.queryByText(/按原样复制/)).toBeNull();
+  });
+});

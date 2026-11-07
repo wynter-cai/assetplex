@@ -8,7 +8,8 @@ import { test, expect } from '@playwright/test';
  * 把同一 hubTargetPath 渲染成两个独立的冲突卡片。
  *
  * 修复：Import.tsx 用 groupedConflicts 按 hubTargetPath 分组，同一目标只渲染
- * 一张 ConflictDialog。本测试验证冲突标题中的数量与页面上的冲突卡片数一致。
+ * 一张 ConflictDialog。Step 3 改三组折叠后（refine-skill-cards-wizard T17），
+ * 冲突组标题带计数，卡片锚点用 data-testid 定位，不依赖文案。
  */
 test.describe('收藏向导 - 冲突去重', () => {
   test('Step 3 同一 hubTargetPath 的冲突只显示一张卡片', async ({ page }) => {
@@ -21,22 +22,19 @@ test.describe('收藏向导 - 冲突去重', () => {
 
     // Step 2 -> Step 3
     await page.getByRole('button', { name: '下一步' }).click();
+    await expect(page.getByRole('heading', { name: '确认收藏' })).toBeVisible();
 
-    // 若没有冲突，向导可能直接进入完成页；此时没有可回归的场景，跳过
-    const conflictHeading = page.getByRole('heading', { name: /个文件存在冲突/ });
-    const hasConflict = await conflictHeading.isVisible().catch(() => false);
+    // 若没有冲突，冲突组不渲染；此时没有可回归的场景，跳过
+    const conflictGroup = page.getByTestId('confirm-group-conflict');
+    const hasConflict = await conflictGroup.isVisible().catch(() => false);
     test.skip(!hasConflict, '当前环境无冲突项，跳过去重测试');
 
-    // 从标题解析冲突数量，例如 "1 个文件存在冲突"
-    const headingText = (await conflictHeading.textContent()) ?? '';
-    const match = headingText.match(/(\d+)/);
-    const conflictCount = match ? Number(match[1]) : 0;
+    // 组标题的可访问名形如「内容冲突（1）」，从中解析计数
+    const toggleLabel = await conflictGroup.getByRole('button').first().getAttribute('aria-label');
+    const conflictCount = Number(toggleLabel?.match(/（(\d+)）/)?.[1] ?? 0);
+    expect(conflictCount).toBeGreaterThan(0);
 
-    // 统计页面上冲突策略按钮组（每张冲突卡片都有"智能合并/覆盖/跳过"三个按钮）
-    // 以"智能合并"按钮数作为冲突卡片数
-    const mergeButtons = page.getByRole('button', { name: '智能合并' });
-    const cardCount = await mergeButtons.count();
-
-    expect(cardCount, '冲突卡片数应与标题中的冲突文件数一致').toBe(conflictCount);
+    const cardCount = await page.getByTestId('conflict-card').count();
+    expect(cardCount, '冲突卡片数应与冲突组计数一致').toBe(conflictCount);
   });
 });

@@ -13,23 +13,23 @@ test.describe('资产库 - 主从布局', () => {
     await page.goto('/vault');
     await expect(page.getByRole('heading', { name: /^资产库|全部资产/ })).toBeVisible({ timeout: 15000 }).catch(() => {});
 
-    // 等待资产卡片渲染（至少一个"查看"按钮）
-    const firstView = page.getByRole('button', { name: '查看' }).first();
-    const hasAssets = await firstView.isVisible().catch(() => false);
-    test.skip(!hasAssets, '资产库为空，跳过主从布局测试');
+    // 资产卡片：卡片整体是 role=button，未选中时 aria-label 为「查看 X 详情」；
+    // 展开后同一张卡变成「收起 X 详情」（AssetCard 整卡 toggle），所以正则要把两种都算上
+    const cards = page.getByRole('button', { name: /^(查看|收起) .+ 详情$/ });
 
-    // 记录左侧资产卡片数
-    const cardsBefore = page.getByRole('button', { name: '查看' });
-    const countBefore = await cardsBefore.count();
-    expect(countBefore).toBeGreaterThan(0);
+    // 等待资产卡片渲染（列表为异步加载，不能拿一次性 isVisible 判定空库）
+    await expect(cards.first()).toBeVisible({ timeout: 15000 }).catch(() => {});
+    const countBefore = await cards.count();
+    test.skip(countBefore === 0, '资产库为空，跳过主从布局测试');
 
-    await firstView.click();
+    await cards.first().click();
 
     // 右侧详情面板应出现
+    await expect(page.getByTestId('detail-overlay')).toBeVisible();
     await expect(page.getByRole('heading', { name: '查看资产' })).toBeVisible();
 
-    // 左侧"查看"按钮数量不应减少（列表没有被整页替换）
-    const countAfter = await page.getByRole('button', { name: '查看' }).count();
+    // 左侧卡片数量不应减少（列表没有被整页替换）
+    const countAfter = await cards.count();
     expect(countAfter, '点击查看后左侧资产列表应保留').toBe(countBefore);
   });
 });

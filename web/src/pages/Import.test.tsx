@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Import from './Import';
 import { api } from '@/lib/api';
@@ -75,9 +75,9 @@ function renderPage(): ReturnType<typeof render> {
   );
 }
 
-/** Step 1 → Step 2 */
-async function goToStep2(): Promise<void> {
-  await screen.findByText(/共发现 2 个文件/);
+/** Step 1 → Step 2（默认库存 2 项，单条目用例传 1） */
+async function goToStep2(expected = 2): Promise<void> {
+  await screen.findByText(new RegExp(`共发现 ${expected} 个文件`));
   fireEvent.click(screen.getByRole('button', { name: '下一步' }));
 }
 
@@ -104,7 +104,7 @@ describe('Import 无冲突确认屏', () => {
     expect(screen.getByRole('button', { name: '下一步' })).toBeDefined();
   });
 
-  it('「下一步」进确认屏：未点「开始收藏」前绝不落盘，且逐条预览预期动作', async () => {
+  it('「下一步」进确认屏：未点「开始收藏」前绝不落盘，按状态分组预览', async () => {
     vi.mocked(api.scanTools).mockResolvedValue({
       inventories: makeInventory([
         makeItem(),
@@ -117,11 +117,18 @@ describe('Import 无冲突确认屏', () => {
 
     expect(api.executeImport).not.toHaveBeenCalled();
     await screen.findByRole('heading', { name: '确认收藏' });
-    // 预览清单：两条路径 + 预期动作（与 Step 4 结果徽标同词：新增/跳过）
+    // 无冲突时只有两组，且默认折叠：路径不在 DOM
+    expect(screen.queryByTestId('confirm-group-conflict')).toBeNull();
+    expect(screen.queryByText('rules/a.md')).toBeNull();
+    expect(screen.queryByText('rules/b.md')).toBeNull();
+
+    // 展开后可逐条预览，动作词与 Step 4 一致
+    fireEvent.click(screen.getByRole('button', { name: /新增文件（1）/ }));
     expect(screen.getByText('rules/a.md')).toBeDefined();
+    expect(screen.getByText('将写入我的库')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: /库内已存在（1）/ }));
     expect(screen.getByText('rules/b.md')).toBeDefined();
-    expect(screen.getByText('新增')).toBeDefined();
-    expect(screen.getByText('跳过')).toBeDefined();
+    expect(screen.getByText('已存在，跳过不覆盖')).toBeDefined();
 
     fireEvent.click(screen.getByRole('button', { name: /开始收藏/ }));
     await waitFor(() => expect(api.executeImport).toHaveBeenCalledTimes(1));
@@ -130,23 +137,51 @@ describe('Import 无冲突确认屏', () => {
     expect(sent.map((i) => i.hubTargetPath).sort()).toEqual(['rules/a.md', 'rules/b.md']);
   });
 
-  it('有冲突路径不回归：「下一步」进冲突确认，并提示其余无冲突文件的处理方式', async () => {
+  it('三组标题与计数：冲突组默认展开，其余折叠，计数之和等于选中数', async () => {
     vi.mocked(api.scanTools).mockResolvedValue({
       inventories: makeInventory([
         makeItem({ conflict: 'differs', existingSize: 80 }),
-        makeItem({ hubTargetPath: 'rules/b.md', absolutePath: 'd:/demo/toolA/rules/b.md', conflict: 'none' }),
+        makeItem({ hubTargetPath: 'rules/b.md', absolutePath: 'd:/demo/toolA/rules/b.md', conflict: 'exists', existingSize: 100 }),
+        makeItem({ hubTargetPath: 'rules/c.md', absolutePath: 'd:/demo/toolA/rules/c.md', conflict: 'none' }),
+      ]),
+    });
+    renderPage();
+    await goToStep2(3);
+    fireEvent.click(screen.getByRole('button', { name: '下一步' }));
+
+    expect(api.executeImport).not.toHaveBeenCalled();
+    await screen.findByRole('heading', { name: '确认收藏' });
+
+    const conflictGroup = screen.getByTestId('confirm-group-conflict');
+    expect(within(conflictGroup).getByRole('button', { name: /内容冲突（1）/ })).toBeDefined();
+    expect(screen.getByRole('button', { name: /库内已存在（1）/ })).toBeDefined();
+    expect(screen.getByRole('button', { name: /新增文件（1）/ })).toBeDefined();
+
+    // 冲突组默认展开：冲突项直接可见（含策略选择）
+    expect(screen.getByText('rules/a.md')).toBeDefined();
+    expect(screen.getByRole('button', { name: '智能合并' })).toBeDefined();
+    // 另两组折叠：条目不渲染
+    expect(screen.queryByText('rules/b.md')).toBeNull();
+    expect(screen.queryByText('rules/c.md')).toBeNull();
+  });
+
+  it('某种状态为空时该组不渲染（不出现 0 计数空组）', async () => {
+    vi.mocked(api.scanTools).mockResolvedValue({
+      inventories: makeInventory([
+        makeItem({ conflict: 'differs', existingSize: 80 }),
+        makeItem({ hubTargetPath: 'rules/b.md', absolutePath: 'd:/demo/toolA/rules/b.md', conflict: 'exists', existingSize: 100 }),
       ]),
     });
     renderPage();
     await goToStep2();
     fireEvent.click(screen.getByRole('button', { name: '下一步' }));
 
-    expect(api.executeImport).not.toHaveBeenCalled();
-    await screen.findByText(/1 个文件存在冲突/);
-    expect(screen.getByText(/另有 1 个无冲突文件/)).toBeDefined();
+    await screen.findByRole('heading', { name: '确认收藏' });
+    expect(screen.queryByTestId('confirm-group-new')).toBeNull();
+    expect(screen.queryByRole('button', { name: /新增文件/ })).toBeNull();
   });
 
-  it('二进制标记透传到请求体：文本项 binary=false，图标项 binary=true', async () => {
+  it('二进制条目默认不勾选，全选不勾选，手动可勾选', async () => {
     vi.mocked(api.scanTools).mockResolvedValue({
       inventories: makeInventory([
         makeItem(),
@@ -161,22 +196,57 @@ describe('Import 无冲突确认屏', () => {
     const { container } = renderPage();
     await goToStep2();
 
-    // 二进制条目默认不勾选（后续 scenaro），这里显式勾上两条
-    await waitFor(() => {
-      expect(container.querySelectorAll('input[type="checkbox"]').length).toBe(2);
-    });
-    container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]').forEach((box) => {
-      if (!box.checked) fireEvent.click(box);
-    });
+    const boxes = (): HTMLInputElement[] =>
+      Array.from(container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]'));
+    await waitFor(() => expect(boxes()).toHaveLength(2));
 
+    // 进 Step 2 的自动全选：文本选中、图标不选
+    expect(boxes()[0].checked).toBe(true);
+    expect(boxes()[1].checked).toBe(false);
+
+    // 先取消全选，再全选：二进制仍不勾选
+    fireEvent.click(screen.getByRole('button', { name: '取消全选' }));
+    expect(boxes().every((b) => !b.checked)).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: '全选' }));
+    expect(boxes()[0].checked).toBe(true);
+    expect(boxes()[1].checked).toBe(false);
+
+    // 手动可勾选
+    fireEvent.click(boxes()[1]);
+    expect(boxes()[1].checked).toBe(true);
+  });
+
+  it('二进制冲突默认跳过、不提供智能合并，请求体带 strategy=skip', async () => {
+    vi.mocked(api.scanTools).mockResolvedValue({
+      inventories: makeInventory([
+        {
+          ...makeItem({
+            hubTargetPath: 'skills/demo/_icon.png',
+            absolutePath: 'd:/demo/toolA/skills/demo/_icon.png',
+            category: 'skill',
+            conflict: 'differs',
+            existingSize: 80,
+            binary: true,
+          }),
+        },
+      ]),
+    });
+    renderPage();
+    await goToStep2(1);
+
+    // 二进制默认不勾选，手动勾上才能进入确认屏
+    fireEvent.click(screen.getByRole('checkbox'));
     fireEvent.click(screen.getByRole('button', { name: '下一步' }));
-    fireEvent.click(await screen.findByRole('button', { name: /开始收藏/ }));
-    await waitFor(() => expect(api.executeImport).toHaveBeenCalledTimes(1));
 
+    await screen.findByRole('heading', { name: '确认收藏' });
+    expect(screen.queryByRole('button', { name: '智能合并' })).toBeNull();
+    expect(screen.getByRole('button', { name: '跳过' })).toBeDefined();
+    expect(screen.getByText(/二进制文件无法逐行合并/)).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: /开始收藏/ }));
+    await waitFor(() => expect(api.executeImport).toHaveBeenCalledTimes(1));
     const sent = vi.mocked(api.executeImport).mock.calls[0][0];
-    const icon = sent.find((i) => i.hubTargetPath === 'skills/demo/_icon.png');
-    const text = sent.find((i) => i.hubTargetPath === 'rules/a.md');
-    expect(icon?.binary).toBe(true);
-    expect(text?.binary).toBe(false);
+    expect(sent[0].strategy).toBe('skip');
+    expect(sent[0].binary).toBe(true);
   });
 });

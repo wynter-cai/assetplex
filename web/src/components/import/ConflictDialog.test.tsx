@@ -35,7 +35,7 @@ function mergeResponse(): ArbitrationResponse {
   };
 }
 
-function renderDialog(props: Partial<{ category: string; strategy: ConflictStrategy; onChange: (s: ConflictStrategy, d?: string) => void }> = {}) {
+function renderDialog(props: Partial<{ category: string; strategy: ConflictStrategy; binary: boolean; onChange: (s: ConflictStrategy, d?: string) => void }> = {}) {
   const onChange = props.onChange ?? vi.fn();
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
@@ -46,6 +46,7 @@ function renderDialog(props: Partial<{ category: string; strategy: ConflictStrat
         existingSize={200}
         category={props.category ?? 'rule'}
         strategy={props.strategy ?? 'merge'}
+        binary={props.binary}
         onChange={onChange}
       />
     </QueryClientProvider>,
@@ -95,5 +96,24 @@ describe('ConflictDialog AI 仲裁入口', () => {
     const { onChange } = renderDialog();
     await userEvent.click(screen.getByRole('button', { name: '覆盖' }));
     expect(onChange).toHaveBeenCalledWith('overwrite');
+  });
+});
+
+describe('ConflictDialog 二进制分支（spec import-wizard-noise）', () => {
+  it('只给「覆盖」与「跳过」，没有「智能合并」', () => {
+    renderDialog({ binary: true, strategy: 'skip' });
+
+    expect(screen.getByRole('button', { name: '覆盖' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '跳过' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '智能合并' })).not.toBeInTheDocument();
+  });
+
+  it('不显示「查看差异」与 AI 仲裁入口，并说明无法逐行合并', () => {
+    renderDialog({ binary: true, strategy: 'skip' });
+
+    expect(screen.queryByRole('button', { name: /查看差异/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'AI 仲裁' })).not.toBeInTheDocument();
+    expect(screen.getByText(/二进制文件无法逐行合并/)).toBeInTheDocument();
+    expect(api.getDiff).not.toHaveBeenCalled();
   });
 });
