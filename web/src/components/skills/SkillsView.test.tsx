@@ -105,10 +105,14 @@ describe('SkillsView 技能分类全貌', () => {
     expect(screen.getByRole('heading', { name: '自建 1' })).toBeInTheDocument();
   });
 
-  it('修改职能分类调用覆盖接口', async () => {
+  it('修改职能分类走确认式：展开 → 应用 才调用覆盖接口', async () => {
     renderView();
-    const select = (await screen.findByLabelText('修改 mycode 的职能分类')) as HTMLSelectElement;
+    fireEvent.click(await screen.findByRole('button', { name: '调整 mycode 的分类' }));
+    const select = screen.getByLabelText('mycode 的新职能分类') as HTMLSelectElement;
     fireEvent.change(select, { target: { value: 'data' } });
+    // 只选择不应用时不发请求（spec inline-function-confirm Scenario: 展开确认区）
+    expect(api.overrideSkillFunction).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: '应用' }));
     await waitFor(() => {
       expect(api.overrideSkillFunction).toHaveBeenCalledWith('mycode', 'data');
     });

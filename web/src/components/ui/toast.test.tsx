@@ -4,7 +4,7 @@
  * spec: feedback-toast.spec.md —— 三态渲染、明细折叠、手动关闭。
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { Toaster } from './toast';
 import { toast, useToastStore } from '@/lib/toast-store';
@@ -71,5 +71,25 @@ describe('Toaster', () => {
     expect(screen.queryByRole('button', { name: /查看详情|收起/ })).not.toBeInTheDocument();
     expect(screen.getByText('a：冲突')).toBeInTheDocument();
     expect(screen.getByText('b：404')).toBeInTheDocument();
+  });
+
+  it('带 action 时渲染动作按钮，点击后执行回调并移除 toast（spec inline-function-confirm）', () => {
+    renderToaster();
+    const onClick = vi.fn();
+    act(() => {
+      toast.success('已改为 数据处理', { action: { label: '撤销', onClick } });
+    });
+    const actionButton = screen.getByRole('button', { name: '撤销' });
+    fireEvent.click(actionButton);
+    expect(onClick).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText('已改为 数据处理')).not.toBeInTheDocument();
+  });
+
+  it('无 action 时不渲染动作按钮', () => {
+    renderToaster();
+    act(() => {
+      toast.success('已保存');
+    });
+    expect(screen.queryByRole('button', { name: '撤销' })).not.toBeInTheDocument();
   });
 });

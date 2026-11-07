@@ -289,3 +289,36 @@ describe('SkillDetail 职能色点（spec skill-function-color）', () => {
     expect(await screen.findByText('编码开发')).toBeInTheDocument();
   });
 });
+
+describe('SkillDetail 调整分类确认流（spec inline-function-confirm）', () => {
+  it('展开 → 选择 → 应用：只发一次请求并提示可撤销', async () => {
+    const coding = { ...marketSkill, functionCategory: 'coding' as const };
+    vi.spyOn(api, 'getSkill').mockResolvedValue({ skill: coding, rawContent: '# airbnb' });
+    vi.spyOn(api, 'overrideSkillFunction').mockResolvedValue({ skill: { ...coding, functionCategory: 'data' } });
+    renderDetail(coding);
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: /调整分类/ }));
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'data' } });
+    fireEvent.click(screen.getByRole('button', { name: '应用' }));
+    await waitFor(() => expect(api.overrideSkillFunction).toHaveBeenCalledWith('airbnb', 'data'));
+    expect(api.overrideSkillFunction).toHaveBeenCalledTimes(1);
+    expect(useToastStore.getState().toasts[0]?.title).toBe('已改为 数据处理');
+    expect(useToastStore.getState().toasts[0]?.action?.label).toBe('撤销');
+  });
+
+  it('确认区展开时按 Esc 只收确认区，不关闭详情', async () => {
+    const coding = { ...marketSkill, functionCategory: 'coding' as const };
+    vi.spyOn(api, 'getSkill').mockResolvedValue({ skill: coding, rawContent: '# airbnb' });
+    const onClose = vi.fn();
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <SkillDetail skill={coding} onClose={onClose} onCurated={vi.fn()} />
+      </QueryClientProvider>,
+    );
+    fireEvent.click(await screen.findByRole('button', { name: /调整分类/ }));
+    expect(screen.getByRole('combobox')).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+});

@@ -6,7 +6,7 @@
 
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Sparkles, FileText, Pencil, Archive } from 'lucide-react';
+import { Sparkles, FileText, Pencil, Archive, Tag } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -18,8 +18,9 @@ import { useEscapeKey } from '@/lib/use-escape-key';
 import { Markdown, stripFrontmatter } from '@/components/common/Markdown';
 import { SyncDistribute } from '@/components/common/SyncDistribute';
 import { DiagnosisPanel } from '@/components/doctor/DiagnosisPanel';
-import { FUNCTION_LABELS, PROVENANCE_LABELS, FUNCTION_SOURCE_LABELS, parseCurateSource, provenanceBadgeLabel } from './skill-labels';
+import { FUNCTION_LABELS, FUNCTION_ORDER, PROVENANCE_LABELS, FUNCTION_SOURCE_LABELS, parseCurateSource, provenanceBadgeLabel } from './skill-labels';
 import { FunctionDot } from './FunctionDot';
+import { useFunctionChange } from './use-function-change';
 import { DeleteConfirmDialog, CurateDialog } from './SkillDialogs';
 import { useAiClassify } from './use-ai-classify';
 import { AiConfigDialog } from './AiConfigDialog';
@@ -33,7 +34,9 @@ interface SkillDetailProps {
 }
 
 export function SkillDetail({ skill, onClose, onCurated }: SkillDetailProps): JSX.Element {
-  useEscapeKey(true, onClose);
+  const fnChange = useFunctionChange(skill);
+  // 确认区展开时 Esc 先收确认区（detail 的 Esc 关闭让位，避免一按就整页关掉）
+  useEscapeKey(!fnChange.open, onClose);
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [editContent, setEditContent] = useState('');
@@ -116,6 +119,42 @@ export function SkillDetail({ skill, onClose, onCurated }: SkillDetailProps): JS
             <Badge variant="secondary">来自 {PROVENANCE_LABELS[sourceInfo.provenance]}</Badge>
           )}
           {skill.version && <Badge variant="secondary">v{skill.version}</Badge>}
+        </div>
+
+        {/* 调整分类：与卡面同一套确认式交互（spec inline-function-confirm Scenario: 详情面板同改） */}
+        <div className="flex items-center gap-1.5">
+          <Button
+            ref={fnChange.triggerRef}
+            variant="outline"
+            size="sm"
+            className="h-8 px-3 text-xs"
+            aria-expanded={fnChange.open}
+            aria-controls="detail-function-editor"
+            onClick={fnChange.begin}
+          >
+            <Tag className="h-3.5 w-3.5 mr-1" aria-hidden="true" />
+            调整分类
+          </Button>
+          {fnChange.open && (
+            <div id="detail-function-editor" className="flex min-w-0 flex-1 items-center gap-1.5">
+              <select
+                aria-label={`${skill.name} 的新职能分类`}
+                className="h-8 min-w-0 flex-1 rounded-md border bg-background px-1.5 text-xs"
+                value={fnChange.draft}
+                onChange={(e) => fnChange.setDraft(e.target.value as SkillInfo['functionCategory'])}
+              >
+                {FUNCTION_ORDER.map((f) => (
+                  <option key={f} value={f}>{FUNCTION_LABELS[f]}</option>
+                ))}
+              </select>
+              <Button size="sm" className="h-8 px-3 text-xs" onClick={fnChange.apply} disabled={fnChange.pending}>
+                {fnChange.pending ? '提交中…' : '应用'}
+              </Button>
+              <Button size="sm" variant="ghost" className="h-8 px-3 text-xs" onClick={fnChange.cancel}>
+                取消
+              </Button>
+            </div>
+          )}
         </div>
 
         {skill.description && (

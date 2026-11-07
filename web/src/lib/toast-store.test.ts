@@ -5,8 +5,8 @@
  * 成功 3s / 错误 6s 长驻、同内容去重、队列上限、手动移除。
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
-import { useToastStore, toast, DEFAULT_DURATION } from './toast-store';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { useToastStore, toast, DEFAULT_DURATION, ACTION_MIN_DURATION } from './toast-store';
 
 beforeEach(() => {
   useToastStore.getState().reset();
@@ -64,5 +64,39 @@ describe('toast store', () => {
     const a = toast.success('a');
     const b = toast.success('b');
     expect(a).not.toBe(b);
+  });
+});
+
+/** spec inline-function-confirm「契约」：带 action 的 toast 至少存活 30 秒 */
+describe('toast 动作按钮（撤销）', () => {
+  it('带 action 且未传 duration → 至少 30 秒，不受默认 3 秒影响', () => {
+    toast.success('已改为 数据处理', { action: { label: '撤销', onClick: () => {} } });
+    const item = useToastStore.getState().toasts[0];
+    expect(item.duration).toBe(ACTION_MIN_DURATION);
+    expect(ACTION_MIN_DURATION).toBeGreaterThanOrEqual(30000);
+  });
+
+  it('带 action 但传了更短的 duration → 仍取 30 秒下限', () => {
+    toast.success('已改为 数据处理', { duration: 1000, action: { label: '撤销', onClick: () => {} } });
+    expect(useToastStore.getState().toasts[0].duration).toBe(ACTION_MIN_DURATION);
+  });
+
+  it('带 action 且传了更长的 duration → 尊重更长时间', () => {
+    toast.success('已改为 数据处理', { duration: 60000, action: { label: '撤销', onClick: () => {} } });
+    expect(useToastStore.getState().toasts[0].duration).toBe(60000);
+  });
+
+  it('action 随 toast 携带，点击回调可执行', () => {
+    const onClick = vi.fn();
+    toast.success('已改为 数据处理', { action: { label: '撤销', onClick } });
+    const item = useToastStore.getState().toasts[0];
+    expect(item.action?.label).toBe('撤销');
+    item.action?.onClick();
+    expect(onClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('无 action 仍走默认时长（成功 3 秒）', () => {
+    toast.success('已保存');
+    expect(useToastStore.getState().toasts[0].duration).toBe(DEFAULT_DURATION.success);
   });
 });

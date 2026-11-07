@@ -94,6 +94,18 @@ function ToastCard({ item }: { item: ToastItem }): JSX.Element {
             <ChevronDown className={cn('h-3 w-3 transition-transform', expanded && 'rotate-180')} />
           </button>
         )}
+        {item.action && (
+          <button
+            type="button"
+            onClick={() => {
+              item.action?.onClick();
+              dismiss(item.id);
+            }}
+            className="mt-1.5 text-xs font-medium text-primary hover:underline"
+          >
+            {item.action.label}
+          </button>
+        )}
       </div>
       <ToastPrimitive.Close
         aria-label="关闭通知"
