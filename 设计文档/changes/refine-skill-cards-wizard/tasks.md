@@ -71,6 +71,7 @@
 - 后端 76 文件 921 用例全绿；`tsc --noEmit` 0 错；`tsup` 构建成功。
 - 前端 51 文件 417 用例全绿；`tsc -b` 0 错；`vite build` 成功。
 - e2e 9 例：8 通过、1 跳过（本机无内容冲突，`import-conflicts` 无场景可回归）。新增 `skill-function-undo`（调整→应用→撤销后刷新校验复原）、`import-noise`（无点段路径 + 二进制徽章说明）均实跑通过。
+- `skill-function-undo` 优先挑 `functionSource === 'manual'` 的技能试跑：覆盖接口会把来源写成 manual，拿本就 manual 的技能回环不会改用户的来源标记（无 manual 技能时退回第一张卡）。
 - 顺带修正两条既有 spec 的过期断言：`sync.spec` 的「已选 N 个目标」早在 fix-trust-and-consistency I5 已改为「N 个目标」徽章，且工具名含空格（TRAE 中国版）被首段截断；`vault-master-detail.spec` 的「查看」计数未考虑资产卡展开后 aria-label 变「收起」。二者与本次改动无关，是历史漂移。
 - 隐私终检 `node scripts/privacy-check.mjs` 退出码 0（扫全历史 165 个 commit）。
 
