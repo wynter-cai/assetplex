@@ -5,7 +5,7 @@
  * 说明:用 FakeToolAdapter 定向到临时目录，避免污染真实 ~/.workbuddy。
  */
 
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
@@ -56,6 +56,13 @@ class FakeToolAdapter extends BaseAdapter {
   constructor(
     private readonly dir: string,
     private readonly categories: SwapCategory[],
+    /**
+     * 强制目标策略(默认沿用 FAKE_LAYOUT)。
+     * symlink 真生效时目标即 Hub 文件本身，改库后内容自动跟随、永远不会 differs；
+     * Windows 无开发者模式则降级为副本，行为与 copy 一致。
+     * 因此涉及写入计数/备份产生与否的用例必须显式指定 copy，才能跨平台确定。
+     */
+    private readonly forcedStrategy?: 'symlink' | 'copy',
   ) {
     super();
   }
@@ -83,7 +90,7 @@ class FakeToolAdapter extends BaseAdapter {
         target: {
           tool: this.name,
           targetPath: resolve(this.dir, layout.target),
-          strategy: layout.strategy,
+          strategy: this.forcedStrategy ?? layout.strategy,
           isDirectory: layout.isDir,
         } as SyncTarget,
       };
@@ -125,8 +132,8 @@ describe('swap 核心引擎(enable-tool-hot-swap T3-T6)', () => {
     }
   }
 
-  function engineWith(categories: SwapCategory[]): SwapEngine {
-    const adapter = new FakeToolAdapter(toolDir, categories);
+  function engineWith(categories: SwapCategory[], strategy?: 'symlink' | 'copy'): SwapEngine {
+    const adapter = new FakeToolAdapter(toolDir, categories, strategy);
     return new SwapEngine(HubConfigSchema.parse({}), [adapter]);
   }
 
@@ -522,6 +529,40 @@ describe('swap 核心引擎(enable-tool-hot-swap T3-T6)', () => {
       await new Promise((r) => setTimeout(r, ms));
     }
 
+    /** 平台是否支持真实符号链接(Windows 无开发者模式会降级为副本) */
+    function canCreateSymlink(): boolean {
+      const probe = mkdtempSync(join(tmpdir(), 'assetplex-symlink-probe-'));
+      try {
+        const src = join(probe, 'src.txt');
+        writeFileSync(src, 'x');
+        symlinkSync(src, join(probe, 'link.txt'));
+        return true;
+      } catch {
+        return false;
+      } finally {
+        rmSync(probe, { recursive: true, force: true });
+      }
+    }
+
+    it.skipIf(!canCreateSymlink())('symlink 策略下目标即 Hub 文件：改库后计 skipped 且不新增备份', async () => {
+      writeHub('identity/profile.md', '# V1');
+      const engine = engineWith(['identity']);
+
+      const p1 = await engine.preview('faketool');
+      await engine.execute({ tool: 'faketool', previewGeneratedAt: p1.generatedAt, overwriteDecisions: [] });
+      expect(backupDirNames()).toHaveLength(1);
+
+      // 目标是指向 Hub 的软链，改库即改目标：预览应判一致，切换不应再写、不应再产生备份
+      writeHub('identity/profile.md', '# V2 via symlink');
+      const p2 = await engine.preview('faketool');
+      expect(groupOf(p2, 'identity').items[0].conflict).toBe('exists');
+      const r2 = await engine.execute({ tool: 'faketool', previewGeneratedAt: p2.generatedAt, overwriteDecisions: [] });
+
+      expect(r2.counts.written).toBe(0);
+      expect(r2.counts.skipped).toBe(1);
+      expect(backupDirNames()).toHaveLength(1);
+    });
+
     it('回滚后覆盖项回到切换前，本次新增项被移除', async () => {
       writeHub('identity/profile.md', '# Hub Identity');
       writeHub('rules/global.md', '# Rule A');
@@ -573,7 +614,7 @@ describe('swap 核心引擎(enable-tool-hot-swap T3-T6)', () => {
 
     it('每次切换记一条历史，最新在前，含工具/时间/计数/可回滚标志', async () => {
       writeHub('identity/profile.md', '# V1');
-      const engine = engineWith(['identity']);
+      const engine = engineWith(['identity'], 'copy');
 
       const p1 = await engine.preview('faketool');
       const r1 = await engine.execute({ tool: 'faketool', previewGeneratedAt: p1.generatedAt, overwriteDecisions: [] });
@@ -599,7 +640,7 @@ describe('swap 核心引擎(enable-tool-hot-swap T3-T6)', () => {
 
     it('备份仅保留最近 3 次，清理只及备份目录不碰工具资产', async () => {
       writeHub('identity/profile.md', '# V1');
-      const engine = engineWith(['identity']);
+      const engine = engineWith(['identity'], 'copy');
 
       const swapIds: string[] = [];
       for (let i = 1; i <= 4; i++) {
@@ -633,7 +674,7 @@ describe('swap 核心引擎(enable-tool-hot-swap T3-T6)', () => {
 
     it('backupRetain 可配置', async () => {
       writeHub('identity/profile.md', '# V1');
-      const adapter = new FakeToolAdapter(toolDir, ['identity']);
+      const adapter = new FakeToolAdapter(toolDir, ['identity'], 'copy');
       const engine = new SwapEngine(HubConfigSchema.parse({}), [adapter], { backupRetain: 1 });
 
       const p1 = await engine.preview('faketool');
