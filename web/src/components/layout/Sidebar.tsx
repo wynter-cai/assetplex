@@ -1,51 +1,39 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import {
-  Home,
-  Package,
-  Plug,
-  RefreshCw,
-  Repeat,
-  Settings,
-  Boxes,
-  ChevronDown,
-  FolderGit2,
-  Compass,
-  type LucideIcon,
-} from 'lucide-react';
+import { Boxes, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAssetCategories } from '@/lib/use-asset-categories';
+import { useFocusTrap } from '@/lib/use-focus-trap';
 import { APP_VERSION } from '@/lib/app-version';
+import { MAIN_NAV } from './nav-items';
 
-interface MainNavItem {
-  to: string;
-  label: string;
-  icon: LucideIcon;
-  /** 是否包含子项（资产库） */
-  hasChildren?: boolean;
+interface SidebarProps {
+  /** 窄屏抽屉是否打开（≥lg 恒为 false，侧栏常驻） */
+  drawerOpen?: boolean;
+  /** 请求关闭抽屉（Esc / 遮罩 / 点选导航项），由调用方负责焦点归还 */
+  onClose?: () => void;
 }
 
-const MAIN_NAV: MainNavItem[] = [
-  { to: '/', label: '首页', icon: Home },
-  { to: '/vault', label: '资产库', icon: Package, hasChildren: true },
-  { to: '/projects', label: '项目', icon: FolderGit2 },
-  { to: '/connections', label: '连接', icon: Plug },
-  { to: '/discover', label: '技能发现', icon: Compass },
-  { to: '/sync', label: '同步', icon: RefreshCw },
-  { to: '/swap', label: '切换', icon: Repeat },
-  { to: '/settings', label: '设置', icon: Settings },
-];
-
-export function Sidebar(): JSX.Element {
+export function Sidebar({ drawerOpen = false, onClose }: SidebarProps = {}): JSX.Element {
   // 资产库默认展开
   const [vaultExpanded, setVaultExpanded] = useState<boolean>(true);
   // 类别子项走「fallback + 接口覆盖」：后端声明源新增类别时侧栏自动跟随（spec asset-center-consistency S1，tasks I1）
   const { categories } = useAssetCategories();
+  const asideRef = useRef<HTMLElement>(null);
+  // 抽屉打开时才锁焦点（enhance-a11y-responsive T9/T10）：桌面无汉堡，drawerOpen 恒 false
+  useFocusTrap(asideRef, drawerOpen, onClose);
 
   return (
     <aside
+      ref={asideRef}
+      id="app-sidebar"
       aria-label="侧边栏"
-      className="w-60 shrink-0 border-r bg-muted/40 h-screen sticky top-0 flex flex-col"
+      className={cn(
+        'w-60 shrink-0 border-r bg-muted/40 h-screen flex flex-col',
+        // <lg：抽屉（滑入覆盖内容）；≥lg：常驻文档流
+        'fixed inset-y-0 left-0 z-40 transition-transform duration-200 lg:static lg:z-auto lg:translate-x-0',
+        drawerOpen ? 'translate-x-0' : '-translate-x-full',
+      )}
     >
       {/* Logo */}
       <div className="flex items-center gap-2 px-6 h-16 border-b shrink-0">
@@ -67,6 +55,7 @@ export function Sidebar(): JSX.Element {
                   <NavLink
                     to={item.to}
                     end
+                    onClick={onClose}
                     className={({ isActive }) =>
                       cn(
                         'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors min-w-0',
@@ -109,6 +98,7 @@ export function Sidebar(): JSX.Element {
                         <NavLink
                           key={cat.code}
                           to={childTo}
+                          onClick={onClose}
                           className={({ isActive }) =>
                             cn(
                               'flex items-center gap-2 rounded-md px-3 py-1.5 text-xs transition-colors',
@@ -134,6 +124,7 @@ export function Sidebar(): JSX.Element {
               key={item.to}
               to={item.to}
               end={item.to === '/'}
+              onClick={onClose}
               className={({ isActive }) =>
                 cn(
                   'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',

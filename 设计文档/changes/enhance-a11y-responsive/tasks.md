@@ -28,14 +28,14 @@
 
 ## 组 3 · 窄屏抽屉与断点
 
-- [ ] **T9** 新增 `web/src/lib/use-focus-trap.ts`（≤50 行）：接收容器 ref 与开关，Tab/Shift+Tab 在容器内循环，Esc 回调关闭
-  - 验收：单测模拟 Tab 序列，断言焦点在首尾循环；无第三方依赖
-- [ ] **T10** 新增 `MobileTopBar.tsx`（`lg:hidden`）：汉堡按钮（`aria-expanded` / `aria-controls`）+ 当前页 H1 摘要；`Sidebar.tsx` 在 `<lg` 改为 `fixed` 抽屉 + 遮罩，打开时锁 body 滚动，关闭归还焦点
-  - 验收：375px 下 Playwright 断言抽屉打开/关闭、焦点进入与归还、背景不滚动（Scenario 4 + responsive Scenario 5）
-- [ ] **T11** 断点收敛：`AppLayout` 与主要页面统一到 `sm/md/lg/xl` 四档；按四档实测结果修掉横向溢出（预计 Import 五列网格改 `md:grid-cols-3 lg:grid-cols-5`、Connections 左栏在 `<md` 折叠为顶部选择器）
-  - 验收：四档 × 七页 `scrollWidth <= innerWidth` 全 PASS（responsive Scenario 1/2/3）
-- [ ] **T12** 长文本不溢出：列表卡片标题、同步目标路径在 375px 使用既有的 `truncate` / `break-all` 规则修正
-  - 验收：构造 120 字符资产名，375px 无横向滚动（responsive Scenario 8）
+- [x] **T9** 新增 `web/src/lib/use-focus-trap.ts`（≤50 行）：接收容器 ref 与开关，Tab/Shift+Tab 在容器内循环，Esc 回调关闭
+  - 验收：单测模拟 Tab 序列，断言焦点在首尾循环；无第三方依赖 ✅（43 行；6 例绿：首尾循环/前进/Esc/未启用不抢焦点）
+- [x] **T10** 新增 `MobileTopBar.tsx`（`lg:hidden`）：汉堡按钮（`aria-expanded` / `aria-controls`）+ 当前页 H1 摘要；`Sidebar.tsx` 在 `<lg` 改为 `fixed` 抽屉 + 遮罩，打开时锁 body 滚动，关闭归还焦点
+  - 验收：375px 下 Playwright 断言抽屉打开/关闭、焦点进入与归还、背景不滚动（Scenario 4 + responsive Scenario 5）✅（e2e 4/4；锁滚作用在 `<main>`；点导航项/遮罩/Esc 三路关闭；导航项常量抽到 `nav-items.ts` 共用）
+- [x] **T11** 断点收敛：`AppLayout` 与主要页面统一到 `sm/md/lg/xl` 四档；按四档实测结果修掉横向溢出（预计 Import 五列网格改 `md:grid-cols-3 lg:grid-cols-5`、Connections 左栏在 `<md` 折叠为顶部选择器）
+  - 验收：四档 × 七页 `scrollWidth <= innerWidth` 全 PASS（responsive Scenario 1/2/3）✅（实测八页四档均无溢出，Import/Connections 无需改；将容器由 `.container`+双层 padding 改为 `p-4 sm:p-8`，375 内容可用宽 279→343px）
+- [x] **T12** 长文本不溢出：列表卡片标题、同步目标路径在 375px 使用既有的 `truncate` / `break-all` 规则修正
+  - 验收：构造 120 字符资产名，375px 无横向滚动（responsive Scenario 8）✅（AssetCard 标题与同步路径已有 `truncate`+`min-w-0`；注入 120 字符后 `scrollWidth` 仍 375）
 
 ## 组 4 · 验收与档案
 

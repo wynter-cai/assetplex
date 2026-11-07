@@ -60,4 +60,51 @@ test.describe('键盘可达（a11y Scenario 1/5）', () => {
     await expect(page.getByTestId('detail-overlay')).toHaveCount(0);
     await expect(card).toBeFocused();
   });
+
+  test('窄屏抽屉：汉堡打开进焦点、锁背景滚动、Esc 关闭并归还焦点', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto('/vault');
+
+    const burger = page.getByRole('button', { name: '打开导航菜单' });
+    await expect(burger).toBeVisible();
+    await expect(burger).toHaveAttribute('aria-expanded', 'false');
+
+    // 打开：抽屉带名字，焦点进第一个导航项
+    await burger.click();
+    await expect(burger).toHaveAttribute('aria-expanded', 'true');
+    const drawer = page.getByRole('complementary', { name: '侧边栏' });
+    await expect(drawer).toBeVisible();
+    const firstNav = page.getByRole('navigation', { name: '主导航' }).getByRole('link').first();
+    await expect(firstNav).toBeFocused();
+
+    // 背景不滚动：主内容区 overflow-y 被锁为 hidden
+    const locked = await page.evaluate(() => {
+      const main = document.getElementById('main-content');
+      return main !== null && getComputedStyle(main).overflowY === 'hidden';
+    });
+    expect(locked).toBe(true);
+
+    // Esc 关闭，焦点回到汉堡
+    await page.keyboard.press('Escape');
+    await expect(burger).toHaveAttribute('aria-expanded', 'false');
+    await expect(burger).toBeFocused();
+    const unlocked = await page.evaluate(() => {
+      const main = document.getElementById('main-content');
+      return main !== null && getComputedStyle(main).overflowY !== 'hidden';
+    });
+    expect(unlocked).toBe(true);
+  });
+
+  test('窄屏抽屉：点遮罩可关', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto('/vault');
+
+    const burger = page.getByRole('button', { name: '打开导航菜单' });
+    await burger.click();
+    await expect(burger).toHaveAttribute('aria-expanded', 'true');
+
+    // 遮罩盖住抽屉外侧：点右侧（抽屉宽 240，视口 375）
+    await page.mouse.click(340, 400);
+    await expect(burger).toHaveAttribute('aria-expanded', 'false');
+  });
 });
