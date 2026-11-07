@@ -2,7 +2,7 @@
 
 # AssetPlex
 
-**一个身份，所有 AI 助手。**
+**资产箱** —— 把你的 AI 资产收进一个箱子，换个工具提箱就走。
 
 把你的**身份、技能、规则、MCP 服务器**在 Claude Code、Codex、TRAE、WorkBuddy、Qoder 之间一键同步 —— **数据 100% 本地，绝不上云**。
 

@@ -6,7 +6,7 @@
 
 Sync your **identity, skills, rules & MCP servers** across Claude Code, Codex, TRAE, WorkBuddy and Qoder — **100% local, no cloud**.
 
-[中文文档](README.zh-CN.md) · [Docs](https://wynter-cai.github.io/assetplex/) · [Privacy](PRIVACY.md) · [Discussions](https://github.com/wynter-cai/assetplex/discussions)
+[中文文档（资产箱）](README.zh-CN.md) · [Docs](https://wynter-cai.github.io/assetplex/) · [Privacy](PRIVACY.md) · [Discussions](https://github.com/wynter-cai/assetplex/discussions)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org/)
