@@ -103,7 +103,7 @@ ai-tools, config-management, prompt-management, agent-skills, dotfiles-for-ai
 |---|---|
 | 远端分支 | 16 个：`main` + 15 个 dependabot 分支（重建后自动重开，属预期） |
 | 远端 tag | 无（**未推 `v0.1.0`**，理由见下） |
-| `main` 提交数 | 172 |
+| `main` 提交数 | ≥172（重建首推 172，本文件回填后 174；此后继续增长） |
 | 仓库元数据 | public、default=main、description/homepage/20 topics/Pages/Discussions 全部恢复 |
 | Actions | CI 绿（922 passed）、CodeQL 绿、Deploy Docs 绿；Pages 站点 200 |
 | npm | `assetplex@0.1.0` 未受影响（git 与 registry 独立） |
