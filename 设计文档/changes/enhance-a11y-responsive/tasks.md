@@ -39,11 +39,16 @@
 
 ## 组 4 · 验收与档案
 
-- [ ] **T13** 全量验证：`web` 下 `vitest run` / `tsc -b` / `vite build`；后端三条命令一并跑（确认零影响）
-- [ ] **T14** Playwright 走查脚本（临时文件，跑完删除）：四档视口 × 七页截图 + `activeElement` 断言 + 溢出断言，输出 PASS/FAIL 表
-- [ ] **T15** 1440px 前后对比截图，确认除 skip-link 隐藏态与焦点环外无差异（responsive Scenario 4）
-- [ ] **T16** 文档：`assetplex-ui-ux-roadmap.md` P2-A 行标记完成；断点表写入设计文档；本文件勾选并填 commit 短哈希
-- [ ] **T17** 拍板点复核：A（抽屉 vs 图标条，建议抽屉）、B（令牌微调，建议微调）、C（`role="status"`，建议纳入并已实现于 T8）
+- [x] **T13** 全量验证：`web` 下 `vitest run` / `tsc -b` / `vite build`；后端三条命令一并跑（确认零影响）
+  - 验收：前端 49 文件 376 用例绿、`tsc -b` 0 错、vite build 成功；后端 73 文件 899 用例绿、`tsc --noEmit` 0 错、tsup Build success；e2e `a11y-keyboard` 4/4 通过 ✅
+- [x] **T14** Playwright 走查脚本（临时文件，跑完删除）：四档视口 × 七页截图 + `activeElement` 断言 + 溢出断言，输出 PASS/FAIL 表
+  - 验收：**216 项检查 216 PASS / 0 FAIL**（375/768/1024/1440 × 八页 × 溢出/地标/skip-link/焦点落点/侧栏状态/主内容宽度）；375 内容可用宽 375-32=343px ≥ 335；1024/1440 侧栏 240px 常驻、无汉堡；1440 主内容 1200px ≤ 1280 ✅
+- [x] **T15** 1440px 前后对比截图，确认除 skip-link 隐藏态与焦点环外无差异（responsive Scenario 4）
+  - 验收：八页**布局指纹（每个可见元素的 tag + 文本长度 + 取整坐标尺寸）100% 一致，0 boxes 挪位**；像素差异全部可归因于两条已批准项——T2 令牌加深（`--muted-foreground` 46.9%→43.5%）与 T4 reduced-motion 冻结骨架屏 pulse（`projects` 页满屏骨架块，故差异像素最多）；期间发现并修正一处真回归：容器纵向 padding 曾写 `sm:p-8`（32px）使 1440 间距变宽，已回归 `p-4 sm:p-6`（24px，与变更前 `.container`+`p-6` 实测同宽）✅
+- [x] **T16** 文档：`assetplex-ui-ux-roadmap.md` P2-A 行标记完成；断点表写入设计文档；本文件勾选并填 commit 短哈希
+  - 验收：roadmap P2-A 补「已完成」状态块；断点与可访问性基线写入 `assetplex-ui-redesign-v2.md` 第十一节；本文件末尾补「提交记录」表 ✅
+- [x] **T17** 拍板点复核：A（抽屉 vs 图标条，建议抽屉）、B（令牌微调，建议微调）、C（`role="status"`，建议纳入并已实现于 T8）
+  - 验收：A 取抽屉（`MobileTopBar` + 抽屉 + 遮罩 + 焦点陷阱，无第三方依赖）；B 取微调（只动 `--muted-foreground`，组件零覆写）；C 已纳入（`AssetListPanel` 结果数 `role="status" aria-live="polite"`）✅
 
 ## 预估与风险
 
@@ -62,3 +67,30 @@
 
 其余实测均达标，未动：`--foreground` 20.01 / 20.01 / 18.26（≥ 7）；`--primary-foreground` on `--primary` 5.90；语义色文字 on 白：success 5.15、warning 5.02、destructive 4.80、info 6.66（均 ≥ 4.5）。
 实测方式：`web/src/lib/contrast.ts` 纯函数经 esbuild 临时打包后直接计算；达标断言已固化进 `contrast.test.ts`「设计令牌对比度」describe。
+
+## 四档走查结果（T14，临时脚本落 `%TEMP%`，跑完已删）
+
+| 视口 | 溢出 | 侧栏形态 | 汉堡 | 内容可用宽 | 主内容宽 | skip-link / 焦点落点 |
+|---|---|---|---|---|---|---|
+| 375×812 | 八页 0 | 抽屉（不占宽，main 左缘 0） | 可见 | 343px（375 − 2×16 padding） | 375 | 均 PASS / `main-content` |
+| 768×1024 | 八页 0 | 抽屉 | 可见 | — | 768 | 均 PASS / `main-content` |
+| 1024×768 | 八页 0 | 常驻 240px | 无 | — | 784 | 均 PASS / `main-content` |
+| 1440×900 | 八页 0 | 常驻 240px | 无 | — | 1200（≤ 1280） | 均 PASS / `main-content` |
+
+合计 216 项检查，216 PASS / 0 FAIL。
+
+## 1440 对比结果（T15）
+
+- 布局指纹（`main` 内每个可见元素的 tag + 文本长度 + 取整坐标尺寸）：八页 0 挪位，boxes 数量与顺序完全一致。
+- 像素差异来源仅有两条已批准项：T2 令牌加深（muted 文案整体变深）、T4 `prefers-reduced-motion` 下骨架屏 pulse 被冻结（因此 `projects` 页差异像素最多）。
+- 附带修正：容器 padding 由误写的 `sm:p-8` 回归 `p-4 sm:p-6`，否则 1440 间距会从 24px 变 32px。
+
+## 提交记录
+
+| 组 | 范围 | commit |
+|---|---|---|
+| 组 1 | T1-T4 对比度纯函数、令牌校准、焦点环、减动效 | `0294d7d` |
+| 组 2 | T5-T8 skip-link、地标命名、焦点归还、结果数播报 | `26da001` |
+| 组 3 | T9-T12 焦点陷阱、窄屏抽屉、断点收敛、长文本 | `1029168` |
+| 组 4 | T13-T17 全量验证、四档走查、1440 对比、文档 | 本文件所在提交 |
+

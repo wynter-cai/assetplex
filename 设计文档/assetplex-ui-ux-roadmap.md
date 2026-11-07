@@ -67,8 +67,15 @@
 
 ## P2：打磨波（三个独立 change，各自立项，可按反馈插队）
 
-### P2-A `enhance-a11y-responsive`（M）
+### P2-A `enhance-a11y-responsive`（M）✅ 已完成（2026-11-07）
+
 焦点可见（focus-visible 环）、skip-link、nav aria-label、对比度扫尾、侧栏折叠/汉堡菜单、断点体系（sm/md/lg 抽测）。对应 P2-1、P1-5 残余。
+
+**验收结论**：17 个任务全部勾选（`changes/enhance-a11y-responsive/tasks.md`）。前端 49 文件 376 用例、后端 73 文件 899 用例全绿；`tsc -b` / `tsc --noEmit` 0 错；`vite build` / `tsup` 成功；e2e `a11y-keyboard` 4/4；四档 × 八页走查 216 项全 PASS；1440 对比布局指纹 0 挪位（像素差异仅来自已批准的令牌加深与 reduced-motion 冻结骨架屏）。
+
+**拍板结果**：A 窄屏取抽屉（汉堡 + 遮罩 + 焦点陷阱，零新依赖）；B 对比度只微调 `--muted-foreground` 令牌（L 46.9%→43.5%，组件零覆写）；C 结果数用 `role="status"` 播报。
+
+**遗留提醒**：全局 `:focus-visible` 依赖组件不自带 `focus-visible:outline-none`；新增组件时照 `assetplex-ui-redesign-v2.md` 第十一节写。
 
 ### P2-B `refine-skill-cards-wizard`（M）
 技能卡完整减负 + 九职能色彩编码（含图例）、行内 select 改确认式操作+撤销 toast；导入向导过滤隐藏文件（`.` 开头）、按冲突/已存在折叠、二进制冲突文案特化。对应 P1-7 残余、P2-3。

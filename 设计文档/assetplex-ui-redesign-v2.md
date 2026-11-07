@@ -468,3 +468,38 @@ Step 1: 扫描工具 → Step 2: 选择资产 → Step 3: 处理冲突 → Step 
 - 每个资产清晰可见"在哪、从哪来、到哪去"，**掌控感拉满**
 - 视觉上从"内部工具"升级为"值得托付数据的个人产品"
 - 为将来加入更多工具、更多资产类型（如Prompt模板、工作流）做好扩展性准备
+
+---
+
+## 十一、断点与可访问性基线（P2-A 落定，2026-11-07）
+
+> 来源：`changes/enhance-a11y-responsive/`（规格 `specs/responsive-and-contrast.spec.md`、`specs/keyboard-and-focus.spec.md`）。本节省去场景描述，只保留写代码时要照着做的硬约束。
+
+### 11.1 断点（只用这四档）
+
+| 名称 | 最小宽度 | 适用 |
+|---|---|---|
+| `sm` | 640px | 双列卡片、表单两列 |
+| `md` | 768px | 主从两栏（列表 + 详情）、设置页两列 |
+| `lg` | 1024px | 侧栏常驻、资产详情右栏吸顶、窄屏抽屉切换点 |
+| `xl` | 1280px | 宽屏列表可加列 |
+
+- 禁止 `min-[Npx]:` / `max-[Npx]:` 任意值与第五档自定义断点（现在 `web/src` 内 0 处）。
+- 窄屏（<1024px）侧栏为抽屉：`fixed inset-y-0 left-0 z-40` + 遮罩 `z-30`；`lg:` 起改 `static` 常驻。滚动锁作用在 `<main>`（`AppLayout` 是 `h-screen overflow-hidden`，滚动容器不是 body）。
+- 主内容容器：`mx-auto h-full w-full max-w-7xl p-4 sm:p-6`——窄屏只留一层 16px，≥sm 回到 24px（与历史 `.container`+`p-6` 实测同宽）。
+
+### 11.2 可访问性底线
+
+- **焦点可见**：`index.css` base 层对 `a / button / [role='button'] / [tabindex]:not([tabindex='-1']) / summary` 统一 `:focus-visible` 外环（`2px solid hsl(var(--ring))`、`outline-offset: 2px`，不占布局）。
+- **跳过导航**：`AppLayout` 首个子元素是 skip-link（`sr-only focus:not-sr-only`），目标 `main#main-content`（`tabIndex={-1}`）。
+- **地标命名**：`aside[aria-label=侧边栏]`、`nav[aria-label=主导航]`、`nav[aria-label=资产类别]`、`main[aria-label=主内容]`。
+- **浮层焦点**：自定义浮层用 `useEscapeKey(active, onEscape, { returnFocusRef })` 或 `useFocusTrap(ref, enabled, onEscape)`；打开时记录触发元素，关闭后归还。
+- **结果播报**：列表结果数用 `role="status" aria-live="polite"`，不程序化聚焦。
+- **对比度**：令牌达标即可，禁在组件内覆写颜色（正文 4.5:1、大字号 3:1、`--foreground` 7:1）；校验工具 `web/src/lib/contrast.ts`。
+- **减弱动效**：`@media (prefers-reduced-motion: reduce)` 把动画/过渡压到 `0.01ms`、`iteration-count: 1`、`scroll-behavior: auto`（不删动效代码）。
+
+### 11.3 复核方式
+
+- 单测：`web/src/lib/contrast.test.ts`（令牌比值）、`use-focus-trap.test.tsx`、`use-escape-key.test.tsx`、`AppLayout.test.tsx`、`Sidebar.test.tsx`。
+- e2e：`web/e2e/a11y-keyboard.spec.ts`（skip-link、Esc 焦点归还、抽屉开关与锁滚、遮罩关闭）。
+- 四档走查：Playwright 临时脚本按 375/768/1024/1440 × 八页断言 `scrollWidth <= innerWidth` + `activeElement`，脚本与截图落系统临时目录，不入库。

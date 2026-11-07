@@ -70,8 +70,8 @@ export function AppLayout() {
         className={cn('min-w-0 flex-1', navOpen ? 'overflow-hidden' : 'overflow-y-auto')}
       >
         {/* 窄屏不再叠双层 padding：外层 p-4 已够，内容可用宽 ≥335px（responsive Scenario 1）；
-            ≥sm 恢复四边 2rem，保持 1440 观感与变更前一致（Scenario 4） */}
-        <div className="mx-auto h-full w-full max-w-7xl p-4 sm:p-8">
+            ≥sm 保持变更前的 24px 间距，1440 观感不回归（Scenario 4） */}
+        <div className="mx-auto h-full w-full max-w-7xl p-4 sm:p-6">
           <Outlet />
         </div>
       </main>
