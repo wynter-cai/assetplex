@@ -230,3 +230,14 @@ describe('AssetListPanel 类别页空态与失败态', () => {
     expect(screen.queryByText(/我的库里还没有/)).not.toBeInTheDocument();
   });
 });
+
+// enhance-a11y-responsive T8（keyboard Scenario 8，拍板点 C）：结果数变化要能被屏幕阅读器播报
+describe('AssetListPanel 结果数播报（role=status）', () => {
+  it('「共 N 项资产」区域带 role=status 与 aria-live=polite', () => {
+    renderPanel();
+
+    const status = screen.getByRole('status');
+    expect(status).toHaveTextContent(/项资产/);
+    expect(status).toHaveAttribute('aria-live', 'polite');
+  });
+});

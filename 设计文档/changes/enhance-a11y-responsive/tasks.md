@@ -17,14 +17,14 @@
 
 ## 组 2 · 布局骨架与语义
 
-- [ ] **T5** `AppLayout.tsx`：首个子元素加 skip-link（`sr-only focus:not-sr-only` 样式，`href="#main-content"`），`<main id="main-content" tabIndex={-1} aria-label="主内容">`
-  - 验收：Playwright 断言首次 Tab 的 `activeElement` 文本为「跳到主内容」，回车后 `activeElement` 为 main（Scenario 1）
-- [ ] **T6** `Sidebar.tsx` 语义修正：`<aside aria-label="侧边栏">`、`<nav aria-label="主导航">`、类别子列表 `<nav aria-label="资产类别">`；把折叠 `<button>` 移出 `<NavLink>`，改「链接 + 按钮」并列布局，按钮保留 `aria-expanded` / `aria-controls`
-  - 验收：RTL 用例断言不存在 `a button` 嵌套结构；`aria-expanded` 随状态变化（Scenario 3）
-- [ ] **T7** 浮层焦点归还：资产详情 / 各对话框关闭后焦点回到触发元素（复用 `useEscapeKey` 调用点，记录触发元素引用）
-  - 验收：Playwright 断言 Esc 后 `activeElement` 为原触发按钮（Scenario 5）
-- [ ] **T8** `AssetListPanel` 的结果数文本加 `role="status"` 与 `aria-live="polite"`（拍板点 C）
-  - 验收：筛选后该区域文本变化，且不抢焦点（Scenario 8）
+- [x] **T5** `AppLayout.tsx`：首个子元素加 skip-link（`sr-only focus:not-sr-only` 样式，`href="#main-content"`），`<main id="main-content" tabIndex={-1} aria-label="主内容">`
+  - 验收：Playwright 断言首次 Tab 的 `activeElement` 文本为「跳到主内容」，回车后 `activeElement` 为 main（Scenario 1）✅（e2e `a11y-keyboard.spec.ts` 2/2 通过；隐藏态改用 boundingBox 断言——sr-only 的 1px 盒在 Playwright 里仍算 visible）
+- [x] **T6** `Sidebar.tsx` 语义修正：`<aside aria-label="侧边栏">`、`<nav aria-label="主导航">`、类别子列表 `<nav aria-label="资产类别">`；把折叠 `<button>` 移出 `<NavLink>`，改「链接 + 按钮」并列布局，按钮保留 `aria-expanded` / `aria-controls`
+  - 验收：RTL 用例断言不存在 `a button` 嵌套结构；`aria-expanded` 随状态变化（Scenario 3）✅（Sidebar.test 12 例绿，含地标命名与 aria-controls 指向）
+- [x] **T7** 浮层焦点归还：资产详情 / 各对话框关闭后焦点回到触发元素（复用 `useEscapeKey` 调用点，记录触发元素引用）
+  - 验收：Playwright 断言 Esc 后 `activeElement` 为原触发按钮（Scenario 5）✅（`useEscapeKey` 新增可选 `returnFocusRef`；Vault 在打开时刻记录卡片；e2e 断言 Esc 后卡片获焦）
+- [x] **T8** `AssetListPanel` 的结果数文本加 `role="status"` 与 `aria-live="polite"`（拍板点 C）
+  - 验收：筛选后该区域文本变化，且不抢焦点（Scenario 8）✅（单测断言 role/aria-live；无程序化聚焦，不抢焦点）
 
 ## 组 3 · 窄屏抽屉与断点
 

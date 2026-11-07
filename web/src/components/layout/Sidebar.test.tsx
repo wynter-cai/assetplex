@@ -134,4 +134,31 @@ describe('Sidebar', () => {
     renderSidebar();
     expect(screen.getByText(new RegExp(APP_VERSION))).toBeInTheDocument();
   });
+
+  // enhance-a11y-responsive T6（keyboard Scenario 3/6，决策 D5）：
+  // <button> 嵌在 <a> 内不合法，折叠按钮必须是链接的并列兄弟
+  it('不存在按钮嵌套在链接内的非法结构（Scenario 6）', () => {
+    const { container } = renderSidebar();
+    expect(container.querySelectorAll('a button')).toHaveLength(0);
+  });
+
+  it('折叠按钮用 aria-expanded/aria-controls 描述状态，且指向类别子列表', () => {
+    renderSidebar();
+    const toggle = screen.getByRole('button', { name: '收起资产库' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    const controls = toggle.getAttribute('aria-controls');
+    expect(controls).toBeTruthy();
+    expect(document.getElementById(controls as string)).not.toBeNull();
+
+    fireEvent.click(toggle);
+    const expand = screen.getByRole('button', { name: '展开资产库' });
+    expect(expand).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('地标有名字：侧边栏、主导航、资产类别三个可访问区域（Scenario 6）', () => {
+    renderSidebar();
+    expect(screen.getByRole('complementary', { name: '侧边栏' })).toBeInTheDocument();
+    expect(screen.getByRole('navigation', { name: '主导航' })).toBeInTheDocument();
+    expect(screen.getByRole('navigation', { name: '资产类别' })).toBeInTheDocument();
+  });
 });

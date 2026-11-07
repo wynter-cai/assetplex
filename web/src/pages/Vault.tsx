@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Download } from 'lucide-react';
@@ -47,6 +47,8 @@ export default function Vault(): JSX.Element {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [distributeAsset, setDistributeAsset] = useState<Asset | null>(null);
+  // Esc 关闭详情面板后焦点归还触发卡片（enhance-a11y-responsive T7，keyboard Scenario 5）
+  const detailTriggerRef = useRef<HTMLElement | null>(null);
 
   // 获取资产列表（外部类别由专用视图自行取数）
   const { data, isLoading, error, refetch } = useQuery({
@@ -112,6 +114,9 @@ export default function Vault(): JSX.Element {
       setViewMode('list');
       setSelectedAsset(null);
     } else {
+      // 打开时刻记录触发元素：面板渲染后 activeElement 会移走，事后取不到
+      detailTriggerRef.current =
+        document.activeElement instanceof HTMLElement ? document.activeElement : null;
       setSelectedAsset(asset);
       setViewMode('view');
     }
@@ -136,11 +141,11 @@ export default function Vault(): JSX.Element {
 
   const showDetail = viewMode !== 'list';
 
-  // Esc 关闭详情/编辑面板（输入框内不触发，见 use-escape-key）
+  // Esc 关闭详情/编辑面板（输入框内不触发，见 use-escape-key）；关闭后焦点归还触发卡片
   useEscapeKey(showDetail, () => {
     setViewMode('list');
     setSelectedAsset(null);
-  });
+  }, { returnFocusRef: detailTriggerRef });
 
   return (
     <div className="flex h-full min-w-0">

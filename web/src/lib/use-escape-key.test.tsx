@@ -1,9 +1,24 @@
 import { describe, it, expect, vi } from 'vitest';
+import { useRef } from 'react';
 import { render, fireEvent, screen } from '@testing-library/react';
 import { useEscapeKey } from './use-escape-key';
 
-function Harness({ active, onEscape }: { active: boolean; onEscape: () => void }): JSX.Element {
-  useEscapeKey(active, onEscape);
+function Harness({
+  active,
+  onEscape,
+  captureReturnFocus,
+}: {
+  active: boolean;
+  onEscape: () => void;
+  /** 开关变 true 时记录当时的 document.activeElement（enhance-a11y-responsive T7） */
+  captureReturnFocus?: boolean;
+}): JSX.Element {
+  const returnRef = useRef<HTMLElement | null>(null);
+  useEscapeKey(active, onEscape, { returnFocusRef: returnRef });
+  if (captureReturnFocus) {
+    // 模拟调用方在「打开」时刻记录触发元素
+    returnRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  }
   return <div data-testid="harness" />;
 }
 
@@ -52,5 +67,42 @@ describe('useEscapeKey', () => {
     rerender(<Harness active onEscape={onEscape} />);
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(onEscape).toHaveBeenCalledTimes(1);
+  });
+
+  // enhance-a11y-responsive T7（keyboard Scenario 5）：Esc 关闭后焦点归还触发元素
+  it('提供 returnFocusRef 时，Esc 关闭后焦点归还触发元素', () => {
+    const onEscape = vi.fn();
+    const { rerender } = render(
+      <div>
+        <button type="button" data-testid="trigger">
+          打开详情
+        </button>
+        <button type="button" data-testid="other">其它按钮</button>
+        <Harness active={false} onEscape={onEscape} captureReturnFocus />
+      </div>,
+    );
+    screen.getByTestId('trigger').focus();
+    // 触发元素已聚焦时面板打开（active 变 true）：此时记录到 ref 的就是触发元素
+    rerender(
+      <div>
+        <button type="button" data-testid="trigger">
+          打开详情
+        </button>
+        <button type="button" data-testid="other">其它按钮</button>
+        <Harness active onEscape={onEscape} captureReturnFocus />
+      </div>,
+    );
+    // 模拟面板打开后焦点已移走：归还必须显式回到触发元素，而不是停在别处
+    screen.getByTestId('other').focus();
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(document.activeElement).toBe(screen.getByTestId('trigger'));
+  });
+
+  it('未记录触发元素（ref 为空）时 Esc 不报错、不抓焦点', () => {
+    const onEscape = vi.fn();
+    render(<Harness active onEscape={onEscape} />);
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(onEscape).toHaveBeenCalledTimes(1);
+    expect(document.activeElement).toBe(document.body);
   });
 });

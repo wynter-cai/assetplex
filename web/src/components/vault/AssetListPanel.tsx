@@ -203,7 +203,13 @@ export function AssetListPanel({
         </p>
       )}
 
-      <p className="text-xs text-muted-foreground mb-2" data-testid="asset-count">
+      {/* 结果数变化可被屏幕阅读器播报（enhance-a11y-responsive T8，keyboard Scenario 8，拍板点 C） */}
+      <p
+        className="text-xs text-muted-foreground mb-2"
+        data-testid="asset-count"
+        role="status"
+        aria-live="polite"
+      >
         共 {filtered.length} 项资产
       </p>
 

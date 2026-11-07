@@ -43,7 +43,10 @@ export function Sidebar(): JSX.Element {
   const { categories } = useAssetCategories();
 
   return (
-    <aside className="w-60 shrink-0 border-r bg-muted/40 h-screen sticky top-0 flex flex-col">
+    <aside
+      aria-label="侧边栏"
+      className="w-60 shrink-0 border-r bg-muted/40 h-screen sticky top-0 flex flex-col"
+    >
       {/* Logo */}
       <div className="flex items-center gap-2 px-6 h-16 border-b shrink-0">
         <Boxes className="h-6 w-6 text-primary" />
@@ -51,37 +54,38 @@ export function Sidebar(): JSX.Element {
       </div>
 
       {/* 主导航 */}
-      <nav className="px-3 py-4 space-y-1 flex-1 overflow-y-auto">
+      <nav aria-label="主导航" className="px-3 py-4 space-y-1 flex-1 overflow-y-auto">
         {MAIN_NAV.map((item) => {
           const Icon = item.icon;
 
           if (item.hasChildren) {
+            // 折叠按钮与链接并列而非嵌套（enhance-a11y-responsive D5，keyboard Scenario 3/6）：
+            // <button> 嵌在 <a> 内不合法，也破坏屏幕阅读器语义与 Tab 顺序
             return (
               <div key={item.to} className="space-y-1">
-                <NavLink
-                  to={item.to}
-                  end
-                  className={({ isActive }) =>
-                    cn(
-                      'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
-                      isActive
-                        ? 'bg-primary text-primary-foreground'
-                        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-                    )
-                  }
-                >
-                  <Icon className="h-4 w-4" />
-                  <span className="flex-1">{item.label}</span>
+                <div className="grid grid-cols-[1fr_auto] items-center gap-1">
+                  <NavLink
+                    to={item.to}
+                    end
+                    className={({ isActive }) =>
+                      cn(
+                        'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors min-w-0',
+                        isActive
+                          ? 'bg-primary text-primary-foreground'
+                          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                      )
+                    }
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span className="flex-1">{item.label}</span>
+                  </NavLink>
                   <button
                     type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setVaultExpanded((v) => !v);
-                    }}
-                    className="p-0.5 rounded hover:bg-black/10"
+                    onClick={() => setVaultExpanded((v) => !v)}
+                    className="p-1.5 rounded hover:bg-accent text-muted-foreground"
                     aria-label={vaultExpanded ? '收起资产库' : '展开资产库'}
                     aria-expanded={vaultExpanded}
+                    aria-controls="vault-category-nav"
                   >
                     <ChevronDown
                       className={cn(
@@ -90,10 +94,14 @@ export function Sidebar(): JSX.Element {
                       )}
                     />
                   </button>
-                </NavLink>
+                </div>
 
                 {vaultExpanded && (
-                  <div className="ml-4 pl-3 border-l space-y-0.5">
+                  <nav
+                    id="vault-category-nav"
+                    aria-label="资产类别"
+                    className="ml-4 pl-3 border-l space-y-0.5"
+                  >
                     {categories.map((cat) => {
                       const CatIcon = cat.icon;
                       const childTo = `${item.to}/${cat.code}`;
@@ -115,7 +123,7 @@ export function Sidebar(): JSX.Element {
                         </NavLink>
                       );
                     })}
-                  </div>
+                  </nav>
                 )}
               </div>
             );
