@@ -52,21 +52,30 @@ describe('SkillCard 卡面徽章减负（spec skill-card-badges）', () => {
     expect(screen.queryByText('v1.2.0')).not.toBeInTheDocument();
     expect(screen.queryByText('3 副本')).not.toBeInTheDocument();
     expect(screen.queryByText('关键词')).not.toBeInTheDocument();
-    // 结构兜底：卡内徽章元素总数 ≤2
-    expect(container.querySelectorAll('.rounded-full').length).toBeLessThanOrEqual(2);
+    // 结构兜底：卡内徽章元素总数 ≤2（色点带 data-function，不计入徽章）
+    expect(container.querySelectorAll('.rounded-full:not([data-function])').length).toBeLessThanOrEqual(2);
   });
 
   it('官方内置技能出处徽章带来源工具后缀，徽章总数仍 ≤2', () => {
     const { container } = renderCard(skill({ provenance: 'builtin', tool: 'trae' }));
     expect(screen.getByText('官方内置 · TRAE')).toBeInTheDocument();
-    expect(container.querySelectorAll('.rounded-full').length).toBeLessThanOrEqual(2);
+    expect(container.querySelectorAll('.rounded-full:not([data-function])').length).toBeLessThanOrEqual(2);
   });
 
   it('未分类（other）技能卡仍满足徽章 ≤2，不出现空徽章', () => {
     const { container } = renderCard(skill({ functionCategory: 'other' }));
     // 「其他」同时出现在徽章与职能下拉 option 中，用 getAllByText 断言存在
     expect(screen.getAllByText('其他').length).toBeGreaterThanOrEqual(1);
-    expect(container.querySelectorAll('.rounded-full').length).toBeLessThanOrEqual(2);
+    expect(container.querySelectorAll('.rounded-full:not([data-function])').length).toBeLessThanOrEqual(2);
+  });
+
+  it('职能徽章带色点，颜色随职能变化（spec skill-function-color Scenario: 卡面职能徽章）', () => {
+    const { container } = renderCard(skill({ functionCategory: 'data' }));
+    const dot = container.querySelector('[data-function="data"]');
+    expect(dot).toBeInTheDocument();
+    expect(dot?.className).toContain('bg-fn-data');
+    // 色点不单独传达信息：职能中文名仍在
+    expect(screen.getAllByText('数据处理').length).toBeGreaterThanOrEqual(1);
   });
 
   it('卡面无功能重复的「查看详情」按钮，整卡可点开详情', () => {

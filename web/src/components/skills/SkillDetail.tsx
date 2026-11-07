@@ -19,6 +19,7 @@ import { Markdown, stripFrontmatter } from '@/components/common/Markdown';
 import { SyncDistribute } from '@/components/common/SyncDistribute';
 import { DiagnosisPanel } from '@/components/doctor/DiagnosisPanel';
 import { FUNCTION_LABELS, PROVENANCE_LABELS, FUNCTION_SOURCE_LABELS, parseCurateSource, provenanceBadgeLabel } from './skill-labels';
+import { FunctionDot } from './FunctionDot';
 import { DeleteConfirmDialog, CurateDialog } from './SkillDialogs';
 import { useAiClassify } from './use-ai-classify';
 import { AiConfigDialog } from './AiConfigDialog';
@@ -105,7 +106,10 @@ export function SkillDetail({ skill, onClose, onCurated }: SkillDetailProps): JS
 
       <div data-testid="detail-body" className="p-4 space-y-4 overflow-y-auto overscroll-contain min-h-0 flex-1 flex flex-col">
         <div className="flex flex-wrap gap-1.5">
-          <Badge variant="outline">{FUNCTION_LABELS[skill.functionCategory]}</Badge>
+          <Badge variant="outline" className="gap-1">
+            <FunctionDot fn={skill.functionCategory} />
+            {FUNCTION_LABELS[skill.functionCategory]}
+          </Badge>
           <Badge variant="outline">{provenanceBadgeLabel(skill)}</Badge>
           <Badge variant="secondary">{FUNCTION_SOURCE_LABELS[skill.functionSource]}</Badge>
           {isLibrary && sourceInfo && sourceInfo.provenance !== 'self' && (

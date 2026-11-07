@@ -13,6 +13,7 @@ import { toast } from '@/lib/toast-store';
 import { errorMessage } from '@/lib/error-message';
 import { cn } from '@/lib/utils';
 import { FUNCTION_LABELS, FUNCTION_ORDER, provenanceBadgeLabel } from './skill-labels';
+import { FunctionDot } from './FunctionDot';
 import type { SkillInfo, SkillFunction } from '@/types/api';
 
 export function SkillCard({
@@ -79,7 +80,10 @@ export function SkillCard({
       )}
       <div className="flex flex-wrap items-center gap-1 mb-3">
         {FUNCTION_LABELS[skill.functionCategory] && (
-          <Badge variant="outline" className="text-xs h-5 px-1">{FUNCTION_LABELS[skill.functionCategory]}</Badge>
+          <Badge variant="outline" className="text-xs h-5 px-1 gap-1">
+            <FunctionDot fn={skill.functionCategory} />
+            {FUNCTION_LABELS[skill.functionCategory]}
+          </Badge>
         )}
         {provenanceBadgeLabel(skill) && (
           <Badge variant="outline" className="text-xs h-5 px-1">{provenanceBadgeLabel(skill)}</Badge>

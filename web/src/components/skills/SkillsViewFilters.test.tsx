@@ -118,4 +118,15 @@ describe('SkillsView 出处与库状态组合筛选', () => {
     expect(document.body.textContent).not.toContain('保险箱');
     expect(document.body.textContent).not.toContain('沉淀');
   });
+
+  it('按职能维度：九个 chips 均带职能色点，与卡面同一套令牌（spec skill-function-color）', async () => {
+    const { container } = renderView();
+    await screen.findByText(/去重后共 442 个技能/);
+    fireEvent.click(screen.getByRole('button', { name: '按职能' }));
+    const dots = Array.from(container.querySelectorAll('[data-function]')).map((el) => el.getAttribute('data-function'));
+    // chips 上的九个色点必出现（卡面另有技能自己的色点）
+    for (const fn of ['coding', 'writing', 'browser', 'data', 'devops', 'ai-integration', 'design', 'workflow', 'other']) {
+      expect(dots).toContain(fn);
+    }
+  });
 });

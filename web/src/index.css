@@ -31,6 +31,19 @@
     --warning-soft: 48 96% 89%;
     --info: 224 76% 48%;
     --info-soft: 214 95% 93%;
+
+    /* 九职能色彩编码（refine-skill-cards-wizard T1）：只用于图形色点，不用于文字、
+       不做大面积填充；色相避开语义色四区间（destructive 0 / warning 26 / success 142 / info 224）。
+       每个值对 --background（白）实测 ≥3:1，断言见 contrast.test.ts。 */
+    --fn-coding: 243 75% 59%;
+    --fn-writing: 36 95% 38%;
+    --fn-browser: 199 90% 36%;
+    --fn-data: 165 80% 31%;
+    --fn-devops: 12 85% 42%;
+    --fn-ai: 285 65% 50%;
+    --fn-design: 330 75% 43%;
+    --fn-workflow: 178 70% 30%;
+    --fn-other: 210 9% 42%;
   }
 }
 

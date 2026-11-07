@@ -268,3 +268,24 @@ describe('SkillDetail 资产医生入口', () => {
     expect(screen.queryByRole('button', { name: '资产医生' })).toBeNull();
   });
 });
+
+describe('SkillDetail 职能色点（spec skill-function-color）', () => {
+  beforeEach(() => {
+    vi.spyOn(api, 'getSkill').mockResolvedValue({ skill: marketSkill, rawContent: '# airbnb' });
+  });
+
+  it('职能行带色点，颜色与卡面同一套令牌', async () => {
+    const coding = { ...marketSkill, functionCategory: 'coding' as const };
+    vi.spyOn(api, 'getSkill').mockResolvedValue({ skill: coding, rawContent: '# airbnb' });
+    const { container } = render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <SkillDetail skill={coding} onClose={vi.fn()} onCurated={vi.fn()} />
+      </QueryClientProvider>,
+    );
+    const dot = container.querySelector('[data-function="coding"]');
+    expect(dot).toBeInTheDocument();
+    expect(dot?.className).toContain('bg-fn-coding');
+    // 色点旁必须有中文职能名
+    expect(await screen.findByText('编码开发')).toBeInTheDocument();
+  });
+});

@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { useAiClassify } from './use-ai-classify';
+import { FunctionDot } from './FunctionDot';
+import { FunctionLegend } from './FunctionLegend';
 import {
   FUNCTION_LABELS,
   FUNCTION_ORDER,
@@ -20,16 +22,30 @@ import type { SkillFunction, SkillProvenance, SkillListResult } from '@/types/ap
 export type SkillsDimension = 'function' | 'provenance';
 export type LibraryStatusFilter = 'all' | 'in' | 'out';
 
-function CountChip({ active, label, count, onClick }: { active: boolean; label: string; count: number; onClick: () => void }): JSX.Element {
+function CountChip({
+  active,
+  label,
+  count,
+  fn,
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  count: number;
+  /** 职能维度传色点；出处维度不传（出处不是职能，不上色） */
+  fn?: SkillFunction;
+  onClick: () => void;
+}): JSX.Element {
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        'rounded-full border px-2.5 py-0.5 text-xs transition-colors',
+        'inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs transition-colors',
         active ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground hover:bg-accent',
       )}
     >
+      {fn !== undefined && <FunctionDot fn={fn} />}
       {label} {count}
     </button>
   );
@@ -140,9 +156,11 @@ export function SkillsToolbar({
                 active={functionFilter === f}
                 label={FUNCTION_LABELS[f]}
                 count={counts?.countByFunction[f] ?? 0}
+                fn={f}
                 onClick={() => onFunctionChip(f)}
               />
             ))}
+        <FunctionLegend counts={counts?.countByFunction} />
       </div>
 
       {/* 搜索与操作 */}

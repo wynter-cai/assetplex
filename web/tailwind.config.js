@@ -65,6 +65,19 @@ export default {
           DEFAULT: 'hsl(var(--info))',
           soft: 'hsl(var(--info-soft))',
         },
+        // 九职能色彩编码（refine-skill-cards-wizard T1）：键名与 SkillFunction 一一对应，
+        // 用法见 components/skills/skill-colors.ts 的固定类名映射（不使用动态拼接，避免 JIT 漏扫）
+        fn: {
+          coding: 'hsl(var(--fn-coding))',
+          writing: 'hsl(var(--fn-writing))',
+          browser: 'hsl(var(--fn-browser))',
+          data: 'hsl(var(--fn-data))',
+          devops: 'hsl(var(--fn-devops))',
+          'ai-integration': 'hsl(var(--fn-ai))',
+          design: 'hsl(var(--fn-design))',
+          workflow: 'hsl(var(--fn-workflow))',
+          other: 'hsl(var(--fn-other))',
+        },
       },
       borderRadius: {
         lg: 'var(--radius)',

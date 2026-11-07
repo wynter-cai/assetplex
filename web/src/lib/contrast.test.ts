@@ -90,3 +90,27 @@ describe('设计令牌对比度（index.css 实测锚定）', () => {
     }
   });
 });
+
+/**
+ * refine-skill-cards-wizard T3（spec skill-function-color「色点对比度」）：
+ * 九个职能色点属图形元素，对 --background 只需 3:1；数值取自 index.css 的 --fn-*。
+ */
+const FUNCTION_TOKENS = {
+  coding: [243, 75, 59],
+  writing: [36, 95, 38],
+  browser: [199, 90, 36],
+  data: [165, 80, 31],
+  devops: [12, 85, 42],
+  ai: [285, 65, 50],
+  design: [330, 75, 43],
+  workflow: [178, 70, 30],
+  other: [210, 9, 42],
+} as const;
+
+describe('九职能色点对比度（图形元素门槛 3:1）', () => {
+  it('九个 --fn-* 对白底均 ≥ 3:1', () => {
+    for (const [name, hsl] of Object.entries(FUNCTION_TOKENS)) {
+      expect(ratioOn(hsl, TOKENS.background), name).toBeGreaterThanOrEqual(3);
+    }
+  });
+});
