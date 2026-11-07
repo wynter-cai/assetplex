@@ -36,7 +36,8 @@ import { isSymlink, readSymlinkTarget } from '../utils/fs.js';
 import { resolve } from 'node:path';
 import { scanAll as scanAllAdapters } from './scanner.js';
 import { mergeFile } from './merger.js';
-import { writeHubFile, readHubFile } from './hub-files.js';
+import { writeHubFile, writeHubFileBytes, readHubFile } from './hub-files.js';
+import { isBinaryFile } from './binary-detect.js';
 
 /** 哨兵：工具被过滤条件排除时返回，plan() 会跳过该工具 */
 const FILTERED_OUT = Symbol('FILTERED_OUT');
@@ -323,6 +324,13 @@ export class SyncEngine {
 
     for (const item of request.items) {
       try {
+        // 二进制资产（图标、字体等）走字节写入：一律 utf-8 会把字节读坏
+        // （refine-skill-cards-wizard T13）。前端会透传 binary，旧客户端未带时按源文件实际类型判定。
+        if (item.binary === true || isBinaryFile(item.absolutePath)) {
+          this.importBinaryItem(item, result);
+          continue;
+        }
+
         // 读取源文件内容
         const sourceContent = readFileSync(item.absolutePath, 'utf-8');
 
@@ -400,6 +408,45 @@ export class SyncEngine {
     }
 
     return result;
+  }
+
+  /**
+   * 二进制条目落盘：原始字节复制，不参与文本合并
+   *
+   * 库内无同名文件 → created；策略为覆盖 → overwritten；
+   * 策略为合并 → skipped（图片没有「逐行追加」语义）；其余策略视为跳过。
+   */
+  private importBinaryItem(item: ImportRequest['items'][number], result: ImportResult): void {
+    const existing = readHubFile(item.hubTargetPath);
+
+    if (!existing) {
+      writeHubFileBytes(item.hubTargetPath, readFileSync(item.absolutePath));
+      result.items.push({ tool: item.tool, hubTargetPath: item.hubTargetPath, status: 'created' });
+      result.created++;
+      return;
+    }
+
+    if (item.strategy === 'overwrite') {
+      writeHubFileBytes(item.hubTargetPath, readFileSync(item.absolutePath));
+      result.items.push({ tool: item.tool, hubTargetPath: item.hubTargetPath, status: 'overwritten' });
+      result.overwritten++;
+      return;
+    }
+
+    if (item.strategy === 'merge') {
+      result.items.push({
+        tool: item.tool,
+        hubTargetPath: item.hubTargetPath,
+        status: 'skipped',
+        message: '二进制文件无法合并，已跳过',
+        skipReason: 'binary-merge',
+      });
+      result.skipped++;
+      return;
+    }
+
+    result.items.push({ tool: item.tool, hubTargetPath: item.hubTargetPath, status: 'skipped' });
+    result.skipped++;
   }
 
   /**

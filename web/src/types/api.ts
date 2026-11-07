@@ -126,6 +126,8 @@ export interface DiscoveredItem {
   conflict: ConflictStatus;
   existingSize?: number;
   tool: string;
+  /** 是否二进制（refine-skill-cards-wizard T14）：扫描时后端判定的静态字段 */
+  binary: boolean;
 }
 
 export interface ToolInventory {
@@ -145,6 +147,8 @@ export interface ImportItem {
   strategy?: ConflictStrategy;
   /** 仲裁合并草案：仅 strategy==='merge' 且非空白时后端以此为准落盘 */
   mergeDraft?: string;
+  /** 是否二进制：从扫描结果透传，后端缺省时自行判定 */
+  binary?: boolean;
 }
 
 export interface ImportResult {
@@ -159,6 +163,8 @@ export interface ImportResult {
     hubTargetPath: string;
     status: 'created' | 'merged' | 'overwritten' | 'skipped' | 'error';
     message?: string;
+    /** 跳过原因：当前仅二进制请求合并时给出（binary-merge） */
+    skipReason?: 'binary-merge';
   }>;
 }
 

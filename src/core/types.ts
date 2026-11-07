@@ -169,6 +169,11 @@ export interface DiscoveredItem {
   existingSize?: number;
   /** 所属工具 */
   tool: string;
+  /**
+   * 是否二进制（refine-skill-cards-wizard T12）：
+   * 扫描时判定的静态字段，UI 据此打徽章、默认不勾选，导入时走字节写入
+   */
+  binary: boolean;
 }
 
 /** 单个工具的扫描结果 */
@@ -197,6 +202,11 @@ export interface ImportItem {
    * 仅 strategy === 'merge' 且非空白时生效——直接以此为准落盘，跳过机械合并
    */
   mergeDraft?: string;
+  /**
+   * 是否二进制（refine-skill-cards-wizard T13）：前端从扫描结果透传；
+   * 缺省时后端按源文件实际类型自行判定，避免旧客户端把图标当文本写坏
+   */
+  binary?: boolean;
 }
 
 /** 导入请求 */
@@ -210,6 +220,8 @@ export interface ImportResultItem {
   hubTargetPath: string;
   status: 'created' | 'merged' | 'overwritten' | 'skipped' | 'error';
   message?: string;
+  /** 跳过原因（refine-skill-cards-wizard T13）：当前仅二进制请求合并时给出 */
+  skipReason?: 'binary-merge';
 }
 
 /** 导入结果 */

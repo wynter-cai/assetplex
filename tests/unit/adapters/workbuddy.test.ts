@@ -89,6 +89,20 @@ describe('WorkBuddyAdapter - identity/memory 分发(T2)', () => {
       const mem = items.find((i) => i.category === 'memory' && i.hubTargetPath.startsWith('memory/'));
       expect(mem).toBeDefined();
     });
+
+    it('显式映射的 .mcp.json 仍出现在盘点中，隐藏的无关文件被跳过', async () => {
+      // spec import-wizard-noise Scenario: 适配器显式映射的点文件不受影响
+      writeFileSync(join(wbDir, '.mcp.json'), '{"mcpServers":{}}');
+      writeFileSync(join(wbDir, '.arkcli-managed-skills.json'), '{}');
+
+      const adapter = adapterWithDir();
+      const items = await adapter.scan();
+
+      const mcp = items.find((i) => i.hubTargetPath === 'mcp/mcp.sources.json');
+      expect(mcp).toBeDefined();
+      expect(mcp!.category).toBe('mcp');
+      expect(items.some((i) => i.relativePath.includes('arkcli-managed'))).toBe(false);
+    });
   });
 
   describe('import', () => {

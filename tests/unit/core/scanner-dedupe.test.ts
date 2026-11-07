@@ -19,6 +19,7 @@ function item(absolutePath: string, hubTargetPath: string, category: DiscoveredI
     hubTargetPath,
     conflict: 'none',
     tool: 'demo-tool',
+    binary: false,
   };
 }
 

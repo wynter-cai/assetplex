@@ -49,6 +49,7 @@ function discovered(
     hubTargetPath,
     conflict,
     tool: 'trae-cn',
+    binary: false,
   };
 }
 

@@ -143,6 +143,24 @@ export function writeHubFile(relativePath: string, content: string): void {
 }
 
 /**
+ * 以原始字节写入 Hub 文件（图片、字体等二进制资产，refine-skill-cards-wizard T13）
+ * @param relativePath 相对于 Hub 根目录的路径
+ * @param data 原始字节
+ */
+export function writeHubFileBytes(relativePath: string, data: Buffer): void {
+  const hubRoot = getHubRoot();
+  const fullPath = resolve(hubRoot, relativePath);
+
+  // 安全检查
+  if (!fullPath.startsWith(hubRoot)) {
+    throw new Error(`路径越界：${relativePath}`);
+  }
+
+  ensureDir(dirname(fullPath));
+  writeFileSync(fullPath, data);
+}
+
+/**
  * 删除 Hub 文件
  */
 export function deleteHubFile(relativePath: string): void {

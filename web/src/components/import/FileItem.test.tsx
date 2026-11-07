@@ -43,6 +43,7 @@ function makeItem(over: Partial<DiscoveredItem> = {}): DiscoveredItem {
     hubTargetPath: 'rules/a.md',
     conflict: 'none',
     tool: 'trae-cn',
+    binary: false,
     ...over,
   };
 }

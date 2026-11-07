@@ -19,6 +19,7 @@ import { log } from '../../utils/logger.js';
 import { copyRecursive } from '../../utils/fs.js';
 import { createSymlink } from '../../transforms/symlink.js';
 import { hubPath } from '../../utils/paths.js';
+import { isBinaryFile } from '../binary-detect.js';
 
 /**
  * 适配器接口
@@ -307,6 +308,8 @@ export abstract class BaseAdapter implements ToolAdapter {
         conflict,
         existingSize,
         tool: this.name,
+        // 扩充名 + NUL 嗅探，UI 据此打「二进制」徽章、默认不勾选
+        binary: isBinaryFile(absolutePath),
       };
     } catch {
       return null;
@@ -336,6 +339,10 @@ export abstract class BaseAdapter implements ToolAdapter {
       try {
         const entries = readdirSync(currentDir, { withFileTypes: true });
         for (const entry of entries) {
+          // 跳过点条目（.git/、.DS_Store、工具自管的 .xxx.json 等）：
+          // 这些不是用户资产，混进盘点只会制造噪音（refine-skill-cards-wizard T11）。
+          // 起点本身可以是点目录（如 Qoder 的 .qoder/skills），点号在条目名里才过滤。
+          if (entry.name.startsWith('.')) continue;
           const fullPath = join(currentDir, entry.name);
           if (entry.isDirectory()) {
             walk(fullPath);

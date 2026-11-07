@@ -32,6 +32,7 @@ function makeItem(over: Partial<DiscoveredItem> = {}): DiscoveredItem {
     hubTargetPath: 'rules/a.md',
     conflict: 'none',
     tool: 'trae-cn',
+    binary: false,
     ...over,
   };
 }
@@ -63,11 +64,11 @@ function makeResult(): ImportResult {
   };
 }
 
-function renderPage(): void {
+function renderPage(): ReturnType<typeof render> {
   const qc = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
-  render(
+  return render(
     <QueryClientProvider client={qc}>
       <Import />
     </QueryClientProvider>,
@@ -143,5 +144,39 @@ describe('Import 无冲突确认屏', () => {
     expect(api.executeImport).not.toHaveBeenCalled();
     await screen.findByText(/1 个文件存在冲突/);
     expect(screen.getByText(/另有 1 个无冲突文件/)).toBeDefined();
+  });
+
+  it('二进制标记透传到请求体：文本项 binary=false，图标项 binary=true', async () => {
+    vi.mocked(api.scanTools).mockResolvedValue({
+      inventories: makeInventory([
+        makeItem(),
+        makeItem({
+          hubTargetPath: 'skills/demo/_icon.png',
+          absolutePath: 'd:/demo/toolA/skills/demo/_icon.png',
+          category: 'skill',
+          binary: true,
+        }),
+      ]),
+    });
+    const { container } = renderPage();
+    await goToStep2();
+
+    // 二进制条目默认不勾选（后续 scenaro），这里显式勾上两条
+    await waitFor(() => {
+      expect(container.querySelectorAll('input[type="checkbox"]').length).toBe(2);
+    });
+    container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]').forEach((box) => {
+      if (!box.checked) fireEvent.click(box);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '下一步' }));
+    fireEvent.click(await screen.findByRole('button', { name: /开始收藏/ }));
+    await waitFor(() => expect(api.executeImport).toHaveBeenCalledTimes(1));
+
+    const sent = vi.mocked(api.executeImport).mock.calls[0][0];
+    const icon = sent.find((i) => i.hubTargetPath === 'skills/demo/_icon.png');
+    const text = sent.find((i) => i.hubTargetPath === 'rules/a.md');
+    expect(icon?.binary).toBe(true);
+    expect(text?.binary).toBe(false);
   });
 });

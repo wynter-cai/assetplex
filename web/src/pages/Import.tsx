@@ -179,6 +179,8 @@ export default function Import() {
           category: i.category,
           conflict: i.conflict,
           strategy: resolution?.strategy,
+          // 二进制标记透传：后端据此走字节写入，不把图标当文本重编码
+          binary: i.binary,
           ...(resolution !== undefined && resolution.strategy === 'merge' && resolution.draft !== undefined
             ? { mergeDraft: resolution.draft }
             : {}),
