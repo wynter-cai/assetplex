@@ -50,8 +50,8 @@
 - [x] M2 API 回环：造中性示例资产（`example-skill-a/b` 重复各一份、一份缺 description）→ 健康分下降 → 下钻 → 整改计划 → apply（只改库）→ undo → 重复扫描 → 合并 → 还原；临时脚本用毕即删
 - [x] M3 MCP 回环：`assetplex mcp` 用 Inspector 或测试客户端走 `identity_get` → `propose` → `commit` → HUB 可见；过期 id 与越界路径两类拒绝
 - [x] M4 浏览器走查（走完关闭全部标签页）：首页真实分数与下钻、整改执行、重复页、建议条、首次引导五类场景
-- [ ] M5 隐私终检 `node scripts/privacy-check.mjs` 退出码 0；按 Phase 分层 commit（docs spec / feat 健康分 / feat 整改 / feat MCP / feat 去重 / feat 建议 / docs 收尾）
-- [ ] M6 文档回写：taxonomy 补「管家层」；HANDOFF 进度与测试基线更新（本机私有，不入库）
+- [x] M5 隐私终检 `node scripts/privacy-check.mjs` 退出码 0；按 Phase 分层 commit（docs spec / feat 健康分 / feat 整改 / feat MCP / feat 去重 / feat 建议 / docs 收尾）
+- [x] M6 文档回写：taxonomy 补「管家层」；HANDOFF 进度与测试基线更新（本机私有，不入库）
 
 ## 风险与预留
 
