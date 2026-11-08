@@ -15,7 +15,7 @@
  * 4. --json：把 plan/result 输出为 JSON
  */
 
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import type {
   HubItem,
   SyncPlan,
@@ -33,11 +33,12 @@ import { getAllAdapters } from './adapters/registry.js';
 import { getHubRoot } from '../utils/paths.js';
 import { log } from '../utils/logger.js';
 import { isSymlink, readSymlinkTarget } from '../utils/fs.js';
-import { resolve } from 'node:path';
+import { basename, resolve } from 'node:path';
 import { scanAll as scanAllAdapters } from './scanner.js';
 import { mergeFile } from './merger.js';
 import { writeHubFile, writeHubFileBytes, readHubFile } from './hub-files.js';
 import { isBinaryFile } from './binary-detect.js';
+import { upsertGuidanceBlock } from './guidance.js';
 
 /** 哨兵：工具被过滤条件排除时返回，plan() 会跳过该工具 */
 const FILTERED_OUT = Symbol('FILTERED_OUT');
@@ -253,6 +254,8 @@ export class SyncEngine {
       }
     }
 
+    this.applyGuidance(plan.items, warnings);
+
     return {
       tool: plan.tool,
       success: errors.length === 0,
@@ -262,6 +265,32 @@ export class SyncEngine {
       warnings,
       durationMs: Date.now() - startTime,
     };
+  }
+
+  /**
+   * 在已生成的 AGENTS.md / CLAUDE.md 上维护 MCP 引导块（Scenario 6）
+   *
+   * 只在文件已存在且不是符号链接时原地更新；关闭引导时移除块，不动其余内容。
+   */
+  private applyGuidance(items: SyncPlanItem[], warnings: string[]): void {
+    const enabled = this.hubConfig.hub.guidance;
+    for (const planItem of items) {
+      const targetPath = planItem.target.targetPath;
+      if (targetPath === '' || isSymlink(targetPath)) continue;
+      const fileName = basename(targetPath);
+      if (fileName !== 'CLAUDE.md' && fileName !== 'AGENTS.md') continue;
+      if (!existsSync(targetPath)) continue;
+      try {
+        const before = readFileSync(targetPath, 'utf-8');
+        const after = upsertGuidanceBlock(before, enabled);
+        if (after !== before) {
+          writeFileSync(targetPath, after, 'utf-8');
+          log.debug(`[${planItem.target.tool}] 引导块已${enabled ? '更新' : '移除'}: ${targetPath}`);
+        }
+      } catch (err) {
+        warnings.push(`${targetPath}: 引导块更新失败 ${(err as Error).message}`);
+      }
+    }
   }
 
   /**

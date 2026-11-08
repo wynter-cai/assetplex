@@ -61,7 +61,22 @@ MCP server configurations can contain API keys or tokens. AssetPlex processes th
 > - 不记录其内容（日志只记录文件路径和操作结果）。
 > - 你可以完全控制哪些 MCP 配置同步到哪些工具。
 
-## 5. AI-assisted features are opt-in / AI 辅助功能需你主动启用
+## 5. MCP server boundary / MCP 服务的数据边界
+
+`assetplex mcp` runs as a local stdio process launched by your agent host:
+
+- **Same data, one source.** It reads and writes the same `~/.assetplex/` hub as the Web UI — no separate database, no second index. Writes are two-phase (`propose` → `commit`, the draft id expires after 10 minutes), backed up before writing, and **never distributed** unless you explicitly request it.
+- **No network by default.** Every tool runs locally with zero model calls. The only exception is `assetplex_asset_diagnose` with `useAi=true`, which sends that single asset body to the OpenAI-compatible endpoint you configured (same config and cache as the HUB Doctor) and marks the result `aiUsed=true`.
+- **Path guard.** Writes outside the hub and to environment entries are refused; failures return a structured error and the MCP process stays alive.
+- **Your choice.** The host agent can read the assets you expose through these tools. Enable the MCP entry only in hosts you trust; remove the config entry to revoke access.
+
+> `assetplex mcp` 是由你的 Agent 宿主启动的本地 stdio 进程：
+> - **同一份数据、单一数据源**：读写与 Web UI 完全相同的 `~/.assetplex/` Hub，不另建数据库或索引。写入是两段式（`propose` → `commit`，草稿 id 10 分钟过期），落盘前自动备份，且**默认不分发**，除非你显式要求。
+> - **默认零网络**：所有工具均在本机运行、零模型调用。唯一例外是 `assetplex_asset_diagnose` 且 `useAi=true`：只把那一个资产正文发往**你自己配置**的 OpenAI 兼容端点（与 HUB 医生同一配置与缓存），并标注 `aiUsed=true`。
+> - **路径闸门**：Hub 之外与环境条目一律拒写；失败返回结构化错误，MCP 进程保持存活。
+> - **由你决定**：宿主 Agent 可通过这些工具读取你放入 Hub 的资产。只在你信任的宿主中启用该 MCP 条目；删除配置条目即可撤销。
+
+## 6. AI-assisted features are opt-in / AI 辅助功能需你主动启用
 
 Three features make network requests, and only after you explicitly configure an endpoint in the app: **AI skill classification**, **conflict arbitration** (LLM suggests how to resolve a differs conflict in the import wizard), and the **Asset Doctor** (AI diagnosis of one asset plus, on request, a fix draft). The Doctor's mechanical checks run fully offline; only the AI pass sends anything.
 
@@ -90,7 +105,7 @@ Three features make network requests, and only after you explicitly configure an
 > - 结果（含仲裁建议、诊断报告与修复草案及其本地缓存文件）保存在 `~/.assetplex/`。仲裁与资产医生均仅为建议（advisory-only）：模型本身永不写盘，应用修复（以及向工具的任何分发）只在你显式确认时才发生，且这一步落盘/分发完全在本地进行、不经任何网络端点。
 > - 未配置端点或未触发功能 = 零网络请求，其余一切依旧 100% 本地。
 
-## 6. What AssetPlex never does / 绝不做什么
+## 7. What AssetPlex never does / 绝不做什么
 
 - ❌ No analytics, no telemetry, no usage tracking.
 - ❌ No account or login required.
@@ -102,9 +117,9 @@ Three features make network requests, and only after you explicitly configure an
 > - ❌ 无需账号或登录。
 > - ❌ 不进行任何云端同步或备份（如开启备份，也保存在本地 `~/.assetplex/.backups/`）。
 > - ❌ 不向任何第三方共享你的数据。
-> - ❌ 不会静默调用 AI——所有出站请求都来自你配置并主动触发的功能（见第 5 节）。
+> - ❌ 不会静默调用 AI——所有出站请求都来自你配置并主动触发的功能（见第 6 节）。
 
-## 7. Permission boundaries / 权限边界
+## 8. Permission boundaries / 权限边界
 
 | Scope | Allowed | Notes |
 |---|---|---|
@@ -119,10 +134,10 @@ Three features make network requests, and only after you explicitly configure an
 > | 读写 `~/.assetplex/` | ✅ | Hub 本体 |
 > | 读取工具配置目录 | ✅ | 仅用于检测/同步/导入 |
 > | 写入工具配置目录 | ✅ | 仅限你在 `hub.toml` 中启用的工具 |
-> | 网络访问 | ⚠️ 按需 | 仅两类按需行为：(a) AI 功能在你触发分类/仲裁/资产医生/打标时发往**你自己配置的**端点（见第 5 节）；(b) 技能发现仅在你点击「发现」时匿名读取一个公开仓库的 GitHub API，且零磁盘写入。其余情况零请求 |
+> | 网络访问 | ⚠️ 按需 | 仅两类按需行为：(a) AI 功能在你触发分类/仲裁/资产医生/打标时发往**你自己配置的**端点（见第 6 节）；(b) 技能发现仅在你点击「发现」时匿名读取一个公开仓库的 GitHub API，且零磁盘写入。其余情况零请求 |
 > | 遥测 / 分析 | ❌ | 无 |
 
-## 8. Questions / 问题
+## 9. Questions / 问题
 
 If you have any privacy or security concerns, please open an issue or start a discussion on [GitHub Discussions](https://github.com/wynter-cai/assetplex/discussions).
 

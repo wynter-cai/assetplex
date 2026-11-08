@@ -95,6 +95,26 @@ assetplex ui
 
 **Requirements**: Node.js >= 18.
 
+### Use your assets from inside any Agent (MCP)
+
+`assetplex mcp` starts a local stdio MCP server (no port, no browser, no HUB process required). Add one entry to your host's MCP config:
+
+**TRAE / any host using `mcpServers` JSON**
+
+```json
+{ "mcpServers": { "assetplex": { "command": "assetplex", "args": ["mcp"] } } }
+```
+
+**Claude Code**
+
+```bash
+claude mcp add assetplex -- assetplex mcp
+```
+
+**Generic stdio** — command `assetplex`, args `["mcp"]`.
+
+Read-only tools (`assetplex_identity_get`, `assetplex_assets_list`, `assetplex_asset_get`, `assetplex_health_get`, `assetplex_asset_diagnose`) make zero model calls. Writes are two-phase: `assetplex_asset_propose` returns a draft + `pendingChangeId` (valid 10 minutes) without touching your hub; `assetplex_asset_commit` writes it with a backup and **does not distribute** unless you explicitly ask.
+
 ### Reverse-import from existing tools
 
 ```bash

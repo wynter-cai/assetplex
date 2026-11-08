@@ -32,6 +32,8 @@ export const HubConfigSchema = z.object({
       backupDir: z.string().default('~/.assetplex/.backups'),
       autoWatch: z.boolean().default(false),
       backupKeepCount: z.number().int().positive().default(10),
+      /** 同步时是否在 AGENTS.md / CLAUDE.md 注入 AssetPlex 引导块（mcp-entry Scenario 6） */
+      guidance: z.boolean().default(true),
     })
     .default({}),
   identity: z

@@ -68,6 +68,15 @@ program
     }
   });
 
+// mcp 命令（stdio MCP 服务，供 TRAE / Claude Code 等宿主接入）
+program
+  .command('mcp')
+  .description('启动 MCP stdio 服务（本机资产只读 + 两段式写入）')
+  .action(async () => {
+    const { mcpCommand } = await import('./commands/mcp.js');
+    await mcpCommand();
+  });
+
 // ui 命令（Web UI 可视化管理）
 program
   .command('ui')
