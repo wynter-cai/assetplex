@@ -78,7 +78,7 @@ function nodeDispatchDeps() {
   };
 }
 
-const nodeApplyPorts: DoctorApplyPorts = {
+export const nodeApplyPorts: DoctorApplyPorts = {
   read: (hubRelativePath) => {
     try {
       const full = resolve(getHubRoot(), hubRelativePath);
@@ -93,7 +93,7 @@ const nodeApplyPorts: DoctorApplyPorts = {
   dispatchTool: (tool, hubRelativePath) => dispatchToolViaSwap(nodeDispatchDeps(), tool, hubRelativePath),
 };
 
-const nodeUndoPorts: UndoApplyPorts = {
+export const nodeUndoPorts: UndoApplyPorts = {
   readBackup: (backupRef) => readDoctorBackup(backupRef),
   write: (hubRelativePath, content) => writeHubFile(hubRelativePath, content),
 };
