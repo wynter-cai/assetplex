@@ -931,3 +931,244 @@ export interface DoctorUndoResponse {
   restored: true;
   hubRelativePath: string;
 }
+
+// ========== 资产治理（add-asset-governance Phase H） ==========
+
+export type HealthDimensionId = 'completeness' | 'quality' | 'distribution' | 'uniqueness';
+
+export type DimensionApplicability = 'applicable' | 'not-applicable' | 'data-missing';
+
+export type HealthGrade = 'empty' | 'at-risk' | 'needs-attention' | 'good' | 'excellent';
+
+/** 健康卡问题摘要；完整清单走 /api/governance/issues */
+export interface HealthIssueRef {
+  id: string;
+  severity: DiagnosisSeverity;
+  title: string;
+  kind: DoctorAssetKind;
+  hubRelativePath: string;
+  assetName: string;
+  fixable: boolean;
+}
+
+export interface HealthDimension {
+  id: HealthDimensionId;
+  label: string;
+  applicability: DimensionApplicability;
+  weight: number;
+  effectiveWeight: number;
+  /** not-applicable / data-missing 时为 null */
+  score: number | null;
+  evaluatedAssets: number;
+  issueCount: number;
+  topIssues: HealthIssueRef[];
+}
+
+/** GET /api/governance/health?refresh=0|1 */
+export interface GovernanceHealth {
+  score: number;
+  grade: HealthGrade;
+  totalAssets: number;
+  dimensions: HealthDimension[];
+  qualityMode: 'mechanical+ai' | 'mechanical-only';
+  computedAt: string;
+  cached: boolean;
+}
+
+/** GET /api/governance/issues */
+export interface GovernanceIssueList {
+  dimension: HealthDimensionId;
+  total: number;
+  items: HealthIssueRef[];
+}
+
+export interface GovernanceIssueQuery {
+  dimension: HealthDimensionId;
+  severityFloor?: DiagnosisSeverity;
+  limit?: number;
+  offset?: number;
+}
+
+// ========== 一键整改（add-asset-governance Phase I） ==========
+
+export interface RemediationPlanRequest {
+  kinds?: DoctorAssetKind[];
+  dimension?: HealthDimensionId;
+  maxAssets?: number;
+}
+
+export interface RemediationPlanItem {
+  id: string;
+  kind: DoctorAssetKind;
+  hubRelativePath: string;
+  assetName: string;
+  issueIndexes: number[];
+  issueSummary: string;
+  severity: DiagnosisSeverity;
+  /** 0 = 草案命中缓存（不消耗调用）；1 = 需一次草案调用 */
+  estimatedCalls: 0 | 1;
+  cached: boolean;
+}
+
+export interface RemediationSkipItem {
+  hubRelativePath: string;
+  assetName: string;
+  reason: string;
+}
+
+export interface RemediationPlan {
+  items: RemediationPlanItem[];
+  skipped: RemediationSkipItem[];
+  totalAssets: number;
+  estimatedCalls: number;
+  truncated: boolean;
+  batchLimit: number;
+  generatedAt: string;
+}
+
+export interface RemediationApplyRequest {
+  itemIds: string[];
+  distribute: boolean;
+  targets?: string[];
+}
+
+export interface RemediationApplyItemResult {
+  itemId: string;
+  hubRelativePath: string;
+  status: 'fixed' | 'failed' | 'skipped';
+  backupRef?: string;
+  reason?: string;
+}
+
+export interface RemediationApplyResponse {
+  batchId: string;
+  results: RemediationApplyItemResult[];
+  succeeded: number;
+  failed: number;
+  skipped: number;
+  rollbackAvailable: boolean;
+}
+
+export interface RemediationUndoResponse {
+  restored: string[];
+  failures: Array<{ hubRelativePath: string; reason: string }>;
+}
+
+// ========== 重复治理（add-asset-governance Phase K） ==========
+
+export type DuplicateKind = 'exact' | 'near' | 'gray';
+
+export interface DuplicateMember {
+  hubRelativePath: string;
+  name: string;
+  toolSources: string[];
+  bodyLength: number;
+  modifiedAt: string;
+  contentHash: string;
+}
+
+export interface DuplicateGroupView {
+  id: string;
+  kind: DuplicateKind;
+  category: DoctorAssetKind;
+  similarity: number;
+  members: DuplicateMember[];
+  suggestedKeep: string;
+  reason: string;
+}
+
+export interface DuplicateScanRequest {
+  categories?: DoctorAssetKind[];
+  similarityThreshold?: number;
+  useAiJudgement?: boolean;
+}
+
+export interface DuplicateScanResponse {
+  groups: DuplicateGroupView[];
+  scannedAssets: number;
+  grayCount: number;
+  aiUsed: boolean;
+  /** 灰区组将调用的模型次数（扫描本身零模型调用） */
+  estimatedAiCalls?: number;
+  generatedAt: string;
+}
+
+export interface DuplicateMergeDraftRequest {
+  groupId: string;
+  keepPath: string;
+  allowGray?: boolean;
+}
+
+export interface DuplicateMergeDraftResponse {
+  groupId: string;
+  keepPath: string;
+  draftContent: string;
+  unifiedDiff: string;
+  archivePaths: string[];
+  cached: boolean;
+  model: string;
+}
+
+export interface DuplicateApplyRequest {
+  groupId: string;
+  keepPath: string;
+  finalContent: string;
+  archiveMembers: string[];
+  distribute: boolean;
+  targets?: string[];
+  allowGray?: boolean;
+}
+
+export interface DuplicateApplyResponse {
+  groupId: string;
+  keepPath: string;
+  backupRef: string;
+  archived: Array<{ from: string; to: string; status: 'archived' | 'failed'; reason?: string }>;
+  dispatch: Array<{ tool: string; action: string; reason?: string }>;
+  rollbackAvailable: boolean;
+}
+
+export interface DuplicateUndoResponse {
+  restored: string[];
+  keepRestored: boolean;
+  failures: Array<{ hubRelativePath: string; reason: string }>;
+}
+
+// ========== 主动性建议（add-asset-governance Phase L） ==========
+
+export type SuggestionId = 'duplicates' | 'completeness' | 'quality' | 'distribution' | 'ai-config';
+
+export interface SuggestionAction {
+  label: string;
+  route: string;
+  intent?: 'open-remediation';
+}
+
+export interface GovernanceSuggestionItem {
+  id: SuggestionId;
+  executable: boolean;
+  title: string;
+  reason: string;
+  scale: { assets: number; estimatedCalls: number };
+  action: SuggestionAction;
+  impact: number;
+}
+
+export interface FirstRunBriefing {
+  headline: string;
+  stats: { assetCount: number; duplicateCount: number; missingInfoCount: number };
+  primary: SuggestionAction;
+  secondary: { label: string };
+  clean: boolean;
+}
+
+/** GET /api/governance/suggestions（本地生成，零模型调用） */
+export interface GovernanceSuggestionsResponse {
+  suggestions: GovernanceSuggestionItem[];
+  info: Array<{ id: string; text: string }>;
+  firstRun: FirstRunBriefing | null;
+  aiConfigured: boolean;
+  emptyMessage: string | null;
+}
+
+

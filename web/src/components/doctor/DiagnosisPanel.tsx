@@ -8,7 +8,7 @@
  * spec: 设计文档/changes/add-asset-doctor/specs/asset-diagnosis.spec.md
  */
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Stethoscope, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +29,8 @@ export interface DiagnosisPanelProps {
   hubRelativePath?: string;
   /** 绝对路径（技能/agent 详情用）；组件经 hubRoot 换算并判定是否库内 */
   absolutePath?: string;
+  /** 挂载即发起一次体检（健康分下钻：点问题直接看到报告） */
+  autoStart?: boolean;
 }
 
 const OVERALL_LABEL: Record<DiagnosisOverall, string> = {
@@ -63,6 +65,7 @@ function severityVariant(severity: DiagnosisSeverity): 'destructive' | 'warning'
 
 export function DiagnosisPanel(props: DiagnosisPanelProps): JSX.Element | null {
   const [state, setState] = useState<PanelState>({ kind: 'idle' });
+  const autoStarted = useRef(false);
 
   // 只有拿到绝对路径才查 hub-health；Hub 相对路径直用
   const needsResolve = props.hubRelativePath === undefined && props.absolutePath !== undefined;
@@ -78,9 +81,8 @@ export function DiagnosisPanel(props: DiagnosisPanelProps): JSX.Element | null {
       ? toHubRelative(health.hubRoot, props.absolutePath)
       : null);
   // 环境条目（Hub 外）不提供医生入口；路径尚不可解析时也不渲染
-  if (hubRelativePath === null) return null;
-
   const diagnose = (): void => {
+    if (hubRelativePath === null) return;
     setState({ kind: 'loading' });
     api
       .doctorDiagnose({ kind: props.kind, hubRelativePath })
@@ -89,6 +91,18 @@ export function DiagnosisPanel(props: DiagnosisPanelProps): JSX.Element | null {
         setState({ kind: 'failed', message: err instanceof Error ? err.message : String(err) }),
       );
   };
+
+  // 下钻直达：仅自动触发一次，后续「重新体检」仍由用户点击
+  useEffect(() => {
+    if (props.autoStart !== true || autoStarted.current || state.kind !== 'idle') return;
+    if (hubRelativePath === null) return;
+    autoStarted.current = true;
+    diagnose();
+    // diagnose 为每次渲染重建的闭包，依赖只取触发条件
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.autoStart, state.kind, hubRelativePath]);
+
+  if (hubRelativePath === null) return null;
 
   return (
     <div className="space-y-2">

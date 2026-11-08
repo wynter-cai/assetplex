@@ -15,6 +15,7 @@ import Rules from './pages/Rules';
 import Mcp from './pages/Mcp';
 import Settings from './pages/Settings';
 import Projects from './pages/Projects';
+import Duplicates from './pages/Duplicates';
 import { Toaster } from './components/ui/toast';
 
 export default function App(): JSX.Element {
@@ -26,6 +27,7 @@ export default function App(): JSX.Element {
         <Route path="/vault" element={<Vault />} />
         <Route path="/vault/:category" element={<Vault />} />
         <Route path="/projects" element={<Projects />} />
+        <Route path="/duplicates" element={<Duplicates />} />
         <Route path="/connections" element={<Connections />} />
         {/* 活动页未上线：旧入口直达首页（P1 评估是否做操作时间线） */}
         <Route path="/activities" element={<Navigate to="/" replace />} />

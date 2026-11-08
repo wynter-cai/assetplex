@@ -7,6 +7,7 @@ import {
   Settings,
   FolderGit2,
   Compass,
+  Copy,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -22,6 +23,7 @@ export interface MainNavItem {
 export const MAIN_NAV: MainNavItem[] = [
   { to: '/', label: '首页', icon: Home },
   { to: '/vault', label: '资产库', icon: Package, hasChildren: true },
+  { to: '/duplicates', label: '重复治理', icon: Copy },
   { to: '/projects', label: '项目', icon: FolderGit2 },
   { to: '/connections', label: '连接', icon: Plug },
   { to: '/discover', label: '技能发现', icon: Compass },

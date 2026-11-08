@@ -4,7 +4,22 @@ import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Home from './Home';
 import { api } from '@/lib/api';
-import type { OverviewData } from '@/types/api';
+import type { GovernanceHealth, OverviewData } from '@/types/api';
+
+const governanceHealth: GovernanceHealth = {
+  score: 85,
+  grade: 'good',
+  totalAssets: 15,
+  dimensions: [
+    { id: 'completeness', label: '完整性', applicability: 'applicable', weight: 30, effectiveWeight: 30, score: 90, evaluatedAssets: 15, issueCount: 1, topIssues: [] },
+    { id: 'quality', label: '规范性', applicability: 'applicable', weight: 30, effectiveWeight: 30, score: 80, evaluatedAssets: 15, issueCount: 2, topIssues: [] },
+    { id: 'distribution', label: '分发一致性', applicability: 'applicable', weight: 25, effectiveWeight: 25, score: 85, evaluatedAssets: 10, issueCount: 1, topIssues: [] },
+    { id: 'uniqueness', label: '唯一性', applicability: 'applicable', weight: 15, effectiveWeight: 15, score: 100, evaluatedAssets: 15, issueCount: 0, topIssues: [] },
+  ],
+  qualityMode: 'mechanical+ai',
+  computedAt: '2026-11-08T00:00:00.000Z',
+  cached: false,
+};
 
 /**
  * Home 页面测试
@@ -45,12 +60,15 @@ function renderHome(): ReturnType<typeof render> {
 describe('Home 页面', () => {
   beforeEach(() => {
     vi.spyOn(api, 'getOverview').mockResolvedValue(overviewData);
+    vi.spyOn(api, 'getGovernanceHealth').mockResolvedValue(governanceHealth);
   });
 
-  it('渲染 HomeHero 欢迎区', async () => {
+  it('渲染健康卡主区（真实四维健康分）', async () => {
     renderHome();
-    expect(await screen.findByText('欢迎回来')).toBeInTheDocument();
-    expect(screen.getByText(/你的AI资产安全存储在 AssetPlex/)).toBeInTheDocument();
+    expect(await screen.findByText('资产健康')).toBeInTheDocument();
+    expect(screen.getByText(/共 15 项/)).toBeInTheDocument();
+    expect(screen.getByText('完整性')).toBeInTheDocument();
+    expect(screen.getByText('规范性')).toBeInTheDocument();
   });
 
   it('渲染资产快照区域（含 5 类资产数量与总数）', async () => {
@@ -94,8 +112,8 @@ describe('Home 页面', () => {
 
   it('渲染健康度分数', async () => {
     renderHome();
-    // mock healthScore = 85
-    expect(await screen.findByText('85')).toBeInTheDocument();
-    expect(screen.getByText('健康度')).toBeInTheDocument();
+    // mock governance health score = 85
+    expect(await screen.findByTestId('health-score')).toHaveTextContent('85');
+    expect(screen.getByText('资产健康')).toBeInTheDocument();
   });
 });

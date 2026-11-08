@@ -67,6 +67,22 @@ import type {
   GithubCurateResult,
   GithubClassifyEstimate,
   GithubClassifyResult,
+  GovernanceHealth,
+  GovernanceIssueList,
+  GovernanceIssueQuery,
+  RemediationApplyRequest,
+  RemediationApplyResponse,
+  RemediationPlan,
+  RemediationPlanRequest,
+  RemediationUndoResponse,
+  DuplicateApplyRequest,
+  DuplicateApplyResponse,
+  DuplicateMergeDraftRequest,
+  DuplicateMergeDraftResponse,
+  DuplicateScanRequest,
+  DuplicateScanResponse,
+  DuplicateUndoResponse,
+  GovernanceSuggestionsResponse,
 } from '@/types/api';
 
 const BASE = '/api';
@@ -303,6 +319,55 @@ export const api = {
     request<DoctorApplyResponse>('/doctor/apply', { method: 'POST', body: JSON.stringify(body) }),
   doctorUndo: (backupRef: string) =>
     request<DoctorUndoResponse>('/doctor/undo', { method: 'POST', body: JSON.stringify({ backupRef }) }),
+
+  // Governance（add-asset-governance Phase H：真实健康分与下钻）
+  getGovernanceHealth: (refresh = false) =>
+    request<GovernanceHealth>(`/governance/health${refresh ? '?refresh=1' : ''}`),
+  getGovernanceIssues: (query: GovernanceIssueQuery) => {
+    const params = new URLSearchParams({ dimension: query.dimension });
+    if (query.severityFloor !== undefined) params.set('severityFloor', query.severityFloor);
+    if (query.limit !== undefined) params.set('limit', String(query.limit));
+    if (query.offset !== undefined) params.set('offset', String(query.offset));
+    return request<GovernanceIssueList>(`/governance/issues?${params.toString()}`);
+  },
+  getRemediationPlan: (body: RemediationPlanRequest = {}) =>
+    request<RemediationPlan>('/governance/remediation/plan', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  applyRemediation: (body: RemediationApplyRequest) =>
+    request<RemediationApplyResponse>('/governance/remediation/apply', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  undoRemediation: (batchId: string) =>
+    request<RemediationUndoResponse>('/governance/remediation/undo', {
+      method: 'POST',
+      body: JSON.stringify({ batchId }),
+    }),
+
+  // 重复治理（Phase K）：扫描零模型；草案零写库；apply 归档不删除；undo 还原
+  scanDuplicates: (body: DuplicateScanRequest = {}) =>
+    request<DuplicateScanResponse>('/governance/duplicates/scan', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  getDuplicateMergeDraft: (body: DuplicateMergeDraftRequest) =>
+    request<DuplicateMergeDraftResponse>('/governance/duplicates/merge-draft', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  applyDuplicateMerge: (body: DuplicateApplyRequest) =>
+    request<DuplicateApplyResponse>('/governance/duplicates/apply', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  undoDuplicateMerge: (groupId: string) =>
+    request<DuplicateUndoResponse>('/governance/duplicates/undo', {
+      method: 'POST',
+      body: JSON.stringify({ groupId }),
+    }),
+  getGovernanceSuggestions: () => request<GovernanceSuggestionsResponse>('/governance/suggestions'),
 
   // Workspaces（项目级技能工作区发现）
   getWorkspaces: () => request<WorkspacesResponse>('/workspaces'),
