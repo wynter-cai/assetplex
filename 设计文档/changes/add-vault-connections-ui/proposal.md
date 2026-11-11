@@ -2,7 +2,7 @@
 
 > Change ID: `add-vault-connections-ui`
 > 类型: S 级（UI 架构重构）
-> 状态: 待审核
+> 状态: **已废弃（2026-11-11 复核）** — 目标已由 `refactor-design-system` 与 P2 系列变更实现（导航分区、指挥中心首页、统一资产库、连接页、动态类别）；唯一未落地的「活动页」已并入 `add-activity-feed-data-semantics`（见其 `preflight.md`）。本文档仅作历史存档，不再按 107 项 tasks 执行。
 
 ## Goal (目标)
 

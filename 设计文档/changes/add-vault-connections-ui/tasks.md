@@ -1,5 +1,8 @@
 # Tasks: add-vault-connections-ui
 
+> **已废弃（2026-11-11 复核）**：导航/首页/资产库/连接页部分已由 `refactor-design-system` 与 P2 系列落地，
+> 剩余「活动页」并入 `add-activity-feed-data-semantics`。本清单不再执行，仅作历史存档。
+
 > 任务清单，每个任务可独立提交。任务前的 `[ ]` 表示待办。
 
 ## Phase 1: 导航骨架 + 首页（核心骨架，先做）
