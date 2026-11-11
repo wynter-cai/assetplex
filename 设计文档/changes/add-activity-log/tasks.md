@@ -20,7 +20,7 @@
 
 - [x] T9 `getOverview().recentActivities` 改读事件日志（最多 5 条），保留空态；补单测
 - [x] T10 前端：`web/src/pages/Activities.tsx`（时间线 + 类型筛选 + 加载更多）、`/activities` 路由、侧栏「活动」入口、`api.getActivity`、页面测试
-- [ ] T11 文档：HANDOFF 进度、本变更勾选；隐私终检 0 命中后分层提交
+- [x] T11 文档：HANDOFF 进度、本变更勾选；隐私终检 0 命中后分层提交
 
 ## 已知取舍
 
