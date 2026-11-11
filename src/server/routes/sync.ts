@@ -5,9 +5,51 @@
 import { Hono } from 'hono';
 import { hubContext } from '../lib/hub-context.js';
 import { invalidateDistributionIndex } from '../../core/distribution-index.js';
-import type { ImportRequest } from '../../core/types.js';
+import { appendActivity } from '../../core/activity-log.js';
+import type { ImportRequest, ImportResult, SyncResult } from '../../core/types.js';
 
 export const syncRoutes = new Hono();
+
+/** 同步完成后留痕（add-activity-log T6）：dryRun 不写；日志失败不影响响应 */
+function recordSync(results: SyncResult[], filter: { tool?: string; tools?: string[] }): void {
+  const succeeded = results.filter((item) => item.success).length;
+  const failed = results.filter((item) => !item.success).length;
+  const items = results.reduce((sum, item) => sum + item.itemCount, 0);
+  const skipped = results.reduce((sum, item) => sum + item.skippedCount, 0);
+  const targets = filter.tools ?? (filter.tool !== undefined ? [filter.tool] : results.map((item) => item.tool));
+  const parts = [`${succeeded} 个工具成功`, `${items} 个条目已分发`];
+  if (skipped > 0) parts.push(`跳过 ${skipped}`);
+  if (failed > 0) parts.push(`${failed} 个失败`);
+  appendActivity({
+    type: 'sync',
+    summary: `同步完成：${parts.join('、')}`,
+    targets,
+    counts: { succeeded, failed, items, skipped },
+  });
+}
+
+/** 导入完成后留痕（T6）：计数口径与导入结果一致 */
+function recordImport(result: ImportResult): void {
+  const parts = [
+    `新建 ${result.created}`,
+    `合并 ${result.merged}`,
+    `覆盖 ${result.overwritten}`,
+    `跳过 ${result.skipped}`,
+  ];
+  if (result.errors > 0) parts.push(`失败 ${result.errors}`);
+  appendActivity({
+    type: 'import',
+    summary: `导入完成：${parts.join('、')}`,
+    counts: {
+      created: result.created,
+      merged: result.merged,
+      overwritten: result.overwritten,
+      skipped: result.skipped,
+      errors: result.errors,
+    },
+    paths: result.items.filter((item) => item.status !== 'skipped').map((item) => item.hubTargetPath),
+  });
+}
 
 // 简单内存历史记录（首版不持久化）
 const syncHistory: Array<{
@@ -48,6 +90,8 @@ syncRoutes.post('/run', async (c) => {
   const results = await engine.run({ ...filter, dryRun });
   // 真实写入后分发状态已变，缓存必须失效（proposal D2）
   if (!dryRun) invalidateDistributionIndex();
+  // 活动留痕：dryRun 只是预演，不算一次操作（add-activity-log Scenario 1）
+  if (!dryRun) recordSync(results, filter);
 
   // 记录历史
   syncHistory.unshift({
@@ -68,6 +112,12 @@ syncRoutes.post('/reverse-import', async (c) => {
   const engine = hubContext.getEngine();
   const results = await engine.reverseImport(filter);
   invalidateDistributionIndex();
+  appendActivity({
+    type: 'import',
+    summary: `从 AI 工具反向导入完成：${results.length} 个工具`,
+    targets: filter.tools ?? (filter.tool !== undefined ? [filter.tool] : results.map((item) => item.tool)),
+    counts: { tools: results.length, items: results.reduce((sum, item) => sum + item.items.length, 0) },
+  });
   return c.json({ results });
 });
 
@@ -137,5 +187,6 @@ syncRoutes.post('/execute-import', async (c) => {
   const engine = hubContext.getEngine();
   const result = await engine.executeImport(body);
   invalidateDistributionIndex();
+  recordImport(result);
   return c.json(result);
 });

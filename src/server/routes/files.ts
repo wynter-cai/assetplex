@@ -12,6 +12,7 @@ import {
   HUB_CATEGORIES,
   type HubFileCategory,
 } from '../../core/hub-files.js';
+import { appendActivity } from '../../core/activity-log.js';
 
 export const filesRoutes = new Hono();
 
@@ -58,6 +59,8 @@ filesRoutes.put('/*', async (c) => {
     return c.json({ error: '请求体必须包含 content 字段' }, 400);
   }
   writeHubFile(path, body.content);
+  // 写库留痕（add-activity-log T7）：只记 Hub 相对路径，不记正文
+  appendActivity({ type: 'edit', summary: `编辑文件：${path}`, paths: [path] });
   return c.json({ success: true, path });
 });
 
@@ -69,6 +72,7 @@ filesRoutes.post('/', async (c) => {
   }
   try {
     createHubFile(body.path, body.content);
+    appendActivity({ type: 'create', summary: `新建文件：${body.path}`, paths: [body.path] });
     return c.json({ success: true, path: body.path });
   } catch (err) {
     return c.json(
@@ -86,6 +90,7 @@ filesRoutes.delete('/*', (c) => {
   }
   try {
     deleteHubFile(path);
+    appendActivity({ type: 'edit', summary: `删除文件：${path}`, paths: [path] });
     return c.json({ success: true });
   } catch (err) {
     return c.json(

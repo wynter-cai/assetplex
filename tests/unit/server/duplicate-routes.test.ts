@@ -69,6 +69,8 @@ function harness(options: { aiConfigured?: boolean } = {}) {
     duplicates: {
       apply: ports,
       batchStore: store,
+      // 活动留痕不写真实 Hub（add-activity-log T8）
+      recordActivity: () => {},
       undo: {
         restoreArchived: (archived, original) => {
           const content = files.get(archived);

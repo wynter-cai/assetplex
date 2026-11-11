@@ -31,6 +31,7 @@ import {
 } from '../../core/duplicate-merge.js';
 import { backupHubFileForDoctor } from '../../core/doctor-backup.js';
 import { invalidateDistributionIndex } from '../../core/distribution-index.js';
+import { appendActivity, type AppendActivityInput } from '../../core/activity-log.js';
 import { loadAiClassifyConfig, isAiConfigComplete, type AiConfigStore } from '../../core/ai-config.js';
 import { nodeAiConfigStore } from '../lib/node-ai-classify-store.js';
 import { nodeApplyPorts } from './doctor-fix.js';
@@ -51,6 +52,8 @@ export interface DuplicateRouteDeps {
   undo?: UndoDuplicateMergePorts;
   batchStore?: DuplicateMergeBatchStore;
   invalidate?: () => void;
+  /** 活动留痕（add-activity-log T8）；测试注入空实现避免写真实 Hub */
+  recordActivity?: (input: AppendActivityInput) => void;
   now?: () => string;
 }
 
@@ -192,6 +195,7 @@ function toGroupView(group: DuplicateGroup, hashes: Map<string, string>): ScanGr
 export function createDuplicateRoutes(deps: DuplicateRouteDeps): Hono {
   const routes = new Hono();
   const now = deps.now ?? (() => new Date().toISOString());
+  const recordActivity = deps.recordActivity ?? ((input: AppendActivityInput) => void appendActivity(input));
   const aiConfigured =
     deps.aiConfigured ??
     (() => isAiConfigComplete(loadAiClassifyConfig(deps.aiConfigStore ?? nodeAiConfigStore)));
@@ -371,7 +375,14 @@ export function createDuplicateRoutes(deps: DuplicateRouteDeps): Hono {
     );
     invalidateDistributionIndex();
     deps.invalidate?.();
-
+    const archivedCount = result.archived.filter((item) => item.ok).length;
+    const failedCount = result.archived.length - archivedCount;
+    recordActivity({
+      type: 'edit',
+      summary: `重复合并：保留 ${draft.keepPath}、归档 ${archivedCount} 个${failedCount > 0 ? `、失败 ${failedCount}` : ''}`,
+      counts: { archived: archivedCount, failed: failedCount },
+      paths: [draft.keepPath, ...result.archived.filter((item) => item.ok).map((item) => item.path)],
+    });
     return c.json({
       groupId: draft.groupId,
       keepPath: draft.keepPath,
@@ -399,9 +410,15 @@ export function createDuplicateRoutes(deps: DuplicateRouteDeps): Hono {
     const result = undoDuplicateMerge(batch, deps.undo ?? nodeUndoPorts);
     invalidateDistributionIndex();
     deps.invalidate?.();
-
+    const restored = result.archived.filter((item) => item.ok).map((item) => item.path);
+    recordActivity({
+      type: 'edit',
+      summary: `撤销重复合并：恢复 ${restored.length} 个资产`,
+      counts: { restored: restored.length },
+      paths: restored,
+    });
     return c.json({
-      restored: result.archived.filter((item) => item.ok).map((item) => item.path),
+      restored,
       keepRestored: result.keep.ok,
       failures: result.archived
         .filter((item) => !item.ok)

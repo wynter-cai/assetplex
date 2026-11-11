@@ -58,6 +58,9 @@ function harness(opts: HarnessOptions = {}) {
       opts.libraryCount ??
       Object.keys(files).filter((path) => !path.startsWith('commands/') && !path.startsWith('criteria/')).length,
     now: () => '2026-11-08T00:00:00.000Z',
+    // 子路由的活动留痕不写真实 Hub（add-activity-log T8）
+    remediation: { recordActivity: () => {} },
+    duplicates: { recordActivity: () => {} },
   };
   const routes = createGovernanceRoutes(deps);
   const get = async (path: string) => {

@@ -44,6 +44,7 @@ import { hashCriteria, listCriteria, type CriterionAsset } from '../../core/crit
 import { loadAiClassifyConfig, isAiConfigComplete, type AiConfigStore } from '../../core/ai-config.js';
 import type { LlmClient } from '../../core/skill-ai-classification.js';
 import { invalidateDistributionIndex } from '../../core/distribution-index.js';
+import { appendActivity, type AppendActivityInput } from '../../core/activity-log.js';
 import { nodeAiConfigStore, nodeFixDraftCacheStore } from '../lib/node-ai-classify-store.js';
 import { createOpenAiLlmClient } from '../lib/openai-llm-client.js';
 import {
@@ -73,6 +74,8 @@ export interface RemediationRouteDeps {
   apply?: DoctorApplyPorts;
   undo?: UndoApplyPorts;
   batchStore?: RemediationBatchStore;
+  /** 活动留痕（add-activity-log T8）；测试注入空实现避免写真实 Hub */
+  recordActivity?: (input: AppendActivityInput) => void;
   now?: () => string;
 }
 
@@ -120,6 +123,7 @@ export function createRemediationRoutes(deps: RemediationRouteDeps): Hono {
   const now = deps.now ?? (() => new Date().toISOString());
   const fixCache = deps.fixCache ?? nodeFixDraftCacheStore;
   const getCriteria = deps.getCriteria ?? listCriteria;
+  const recordActivity = deps.recordActivity ?? ((input: AppendActivityInput) => void appendActivity(input));
 
   /** 组装计划输入：草案缓存命中 = 本次执行不消耗模型调用 */
   async function buildPlanInputs(): Promise<ReturnType<typeof collectPlanInputs>> {
@@ -245,6 +249,12 @@ export function createRemediationRoutes(deps: RemediationRouteDeps): Hono {
       skipped,
       rollbackAvailable: succeeded > 0,
     };
+    recordActivity({
+      type: 'edit',
+      summary: `一键整改：成功 ${succeeded}、失败 ${failed}、跳过 ${skipped}`,
+      counts: { succeeded, failed, skipped },
+      paths: results.filter((item) => item.status === 'fixed').map((item) => item.hubRelativePath),
+    });
     return c.json(response);
   });
 
@@ -274,6 +284,12 @@ export function createRemediationRoutes(deps: RemediationRouteDeps): Hono {
 
     invalidateDistributionIndex();
     deps.invalidate?.();
+    recordActivity({
+      type: 'edit',
+      summary: `撤销整改：恢复 ${restored.length} 个资产${failures.length > 0 ? `、失败 ${failures.length}` : ''}`,
+      counts: { restored: restored.length, failed: failures.length },
+      paths: restored,
+    });
     return c.json({ restored, failures });
   });
 

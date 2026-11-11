@@ -8,6 +8,7 @@
  */
 
 import { checkHubHealth, HUB_CATEGORIES } from './hub-files.js';
+import { readActivity } from './activity-log.js';
 import type { HubConfig } from './config.js';
 import type { ToolAdapter } from './adapters/base.js';
 
@@ -19,6 +20,8 @@ import type { ToolAdapter } from './adapters/base.js';
 export interface OverviewDeps {
   adapters: ToolAdapter[];
   hubConfig: HubConfig;
+  /** 最近活动读取（缺省读事件日志；测试可注入） */
+  recentActivities?: (limit: number) => ActivityInfo[];
 }
 
 /** 前端资产类别（单数形式，与前端 ASSET_CATEGORIES 对齐） */
@@ -100,7 +103,7 @@ export async function getOverview(deps: OverviewDeps): Promise<OverviewData> {
   const connections = await getConnections(deps);
 
   // 3. 最近活动
-  const recentActivities = getRecentActivities();
+  const recentActivities = (deps.recentActivities ?? getRecentActivities)(5);
 
   return {
     assetStats,
@@ -178,8 +181,14 @@ async function getConnections(deps: OverviewDeps): Promise<ConnectionInfo[]> {
 /**
  * 获取最近活动
  *
- * Phase 1 返回空数组，Phase 3 活动页实现时接入 sync history。
+ * 数据源：事件日志（add-activity-log T9），与活动页共用 readActivity；
+ * 日志为空或目录不存在时返回空数组，由前端展示空态。
  */
-function getRecentActivities(): ActivityInfo[] {
-  return [];
+function getRecentActivities(limit: number): ActivityInfo[] {
+  return readActivity({ limit }).items.map((entry) => ({
+    id: entry.id,
+    type: entry.type,
+    description: entry.summary,
+    occurredAt: entry.at,
+  }));
 }

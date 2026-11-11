@@ -171,6 +171,23 @@ describe('getOverview', () => {
     expect(Array.isArray(result.recentActivities)).toBe(true);
   });
 
+  it('recentActivities 来自事件日志（注入读取，最多 5 条）', async () => {
+    const received: number[] = [];
+    const result = await getOverview({
+      ...DEFAULT_DEPS,
+      recentActivities: (limit) => {
+        received.push(limit);
+        return [
+          { id: 'a1', type: 'sync', description: '同步完成：1 个工具成功', occurredAt: '2026-11-11T10:00:00.000Z' },
+        ];
+      },
+    });
+
+    expect(received).toEqual([5]);
+    expect(result.recentActivities).toHaveLength(1);
+    expect(result.recentActivities[0]).toMatchObject({ id: 'a1', type: 'sync' });
+  });
+
   it('连接状态由注入的适配器与配置派生，不读全局单例（H6）', async () => {
     const hubConfig = HubConfigSchema.parse({
       tools: { 'trae-cn': { enabled: true }, claude: { enabled: false } },

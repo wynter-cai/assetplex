@@ -72,6 +72,8 @@ function harness(overrides: Partial<RemediationRouteDeps> = {}) {
     apply: applyPorts,
     undo: undoPorts,
     batchStore,
+    // 活动留痕不写真实 Hub（add-activity-log T8）
+    recordActivity: () => {},
     now: () => '2026-11-08T00:00:00.000Z',
     ...overrides,
   };
@@ -238,6 +240,7 @@ describe('POST /api/governance/remediation/undo — Scenario 9', () => {
         write: () => undefined,
       },
       batchStore: store,
+      recordActivity: () => {},
     });
     const response = await undoRoutes.request('/undo', {
       method: 'POST',
