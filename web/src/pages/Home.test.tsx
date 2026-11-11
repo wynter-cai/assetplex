@@ -31,7 +31,6 @@ const governanceHealth: GovernanceHealth = {
 
 const overviewData: OverviewData = {
   hubInitialized: true,
-  healthScore: 85,
   assetStats: { identity: 1, skill: 3, rule: 5, mcp: 2, agent: 4 },
   connections: [
     { toolId: 'trae-cn', toolName: 'TRAE 中国版', status: 'synced', assetCount: 3, pendingCount: 0 },

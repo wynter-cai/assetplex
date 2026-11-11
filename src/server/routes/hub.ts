@@ -40,8 +40,17 @@ hubRoutes.get('/overview', async (c) => {
     // 口径真值：我的库计数与已同步计数都来自分发索引，禁止前端就地统计（proposal D4）
     const [distribution, assets] = await Promise.all([getDistributions(), listAssets()]);
     const summary = buildCounts(assets.items, distribution);
+    // 连接卡不再恒 0：已同步数取自分发索引；项目级工具按项目同步，不冒充「资产数」
+    const syncedByTool = new Map(summary.toolSynced.map((item) => [item.toolId, item.total]));
+    const projectToolIds = new Set(distribution.projectTools.map((item) => item.toolId));
+    const connections = data.connections.map((conn) =>
+      projectToolIds.has(conn.toolId)
+        ? conn
+        : { ...conn, assetCount: syncedByTool.get(conn.toolId) ?? 0 },
+    );
     return c.json({
       ...data,
+      connections,
       // assetStats 收敛到同一口径，避免响应内两个数字打架（proposal D4）
       assetStats: alignAssetStats(data.assetStats, summary.counts),
       generatedAt: distribution.generatedAt,

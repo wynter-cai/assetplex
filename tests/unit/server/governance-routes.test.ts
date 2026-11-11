@@ -28,6 +28,8 @@ interface HarnessOptions {
   aiConfigured?: boolean;
   distributions?: Record<string, AssetDistributionInfo[]>;
   duplicateGroups?: HealthDuplicateGroup[];
+  /** 我的库资产总数（缺省按 files 里非命令/准则条目数） */
+  libraryCount?: number;
 }
 
 function harness(opts: HarnessOptions = {}) {
@@ -51,6 +53,10 @@ function harness(opts: HarnessOptions = {}) {
         }
       : {}),
     duplicateGroups: () => opts.duplicateGroups ?? [],
+    // 我的库口径：命令与准则不是资产，不计入
+    libraryCount: () =>
+      opts.libraryCount ??
+      Object.keys(files).filter((path) => !path.startsWith('commands/') && !path.startsWith('criteria/')).length,
     now: () => '2026-11-08T00:00:00.000Z',
   };
   const routes = createGovernanceRoutes(deps);
@@ -68,6 +74,18 @@ describe('GET /api/governance/health', () => {
     expect(status).toBe(200);
     expect(body).toMatchObject({ grade: 'empty', score: 0, totalAssets: 0, qualityMode: 'mechanical-only' });
     expect(body.computedAt).toBe('2026-11-08T00:00:00.000Z');
+  });
+
+  it('totalAssets 按「我的库」口径收敛（含 mcp/agent，命令不计）', async () => {
+    const { get } = harness({
+      files: { 'skills/demo/SKILL.md': GOOD },
+      libraryCount: 12,
+    });
+    const { body } = await get('/health');
+    expect(body.totalAssets).toBe(12);
+    // 参与评分的仍只有可诊断的文档资产，数字口径与评分范围分开
+    const dims = body.dimensions as Array<{ id: string; evaluatedAssets: number }>;
+    expect(dims.find((d) => d.id === 'completeness')?.evaluatedAssets).toBe(1);
   });
 
   it('返回四维构成与 topIssues（每维最多 5 条）', async () => {

@@ -236,7 +236,6 @@ export interface OverviewData {
   connections: ConnectionInfo[];
   recentActivities: ActivityItem[];
   hubInitialized: boolean;
-  healthScore: number;
 }
 
 // ========== 资产库类型 ==========

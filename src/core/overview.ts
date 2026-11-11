@@ -63,7 +63,6 @@ export interface OverviewData {
   connections: ConnectionInfo[];
   recentActivities: ActivityInfo[];
   hubInitialized: boolean;
-  healthScore: number;
 }
 
 /**
@@ -97,13 +96,10 @@ export async function getOverview(deps: OverviewDeps): Promise<OverviewData> {
   // 不应把保险箱中已有资产的用户挡在指挥中心之外（fix-ui-trust-gaps T1）
   const hubInitialized = health.hubExists && totalAssets > 0;
 
-  // 2. 健康度计算（简单算法）
-  const healthScore = computeHealthScore(totalAssets);
-
-  // 3. 工具连接状态
+  // 2. 工具连接状态
   const connections = await getConnections(deps);
 
-  // 4. 最近活动
+  // 3. 最近活动
   const recentActivities = getRecentActivities();
 
   return {
@@ -111,13 +107,7 @@ export async function getOverview(deps: OverviewDeps): Promise<OverviewData> {
     connections,
     recentActivities,
     hubInitialized,
-    healthScore,
   };
-}
-
-function computeHealthScore(totalAssets: number): number {
-  if (totalAssets === 0) return 0;
-  return Math.min(100, 60 + totalAssets * 4);
 }
 
 /** hub.toml 中该工具是否启用（tools 是固定键对象，按名字查需窄化） */

@@ -23,6 +23,7 @@ function harness(options: { files?: Record<string, string>; aiConfigured?: boole
     semantic,
     duplicateGroups: () => [],
     duplicateSummary: () => options.duplicates ?? { mergeableGroupCount: 0, mergeableAssetCount: 0, grayGroupCount: 0 },
+    libraryCount: () => Object.keys(files).length,
     now: () => '2026-11-08T00:00:00.000Z',
   };
   const routes = createGovernanceRoutes(deps);

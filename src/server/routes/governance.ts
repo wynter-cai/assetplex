@@ -14,6 +14,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { getHubRoot } from '../../utils/paths.js';
 import { listHubFiles, type HubFileCategory } from '../../core/hub-files.js';
+import { listAssets } from '../../core/assets.js';
 import { DIAGNOSIS_SEVERITIES, DOCTOR_ASSET_KINDS, type DoctorAssetKind } from '../../core/types.js';
 import { groupDuplicates } from '../../core/duplicates.js';
 import { buildDuplicateAssets, type DuplicateSourceAsset } from '../../core/duplicate-scan.js';
@@ -54,6 +55,8 @@ export interface GovernanceRouteDeps {
   duplicateGroups?: () => HealthDuplicateGroup[];
   /** 重复治理摘要（首页建议用；缺省本地扫描一次，零模型） */
   duplicateSummary?: () => DuplicateSummaryForSuggestion;
+  /** 我的库资产总数（首页快照与治理页共用口径；缺省读真实 Hub） */
+  libraryCount?: () => number | Promise<number>;
   now?: () => string;
   /** 一键整改子路由依赖（草案/写库/撤销/批次存储） */
   remediation?: Omit<RemediationRouteDeps, 'loadAssets' | 'read' | 'now' | 'invalidate'>;
@@ -137,6 +140,14 @@ export function createGovernanceRoutes(deps: GovernanceRouteDeps = {}): Hono {
     groups: HealthDuplicateGroup[];
   } | null = null;
 
+  /** 我的库资产总数：与资产库 listAssets 同源；资产库未把 agent 纳入一等类别，这里补上 */
+  const libraryCount =
+    deps.libraryCount ??
+    (async () => {
+      const { total } = await listAssets();
+      return total + (deps.listAssets ?? nodeListAssets)('agent').length;
+    });
+
   /** 装配一次：健康分与问题清单共用同一份资产快照 */
   async function load(force = false): Promise<{
     health: GovernanceHealth;
@@ -170,8 +181,15 @@ export function createGovernanceRoutes(deps: GovernanceRouteDeps = {}): Hono {
       aiConfigured,
       ...(deps.now === undefined ? {} : { now: deps.now }),
     });
-    cache = { at: Date.now(), health: assembled.health, assets: assembled.assets, groups };
-    return { health: assembled.health, assets: assembled.assets, groups };
+
+    // 资产总数收敛到「我的库」口径（含 mcp / agent，命令不计）：
+    // 参与评分的只是可诊断的文档资产，数字口径与评分范围分开，避免首页与治理页两个总数
+    const totalAssets = await libraryCount();
+    const health: GovernanceHealth =
+      totalAssets === assembled.health.totalAssets ? assembled.health : { ...assembled.health, totalAssets };
+
+    cache = { at: Date.now(), health, assets: assembled.assets, groups };
+    return { health, assets: assembled.assets, groups };
   }
 
   /** 本机确定性扫描一次重复分组（只读、零模型），用于首页建议 */

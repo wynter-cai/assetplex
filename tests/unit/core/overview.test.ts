@@ -83,7 +83,8 @@ describe('getOverview', () => {
     expect(result).toHaveProperty('connections');
     expect(result).toHaveProperty('recentActivities');
     expect(result).toHaveProperty('hubInitialized');
-    expect(result).toHaveProperty('healthScore');
+    // 假健康分（60 + 资产数×4）已移除：首页健康卡改读 /api/governance/health
+    expect(result).not.toHaveProperty('healthScore');
   });
 
   it('assetStats 将后端复数类别映射为前端单数类别', async () => {
@@ -149,10 +150,9 @@ describe('getOverview', () => {
     expect(result.assetStats.agent).toBe(0);
   });
 
-  it('healthScore 是 0-100 之间的数字', async () => {
+  it('不再返回假健康分（首页健康卡改读 /api/governance/health）', async () => {
     const result = await getOverview(DEFAULT_DEPS);
-    expect(result.healthScore).toBeGreaterThanOrEqual(0);
-    expect(result.healthScore).toBeLessThanOrEqual(100);
+    expect(result).not.toHaveProperty('healthScore');
   });
 
   it('connections 中每项包含 status 字段', async () => {
