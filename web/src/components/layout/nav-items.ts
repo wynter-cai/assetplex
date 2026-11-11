@@ -8,6 +8,7 @@ import {
   FolderGit2,
   Compass,
   Copy,
+  History,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -22,6 +23,7 @@ export interface MainNavItem {
 /** 主导航项：侧栏与窄屏顶部条共用，保证「当前页摘要」与导航永不脱节 */
 export const MAIN_NAV: MainNavItem[] = [
   { to: '/', label: '首页', icon: Home },
+  { to: '/activities', label: '活动', icon: History },
   { to: '/vault', label: '资产库', icon: Package, hasChildren: true },
   { to: '/duplicates', label: '重复治理', icon: Copy },
   { to: '/projects', label: '项目', icon: FolderGit2 },

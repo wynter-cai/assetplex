@@ -231,6 +231,31 @@ export interface ActivityItem {
   occurredAt: string;
 }
 
+// ========== 活动日志（add-activity-log） ==========
+
+/** 活动类型闭集（与后端 core/activity-log.ts 一致） */
+export type ActivityType = 'import' | 'sync' | 'edit' | 'create';
+/** 操作发起方：本期只有 web */
+export type ActivityActor = 'web' | 'mcp' | 'cli';
+
+/** 活动页的一条记录（真值来自 GET /api/activity） */
+export interface ActivityEntry {
+  id: string;
+  at: string;
+  type: ActivityType;
+  actor: ActivityActor;
+  summary: string;
+  targets?: string[];
+  counts?: Record<string, number>;
+  paths?: string[];
+}
+
+export interface ActivityListResponse {
+  items: ActivityEntry[];
+  /** null = 没有更早的记录 */
+  nextCursor: string | null;
+}
+
 export interface OverviewData {
   assetStats: Record<OverviewCategory, number>;
   connections: ConnectionInfo[];

@@ -16,6 +16,7 @@ import Mcp from './pages/Mcp';
 import Settings from './pages/Settings';
 import Projects from './pages/Projects';
 import Duplicates from './pages/Duplicates';
+import Activities from './pages/Activities';
 import { Toaster } from './components/ui/toast';
 
 export default function App(): JSX.Element {
@@ -29,8 +30,8 @@ export default function App(): JSX.Element {
         <Route path="/projects" element={<Projects />} />
         <Route path="/duplicates" element={<Duplicates />} />
         <Route path="/connections" element={<Connections />} />
-        {/* 活动页未上线：旧入口直达首页（P1 评估是否做操作时间线） */}
-        <Route path="/activities" element={<Navigate to="/" replace />} />
+        {/* 活动页：操作时间线（add-activity-log） */}
+        <Route path="/activities" element={<Activities />} />
 
         {/* 旧版路由 */}
         <Route path="/legacy/dashboard" element={<Dashboard />} />

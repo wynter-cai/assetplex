@@ -15,6 +15,8 @@ import type {
   ImportResult,
   DiffContent,
   OverviewData,
+  ActivityListResponse,
+  ActivityType,
   Asset,
   AssetDetail,
   AssetListResult,
@@ -112,6 +114,16 @@ export const api = {
     }),
   getHubHealth: () => request<HubHealth>('/hub/health'),
   getOverview: () => request<OverviewData>('/hub/overview'),
+
+  /** 活动日志（add-activity-log）：时间倒序，游标翻页 */
+  getActivity: (params?: { limit?: number; type?: ActivityType; cursor?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.limit !== undefined) qs.set('limit', String(params.limit));
+    if (params?.type !== undefined) qs.set('type', params.type);
+    if (params?.cursor !== undefined) qs.set('cursor', params.cursor);
+    const q = qs.toString();
+    return request<ActivityListResponse>(`/activity${q ? `?${q}` : ''}`);
+  },
 
   /** 资产类别声明源（唯一真相，前端只作 fallback 覆盖） */
   getAssetCategories: () => request<AssetCategoriesResponse>('/asset-categories'),

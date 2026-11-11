@@ -31,7 +31,7 @@ afterEach(() => {
 });
 
 describe('Sidebar', () => {
-  it('渲染 7 个主导航项（首页/资产库/项目/连接/同步/切换/设置，无活动入口）', () => {
+  it('渲染 8 个主导航项（首页/活动/资产库/项目/连接/同步/切换/设置）', () => {
     renderSidebar();
 
     expect(screen.getByText('首页')).toBeInTheDocument();
@@ -39,8 +39,11 @@ describe('Sidebar', () => {
     expect(screen.getByText('项目')).toBeInTheDocument();
     expect(screen.getByText('连接')).toBeInTheDocument();
     expect(screen.getByText('同步')).toBeInTheDocument();
-    expect(screen.queryByText('活动')).not.toBeInTheDocument();
     expect(screen.getByText('设置')).toBeInTheDocument();
+
+    // 活动入口（add-activity-log）
+    const activityLink = screen.getByText('活动').closest('a');
+    expect(activityLink).toHaveAttribute('href', '/activities');
 
     const projectLink = screen.getByText('项目').closest('a');
     expect(projectLink).toHaveAttribute('href', '/projects');
