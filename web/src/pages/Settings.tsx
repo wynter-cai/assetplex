@@ -233,7 +233,7 @@ export default function Settings() {
         </CardHeader>
         <CardContent className="flex flex-wrap items-center justify-between gap-4">
           <p className="text-sm text-muted-foreground">
-            重新走一遍「盘点 → 收纳 → 体检 → 同步」，任何一步都可跳过。
+            重新走一遍「盘点 → 收纳 → 体检 → 分发」，任何一步都可跳过。
           </p>
           <Button
             variant="outline"

@@ -66,7 +66,7 @@ export function DoneScreen({
             </p>
           )}
           <p className="text-xs text-muted-foreground">
-            {run === null ? '同步未执行（可稍后在同步中心执行）' : '个工具同步成功'}
+            {run === null ? '分发未执行（可稍后在同步中心执行）' : '个工具分发成功'}
           </p>
         </div>
         <div className="rounded-lg border px-4 py-3">

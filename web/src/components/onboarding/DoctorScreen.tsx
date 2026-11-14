@@ -122,7 +122,7 @@ export function DoctorScreen({
 
       <div className="mt-8 flex items-center gap-4">
         <Button onClick={onNext} data-testid="onboarding-doctor-next">
-          下一步：同步
+          下一步：分发
         </Button>
         <button
           type="button"

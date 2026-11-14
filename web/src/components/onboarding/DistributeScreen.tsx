@@ -69,19 +69,19 @@ export function DistributeScreen({
     selectedTools.length === 0
       ? '请先选择目标工具'
       : actionable === 0
-        ? '没有需要同步的文件（目标已一致）'
+        ? '没有需要分发的文件（目标已一致）'
         : null;
 
   return (
     <section data-testid="onboarding-distribute" className="mx-auto max-w-3xl">
-      <h2 className="text-xl font-semibold">同步到工具</h2>
+      <h2 className="text-xl font-semibold">分发到工具</h2>
       <p className="mt-1.5 text-sm text-muted-foreground">
         勾选要接收资产的工具。原文件会先备份，可回滚。
       </p>
 
       <div className="mt-5 grid gap-4 md:grid-cols-2">
         <div className="rounded-lg border p-4">
-          <p className="text-sm font-medium">同步目标</p>
+          <p className="text-sm font-medium">分发目标</p>
           <p className="text-xs text-muted-foreground">已检测到的工具</p>
           <div className="mt-3 space-y-2" data-testid="distribute-tools">
             {tools.map((tool) => (
@@ -94,7 +94,7 @@ export function DistributeScreen({
                 <span className="flex items-center gap-2">
                   <input
                     type="checkbox"
-                    aria-label={`选择同步目标 ${toolDisplayName(tool.name)}`}
+                    aria-label={`选择分发目标 ${toolDisplayName(tool.name)}`}
                     checked={selectedSet.has(tool.name)}
                     onChange={() => toggle(tool.name)}
                     disabled={!tool.installed}
@@ -123,7 +123,7 @@ export function DistributeScreen({
                 {actionable === 0 ? (
                   <p className="flex items-center gap-2 text-muted-foreground">
                     <CheckCircle2 className="h-4 w-4 text-success" />
-                    {tools.length === 0 ? '未检测到已安装工具' : '没有需要同步的文件'}
+                    {tools.length === 0 ? '未检测到已安装工具' : '没有需要分发的文件'}
                   </p>
                 ) : (
                   <>
@@ -163,11 +163,11 @@ export function DistributeScreen({
               onClick={() => setConfirmOpen(true)}
               data-testid="distribute-open-confirm"
             >
-              {runMutation.isPending ? '正在同步…' : `同步到 ${selectedTools.length} 个工具`}
+              {runMutation.isPending ? '正在分发…' : `分发到 ${selectedTools.length} 个工具`}
             </Button>
             {disabledReason !== null && <p className="mt-1.5 text-xs text-muted-foreground">{disabledReason}</p>}
             {runMutation.isError && (
-              <p className="mt-1.5 text-xs text-destructive">同步失败：{String(runMutation.error)}</p>
+              <p className="mt-1.5 text-xs text-destructive">分发失败：{String(runMutation.error)}</p>
             )}
           </div>
         </div>
@@ -192,7 +192,7 @@ export function DistributeScreen({
           </DialogHeader>
           <div className="text-sm space-y-2">
             <p>
-              同步会用资产库里的版本替换目标文件。
+              分发会用资产库里的版本替换目标文件。
               {summary.counts.conflict > 0
                 ? `其中 ${summary.counts.conflict} 个文件在工具侧被改动过，默认以资产库为准。`
                 : ''}
@@ -215,7 +215,7 @@ export function DistributeScreen({
           </div>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={onSkip}>
-              先不同步，进资产库
+              先不分发，进资产库
             </Button>
             <Button variant="outline" size="sm" onClick={() => setConfirmOpen(false)} data-testid="distribute-cancel">
               取消
@@ -226,7 +226,7 @@ export function DistributeScreen({
               onClick={() => runMutation.mutate()}
               data-testid="distribute-confirm"
             >
-              {runMutation.isPending ? '正在同步…' : '确认同步'}
+              {runMutation.isPending ? '正在分发…' : '确认分发'}
             </Button>
           </DialogFooter>
         </DialogContent>

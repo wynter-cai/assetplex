@@ -26,7 +26,7 @@ import type {
   SyncRunResponse,
 } from '@/types/api';
 
-const STEP_LABELS = ['盘点', '结果', '收纳', '体检', '同步'];
+const STEP_LABELS = ['盘点', '结果', '收纳', '体检', '分发'];
 
 const INDICATOR_INDEX: Record<OnboardingStepId, number> = {
   welcome: 1,
