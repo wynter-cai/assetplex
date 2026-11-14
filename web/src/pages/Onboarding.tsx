@@ -2,14 +2,14 @@
  * 首次使用向导容器（add-zero-config-onboarding T12–T16）
  *
  * 把 s0–s6 六个屏串成状态机：welcome → scan → result → collect → doctor → distribute → done。
- * 视觉与交互以原型为准；数据全部来自真实接口，不伪造进度。
- * 任何一步都可跳过：写本机标记后进资产库，之后不再自动进入。
+ * 外壳为产品级全屏页：顶部产品栏 + 内容区 + 底部步骤轨，不再模拟桌面窗口。
+ * 数据全部来自真实接口，不伪造进度；任何一步都可跳过（写本机标记后进资产库）。
  */
 
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Loader2 } from 'lucide-react';
+import { Boxes, Loader2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { StepIndicator } from '@/components/common/StepIndicator';
 import { LocalBadge, ScanScreen, WelcomeScreen } from '@/components/onboarding/WelcomeScanScreens';
@@ -152,40 +152,58 @@ export default function Onboarding(): JSX.Element {
 
   if (stateQuery.isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-muted/40">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      <div className="grid min-h-screen place-items-center bg-muted/30">
+        <div className="flex flex-col items-center gap-3">
+          <span
+            aria-hidden="true"
+            className="grid h-9 w-9 place-items-center rounded-lg bg-primary text-primary-foreground"
+          >
+            <Boxes className="h-5 w-5" />
+          </span>
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          <p className="text-12 text-muted-foreground">正在加载本机状态…</p>
+        </div>
       </div>
     );
   }
 
   const tools = stateQuery.data?.tools ?? [];
   const assetCount = assetsQuery.data ?? collectResult?.created ?? 0;
+  const currentStage = INDICATOR_INDEX[step];
+  // 完成屏不落在「分发」这一段：整条轨全部转为已完成态
+  const indicatorCurrent = step === 'done' ? STEP_LABELS.length + 1 : currentStage;
 
   return (
-    <div className="relative min-h-screen bg-muted/40 px-3 py-6 md:px-6 md:py-8">
-      {/* 页面底色：两团极淡的品牌色柔光，只为把主卡片托起来 */}
-      <div aria-hidden="true" className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute -left-24 -top-32 h-[420px] w-[420px] rounded-full bg-primary/[0.07] blur-3xl" />
-        <div className="absolute -bottom-40 -right-24 h-[380px] w-[380px] rounded-full bg-success/[0.07] blur-3xl" />
-      </div>
-
-      <div className="relative mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-[1080px] flex-col overflow-hidden rounded-2xl border bg-background shadow-xl md:min-h-[720px]">
-        <header className="flex h-12 shrink-0 items-center gap-3 border-b bg-muted/30 px-4">
-          <div aria-hidden="true" className="hidden items-center gap-1.5 sm:flex">
-            <span className="h-2.5 w-2.5 rounded-full bg-destructive/40" />
-            <span className="h-2.5 w-2.5 rounded-full bg-warning/50" />
-            <span className="h-2.5 w-2.5 rounded-full bg-success/40" />
-          </div>
-          <span className="truncate text-12 font-medium text-muted-foreground">
-            AssetPlex — 首次设置
+    <div className="flex min-h-screen flex-col bg-muted/30">
+      {/* 产品栏：真实产品 chrome，不是窗口装饰 */}
+      <header className="sticky top-0 z-30 border-b bg-background">
+        <div className="mx-auto flex h-14 w-full max-w-[1040px] items-center gap-2.5 px-4 sm:px-6">
+          <span
+            aria-hidden="true"
+            className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-primary text-primary-foreground"
+          >
+            <Boxes className="h-4 w-4" />
           </span>
-          <div className="ml-auto">
-            <LocalBadge />
-          </div>
-        </header>
+          <span className="text-16 font-semibold tracking-tight">AssetPlex</span>
+          <span aria-hidden="true" className="mx-1 hidden h-4 w-px bg-border sm:block" />
+          <span className="hidden truncate text-13 text-muted-foreground sm:block">首次设置</span>
 
-        <main className="flex-1 px-5 py-8 md:px-14 md:py-10">
-          <div key={step} className="onb-screen-in mx-auto w-full max-w-[880px]">
+          <div className="ml-auto flex shrink-0 items-center gap-3">
+            <LocalBadge />
+            <button
+              type="button"
+              onClick={skip}
+              className="hidden rounded-sm text-13 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:block"
+            >
+              退出引导
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main id="onboarding-main" className="flex-1">
+        <div className="mx-auto w-full max-w-[1040px] px-4 py-8 sm:px-6 sm:py-10 lg:py-12">
+          <div key={step} className="onb-screen-in mx-auto w-full max-w-[960px]">
             {step === 'welcome' && (
               <WelcomeScreen
                 tools={tools}
@@ -263,16 +281,24 @@ export default function Onboarding(): JSX.Element {
               />
             )}
           </div>
-        </main>
+        </div>
+      </main>
 
-        <footer className="flex h-16 shrink-0 items-center justify-center border-t bg-muted/20 px-3">
-          <StepIndicator
-            labels={STEP_LABELS}
-            current={INDICATOR_INDEX[step]}
-            onSelect={jumpToStage}
-          />
-        </footer>
-      </div>
+      {/* 步骤轨：分段进度 + 序号，当前段实心、已完成段浅色，均可点击直达 */}
+      <footer className="sticky bottom-0 z-20 border-t bg-background/95 backdrop-blur">
+        <div className="mx-auto flex w-full max-w-[1040px] items-center gap-4 px-4 py-3 sm:px-6 sm:py-3.5">
+          <span className="hidden shrink-0 text-12 tabular-nums text-muted-foreground sm:block">
+            步骤 {currentStage} / {STEP_LABELS.length}
+          </span>
+          <div className="min-w-0 flex-1">
+            <StepIndicator
+              labels={STEP_LABELS}
+              current={indicatorCurrent}
+              onSelect={jumpToStage}
+            />
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

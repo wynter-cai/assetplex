@@ -83,34 +83,21 @@
   }
 }
 
-/* 首跑向导：换屏淡入 + 开场工具芯片轻浮动。
-   两者都只改 opacity / transform，不触发重排；减少动效由上面的全局规则统一压制。 */
+/* 首跑向导：换屏淡入，只改 opacity / transform，不触发重排；
+   减少动效由上面的全局规则统一压制。 */
 @layer utilities {
   .onb-screen-in {
     animation: onb-rise 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  }
-  .onb-float {
-    animation: onb-float 6s ease-in-out infinite;
   }
 }
 
 @keyframes onb-rise {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
     transform: none;
-  }
-}
-
-@keyframes onb-float {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-6px);
   }
 }
