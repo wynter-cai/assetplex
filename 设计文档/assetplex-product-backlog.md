@@ -10,7 +10,7 @@
 | # | 事项 | 级别 | 状态 | change-id |
 |---|---|---|---|---|
 | P0-1 | 入口过载：侧栏 10 项平铺，陌生用户看不懂产品边界 | M | 🔵 规格已写，待审核 | `simplify-navigation-ia` |
-| P0-2 | 首跑无 Aha：`init` 只生成空模板，`--import-existing` 有声明无实现 | S | ⚪ 未启动 | `add-zero-config-onboarding` |
+| P0-2 | 首跑无 Aha：`init` 只生成空模板，`--import-existing` 有声明无实现 | S | ✅ 已完成（2026-11-14） | `add-zero-config-onboarding` |
 | P0-3 | 适配器缺 Cursor / Windsurf（最大流量池 + 编译壁垒展示场） | M | ⚪ 未启动 | `add-cursor-windsurf-adapter` |
 | P1-1 | 同步不自动：`--watch` 未实现、无漂移检测，与「一次配置永久同步」有落差 | M | ⚪ 未启动 | `add-drift-detect-and-watch` |
 | P1-2 | 资产不可回滚：Hub 是裸文件，没有版本与时间机器 | S | ⚪ 未启动 | `add-hub-versioning` |
@@ -29,6 +29,7 @@
 - 新用户 `npm i -g assetplex && assetplex init` 后得到 6 个空 Markdown 模板，被要求「自己去填人设」。
 - 项目已有导入向导与扫描器（`src/core/scanner.ts` + 各 `adapter.scan()`），能力都在，只是没接到首跑路径上。
 - 验收标准：清空环境，从 `npx assetplex` 到看见自己的资产清单 **≤ 60 秒**，全程无需手写任何 Markdown。
+- **2026-11-14 已完成**：CLI 无子命令首跑进向导、`init --import-existing` 真实导入、Web 六屏向导（盘点 → 结果 → 收藏 → 体检 → 同步 → 完成）与首跑守卫落地。隔离验收：盘点 11 项与 fixture 一致、start→scan 143 ms、预览取消零写、汇报批次备份可查、六条跳过路径全部写标记；后端 1129 / 前端 471 全绿。
 
 ### P0-3 缺 Cursor / Windsurf
 
