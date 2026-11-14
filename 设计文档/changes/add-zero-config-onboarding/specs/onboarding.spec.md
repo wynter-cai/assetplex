@@ -145,8 +145,8 @@
 #### Scenario 4.1 骨架初始化不含空模板
 - **Given** 用户处于首次环境并进入向导
 - **When** 用户开始盘点或收纳
-- **Then** Hub 被创建为骨架：目录、`hub.toml`、`mcp/mcp.sources.json`、`README.md`
-- **And** 不写入 `identity/profile.md` 等空模板
+- **Then** Hub 被创建为骨架：目录、`hub.toml`、`README.md`
+- **And** 不写入 `identity/profile.md` 等空模板，也不写 `mcp/mcp.sources.json`（该文件位于资产目录内会被计为资产，导致首跑判定失效；由 `assetplex init` 完整初始化或用户首次添加 MCP 时创建）
 - **And** 重复进入向导时骨架初始化幂等，不覆盖已有文件
 
 #### Scenario 4.2 全部收纳

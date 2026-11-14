@@ -1,11 +1,13 @@
 /**
  * Hub 骨架初始化（add-zero-config-onboarding T3）
  *
- * 骨架 = 目录 + hub.toml + README.md + mcp/mcp.sources.json（spec 4.1）。
+ * 骨架 = 目录 + hub.toml + README.md（spec 4.1 修订：不含 mcp/mcp.sources.json——
+ * 它位于 mcp/ 资产目录内、会被 listAssets 计为资产，导致「建骨架后 autoEnter 失效」，
+ * CLI 首跑建骨架后将进不了向导。该文件由 assetplex init 完整初始化或用户首次添加 MCP 时创建）。
  * 绝不写身份/规则/偏好空模板——它们会与真实资产冲突，也让用户误以为已有内容。
  *
  * `assetplex init`（CLI）复用本模块的 HUB_DIRECTORIES / HUB_BASE_FILES，
- * 在骨架之上继续写完整模板，保持原行为不变。
+ * 在骨架之上继续写完整模板（含 mcp.sources.json），保持原行为不变。
  */
 
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
@@ -33,7 +35,6 @@ export interface HubBaseFile {
 }
 
 const README_CONTENT = `# AssetPlex — 个人 AI 工具配置中心
-
 此目录由 [AssetPlex](https://github.com/wynter-cai/assetplex) 管理。
 修改任意文件后，运行 \`assetplex sync\` 同步到所有启用的工具。
 
@@ -59,25 +60,10 @@ assetplex ui                # 打开可视化管理界面
 > 即将支持：让 AI 学习近期行为、社区技能搜索。
 `;
 
-const MCP_SOURCES_CONTENT = [
-  '{',
-  '  "$schema": "https://json-schema.org/draft-07/schema",',
-  '  "mcpServers": {',
-  '    // 在此添加 MCP 服务器配置，assetplex 会自动同步到各工具：',
-  '    // - Claude Code 的 ~/.claude.json',
-  '    // - Codex 的 ~/.codex/config.toml [mcp_servers.x]',
-  '    // - TRAE CN 的 ~/.trae-cn/mcp.json',
-  '    // - WorkBuddy 的 ~/.workbuddy/.mcp.json',
-  '  }',
-  '}',
-  '',
-].join('\n');
-
-/** 骨架的三个基础文件（init 与向导共用同一份内容） */
+/** 骨架基础文件（init 与向导共用同一份内容；mcp.sources.json 由 init 单独补写） */
 export const HUB_BASE_FILES: readonly HubBaseFile[] = [
   { path: 'hub.toml', content: generateDefaultConfigToml() },
   { path: 'README.md', content: README_CONTENT },
-  { path: 'mcp/mcp.sources.json', content: MCP_SOURCES_CONTENT },
 ];
 
 export interface HubSkeletonResult {

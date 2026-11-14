@@ -23,17 +23,19 @@ afterEach(() => {
   rmSync(tempDir, { recursive: true, force: true });
 });
 
-describe('ensureHubSkeleton（spec 4.1）', () => {
-  it('空目录：创建全部目录与三个骨架文件', () => {
+describe('ensureHubSkeleton（spec 4.1 修订）', () => {
+  it('空目录：创建全部目录与骨架文件（不含 mcp.sources.json）', () => {
     const result = ensureHubSkeleton(tempDir);
 
     expect(existsSync(join(tempDir, 'hub.toml'))).toBe(true);
     expect(existsSync(join(tempDir, 'README.md'))).toBe(true);
-    expect(existsSync(join(tempDir, 'mcp', 'mcp.sources.json'))).toBe(true);
+    // mcp/mcp.sources.json 会被计为资产、破坏首跑 autoEnter，骨架不写（由 init/用户添加 MCP 创建）
+    expect(existsSync(join(tempDir, 'mcp', 'mcp.sources.json'))).toBe(false);
     for (const dir of HUB_DIRECTORIES) {
       expect(existsSync(join(tempDir, ...dir.split('/')))).toBe(true);
     }
     expect(result.created).toContain('hub.toml');
+    expect(result.created).not.toContain('mcp/mcp.sources.json');
     expect(result.skipped).toEqual([]);
   });
 
@@ -95,7 +97,7 @@ describe('assetplex init 回归（默认行为不变）', () => {
     else process.env.ASSETPLEX_DIR = initEnvBackup;
   });
 
-  it('默认 init 仍写完整模板（身份/规则/偏好），与骨架不同', async () => {
+  it('默认 init 仍写完整模板（身份/规则/偏好/mcp.sources.json），与骨架不同', async () => {
     const { initCommand } = await import('../../../src/cli/commands/init.js');
     await initCommand({});
 
@@ -104,6 +106,7 @@ describe('assetplex init 回归（默认行为不变）', () => {
     expect(existsSync(join(root, 'identity', 'profile.md'))).toBe(true);
     expect(existsSync(join(root, 'rules', 'always', 'global.md'))).toBe(true);
     expect(existsSync(join(root, 'preferences', 'git-workflow.md'))).toBe(true);
+    expect(existsSync(join(root, 'mcp', 'mcp.sources.json'))).toBe(true);
   });
 
   it('init 重复执行不覆盖已存在的模板文件', async () => {

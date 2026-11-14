@@ -31,13 +31,31 @@ export interface InitOptions {
   yes?: boolean;
 }
 
-/** Hub 初始文件定义（路径 -> 内容）；骨架三件套与 core/hub-skeleton 共用同一份内容 */
+/** Hub 初始文件定义（路径 -> 内容）；骨架两件套与 core/hub-skeleton 共用同一份内容 */
 const HUB_INITIAL_FILES: Array<{ path: string[]; content: string; overwrite: boolean }> = [
   ...HUB_BASE_FILES.map((file) => ({
     path: file.path.split('/'),
     content: file.content,
     overwrite: false,
   })),
+  // MCP 单源配置：位于 mcp/ 资产目录内会被计为资产，骨架不写、init 完整初始化时写入
+  {
+    path: ['mcp', 'mcp.sources.json'],
+    content: [
+      '{',
+      '  "$schema": "https://json-schema.org/draft-07/schema",',
+      '  "mcpServers": {',
+      '    // 在此添加 MCP 服务器配置，assetplex 会自动同步到各工具：',
+      '    // - Claude Code 的 ~/.claude.json',
+      '    // - Codex 的 ~/.codex/config.toml [mcp_servers.x]',
+      '    // - TRAE CN 的 ~/.trae-cn/mcp.json',
+      '    // - WorkBuddy 的 ~/.workbuddy/.mcp.json',
+      '  }',
+      '}',
+      '',
+    ].join('\n'),
+    overwrite: false,
+  },
   {
     path: ['identity', 'profile.md'],
     content: PROFILE_TEMPLATE,

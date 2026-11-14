@@ -29,6 +29,7 @@ import { createDoctorRoutes } from './routes/doctor.js';
 import { createDoctorFixRoutes } from './routes/doctor-fix.js';
 import { createGovernanceRoutes } from './routes/governance.js';
 import { createActivityRoutes } from './routes/activity.js';
+import { createOnboardingRoutes } from './routes/onboarding.js';
 import { errorHandler } from './middleware/error.js';
 
 export interface ServerOptions {
@@ -78,6 +79,7 @@ export async function startServer(options: ServerOptions = {}): Promise<void> {
   app.route('/api/doctor', createDoctorFixRoutes());
   app.route('/api/governance', createGovernanceRoutes());
   app.route('/api/activity', createActivityRoutes());
+  app.route('/api/onboarding', createOnboardingRoutes());
 
   // 静态文件服务（前端构建产物）
   // 开发模式下前端跑在 5173 端口，这里只服务 API；
