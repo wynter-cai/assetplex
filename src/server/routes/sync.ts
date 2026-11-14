@@ -6,6 +6,7 @@ import { Hono } from 'hono';
 import { hubContext } from '../lib/hub-context.js';
 import { invalidateDistributionIndex } from '../../core/distribution-index.js';
 import { appendActivity } from '../../core/activity-log.js';
+import { buildScanInventoryResponse } from '../../core/onboarding-insights.js';
 import type { ImportRequest, ImportResult, SyncResult } from '../../core/types.js';
 
 export const syncRoutes = new Hono();
@@ -126,11 +127,12 @@ syncRoutes.get('/history', (c) => {
   return c.json({ history: syncHistory });
 });
 
-/** 扫描所有工具的可导入内容（导入向导 Step 1-2） */
+/** 扫描所有工具的可导入内容（导入向导 Step 1-2 / 首跑盘点）
+ *  insights=1 时附带重复/不一致/覆盖洞察（add-zero-config-onboarding T4，缺省行为不变） */
 syncRoutes.get('/scan', async (c) => {
   const engine = hubContext.getEngine();
-  const inventories = await engine.scanAll();
-  return c.json({ inventories });
+  const wantInsights = c.req.query('insights') === '1';
+  return c.json(await buildScanInventoryResponse(engine, wantInsights));
 });
 
 /** 获取文件内容用于 diff 对比（导入向导 Step 3 冲突预览） */
