@@ -103,6 +103,22 @@ export default function Onboarding(): JSX.Element {
     finishMutation.mutate(exitOnboarding(step));
   };
 
+  /** 步骤条点击直达：数据未就绪的阶段回落到盘点屏，不摆空屏 */
+  const jumpToStage = (stage: number): void => {
+    setScanEnabled(true);
+    if (stage === 1) {
+      setStep('scan');
+      return;
+    }
+    if (scanQuery.data === undefined) {
+      setStep('scan');
+      return;
+    }
+    const target: OnboardingStepId =
+      stage === 2 ? 'result' : stage === 3 ? 'collect' : stage === 4 ? 'doctor' : 'distribute';
+    setStep(target);
+  };
+
   /** 待收纳条目：已安装工具中的非二进制项；同名内容不同保持现有「跳过」语义 */
   const collectItems = useMemo<ImportItem[]>(() => {
     const inventories = scanQuery.data?.inventories ?? [];
@@ -136,7 +152,7 @@ export default function Onboarding(): JSX.Element {
 
   if (stateQuery.isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-muted/40">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
@@ -146,91 +162,117 @@ export default function Onboarding(): JSX.Element {
   const assetCount = assetsQuery.data ?? collectResult?.created ?? 0;
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b">
-        <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
-          <span className="text-sm font-semibold">AssetPlex</span>
-          <StepIndicator labels={STEP_LABELS} current={INDICATOR_INDEX[step]} />
-          <LocalBadge />
-        </div>
-      </header>
+    <div className="relative min-h-screen bg-muted/40 px-3 py-6 md:px-6 md:py-8">
+      {/* 页面底色：两团极淡的品牌色柔光，只为把主卡片托起来 */}
+      <div aria-hidden="true" className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute -left-24 -top-32 h-[420px] w-[420px] rounded-full bg-primary/[0.07] blur-3xl" />
+        <div className="absolute -bottom-40 -right-24 h-[380px] w-[380px] rounded-full bg-success/[0.07] blur-3xl" />
+      </div>
 
-      <main className="px-6 py-12">
-        {step === 'welcome' && (
-          <WelcomeScreen
-            tools={tools}
-            onStart={() => startMutation.mutate()}
-            onSkip={skip}
+      <div className="relative mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-[1080px] flex-col overflow-hidden rounded-2xl border bg-background shadow-xl md:min-h-[720px]">
+        <header className="flex h-12 shrink-0 items-center gap-3 border-b bg-muted/30 px-4">
+          <div aria-hidden="true" className="hidden items-center gap-1.5 sm:flex">
+            <span className="h-2.5 w-2.5 rounded-full bg-destructive/40" />
+            <span className="h-2.5 w-2.5 rounded-full bg-warning/50" />
+            <span className="h-2.5 w-2.5 rounded-full bg-success/40" />
+          </div>
+          <span className="truncate text-12 font-medium text-muted-foreground">
+            AssetPlex — 首次设置
+          </span>
+          <div className="ml-auto">
+            <LocalBadge />
+          </div>
+        </header>
+
+        <main className="flex-1 px-5 py-8 md:px-14 md:py-10">
+          <div key={step} className="onb-screen-in mx-auto w-full max-w-[880px]">
+            {step === 'welcome' && (
+              <WelcomeScreen
+                tools={tools}
+                onStart={() => startMutation.mutate()}
+                onSkip={skip}
+              />
+            )}
+
+            {step === 'scan' && (
+              <ScanScreen
+                tools={tools}
+                scan={scanQuery.data ?? null}
+                error={
+                  scanQuery.isError
+                    ? scanQuery.error instanceof Error
+                      ? scanQuery.error.message
+                      : String(scanQuery.error)
+                    : null
+                }
+                onNext={() => setStep('result')}
+                onSkip={skip}
+              />
+            )}
+
+            {step === 'result' && scanQuery.data !== undefined && (
+              <ResultScreen
+                scan={scanQuery.data}
+                onCollect={() => setStep('collect')}
+                onSkip={skip}
+              />
+            )}
+
+            {step === 'collect' && (
+              <CollectScreen
+                attempted={collectItems.length}
+                pending={collectMutation.isPending}
+                error={collectError}
+                result={collectResult}
+                libraryCount={assetsQuery.data ?? null}
+                onCollect={() => {
+                  setCollectError(null);
+                  collectMutation.mutate();
+                }}
+                onRetry={() => {
+                  setCollectError(null);
+                  collectMutation.mutate();
+                }}
+                onNext={() => setStep('doctor')}
+                onSkip={skip}
+              />
+            )}
+
+            {step === 'doctor' && (
+              <DoctorScreen onNext={() => setStep('distribute')} onSkip={skip} />
+            )}
+
+            {step === 'distribute' && (
+              <DistributeScreen
+                onDone={(result) => {
+                  setRunResult(result);
+                  invalidateAfterWrite();
+                  setStep('done');
+                }}
+                onSkip={skip}
+              />
+            )}
+
+            {step === 'done' && (
+              <DoneScreen
+                collect={collectResult}
+                run={runResult}
+                issueCount={issueCount}
+                assetCount={assetCount}
+                onEnter={() => finishMutation.mutate(finishOnboarding())}
+              />
+            )}
+          </div>
+        </main>
+
+        <footer className="flex h-16 shrink-0 items-center justify-center border-t bg-muted/20 px-3">
+          <StepIndicator
+            labels={STEP_LABELS}
+            current={INDICATOR_INDEX[step]}
+            onSelect={jumpToStage}
           />
-        )}
-
-        {step === 'scan' && (
-          <ScanScreen
-            tools={tools}
-            scan={scanQuery.data ?? null}
-            error={
-              scanQuery.isError
-                ? scanQuery.error instanceof Error
-                  ? scanQuery.error.message
-                  : String(scanQuery.error)
-                : null
-            }
-            onNext={() => setStep('result')}
-            onSkip={skip}
-          />
-        )}
-
-        {step === 'result' && scanQuery.data !== undefined && (
-          <ResultScreen
-            scan={scanQuery.data}
-            onCollect={() => setStep('collect')}
-            onSkip={skip}
-          />
-        )}
-
-        {step === 'collect' && (
-          <CollectScreen
-            attempted={collectItems.length}
-            pending={collectMutation.isPending}
-            error={collectError}
-            result={collectResult}
-            libraryCount={assetsQuery.data ?? null}
-            onCollect={() => {
-              setCollectError(null);
-              collectMutation.mutate();
-            }}
-            onRetry={() => {
-              setCollectError(null);
-              collectMutation.mutate();
-            }}
-            onNext={() => setStep('doctor')}
-            onSkip={skip}
-          />
-        )}
-
-        {step === 'doctor' && <DoctorScreen onNext={() => setStep('distribute')} onSkip={skip} />}
-
-        {step === 'distribute' && (
-          <DistributeScreen
-            onDone={(result) => {
-              setRunResult(result);
-              invalidateAfterWrite();
-              setStep('done');
-            }}
-            onSkip={skip}
-          />
-        )}
-
-        {step === 'done' && (
-          <DoneScreen
-            collect={collectResult}
-            run={runResult}
-            issueCount={issueCount}
-            assetCount={assetCount}
-            onEnter={() => finishMutation.mutate(finishOnboarding())}
-          />
-        )}
-      </main>
+        </footer>
+      </div>
     </div>
   );
 }

@@ -29,24 +29,31 @@ export function OnboardingResumeCard(): JSX.Element | null {
   return (
     <div
       data-testid="onboarding-resume"
-      className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3"
+      className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/20 bg-primary/[0.04] px-4 py-3"
     >
-      <div className="flex items-center gap-3">
-        <Sparkles className="h-5 w-5 shrink-0 text-primary" />
+      <div className="flex items-start gap-3">
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/10">
+          <Sparkles className="h-4 w-4 text-primary" />
+        </span>
         <div>
-          <p className="text-sm font-medium">首次使用引导</p>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-14 font-semibold leading-snug">首次使用引导</p>
+          <p className="mt-0.5 text-12 leading-relaxed text-muted-foreground">
             约 60 秒盘点本机 AI 工具，把散落在各处的资产收进一个库；任何一步都可跳过。
           </p>
         </div>
       </div>
       <div className="flex items-center gap-2">
-        <Button size="sm" onClick={() => navigate('/onboarding')} data-testid="onboarding-resume-start">
+        <Button
+          size="sm"
+          className="h-9 rounded-lg px-3.5 text-13 font-semibold"
+          onClick={() => navigate('/onboarding')}
+          data-testid="onboarding-resume-start"
+        >
           开始引导
         </Button>
         <button
           type="button"
-          className="rounded p-1 text-muted-foreground hover:bg-muted"
+          className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           aria-label="暂时关闭首次引导入口"
           onClick={() => setDismissed(true)}
         >

@@ -168,6 +168,19 @@ describe('Onboarding 向导（T12–T16）', () => {
     expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('2');
   });
 
+  it('步骤条可点击直达已就绪阶段', async () => {
+    renderPage();
+    await screen.findByTestId('onboarding-welcome');
+    fireEvent.click(screen.getByTestId('onboarding-start'));
+    await waitFor(() => expect(screen.getByTestId('scan-count-trae-cn')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('step-3'));
+    expect(await screen.findByTestId('onboarding-collect')).toBeTruthy();
+
+    fireEvent.click(screen.getByTestId('step-1'));
+    expect(await screen.findByTestId('onboarding-scan')).toBeTruthy();
+  });
+
   it('欢迎屏跳过：写 skipped 标记并进资产库', async () => {
     renderPage();
     await screen.findByTestId('onboarding-welcome');

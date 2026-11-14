@@ -7,23 +7,24 @@ import {
 } from './forbidden-terms';
 
 describe('forbidden-terms 识别能力', () => {
-  it('清单覆盖 D7 全部禁用词', () => {
+  it('清单覆盖 D7 禁用词（「分发」经维护者 2026-11-14 拍板放行）', () => {
     expect(FORBIDDEN_TERMS).toEqual(
-      expect.arrayContaining(['保险箱', '沉淀', '分发', '投放', '入库']),
+      expect.arrayContaining(['保险箱', '沉淀', '投放', '入库']),
     );
+    expect(FORBIDDEN_TERMS).not.toContain('分发');
   });
 
   it('用户可见文案里的禁词逐个命中', () => {
-    expect(findForbiddenInSource('应用并分发').map((h) => h.term)).toContain('分发');
     expect(findForbiddenInSource('一键投放到目标工具').map((h) => h.term)).toContain('投放');
     expect(findForbiddenInSource('确认入库').map((h) => h.term)).toContain('入库');
     expect(findForbiddenInSource('沉淀你的资产').map((h) => h.term)).toContain('沉淀');
     expect(findForbiddenInSource('AI 资产保险箱').map((h) => h.term)).toContain('保险箱');
   });
 
-  it('「分发」同时覆盖「分发同步」「未分发」', () => {
-    expect(findForbiddenInSource('分发同步中').length).toBeGreaterThan(0);
-    expect(findForbiddenInSource('未分发').map((h) => h.term)).toContain('分发');
+  it('「分发」及其组合均放行', () => {
+    expect(findForbiddenInSource('应用并分发')).toEqual([]);
+    expect(findForbiddenInSource('分发同步中')).toEqual([]);
+    expect(findForbiddenInSource('未分发')).toEqual([]);
   });
 
   it('放行合规文案', () => {

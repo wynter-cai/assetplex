@@ -5,9 +5,49 @@
  */
 
 import { useState } from 'react';
-import { Check } from 'lucide-react';
+import { AlertTriangle, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { ImportResult, SyncRunResponse } from '@/types/api';
+
+/** 摘要卡：一眼看到本次向导留下的真实结果 */
+function SummaryStat({
+  value,
+  label,
+  tone,
+  testId,
+}: {
+  value: string;
+  label: string;
+  tone?: string;
+  testId?: string;
+}): JSX.Element {
+  return (
+    <div className="rounded-xl border bg-card px-4 py-3.5" data-testid={testId}>
+      <p className={`text-[22px] font-bold leading-none tracking-tight tabular-nums ${tone ?? 'text-foreground'}`}>
+        {value}
+      </p>
+      <p className="mt-2 text-12 leading-snug text-muted-foreground">{label}</p>
+    </div>
+  );
+}
+
+/** 过去 / 现在对比行（只做定性描述，不编造计数） */
+function CompareRow({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: string;
+}): JSX.Element {
+  return (
+    <div className="flex items-baseline justify-between gap-3 py-1">
+      <span className="text-12 text-muted-foreground">{label}</span>
+      <b className={`text-12 font-bold ${tone}`}>{value}</b>
+    </div>
+  );
+}
 
 export function DoneScreen({
   collect,
@@ -41,45 +81,68 @@ export function DoneScreen({
   };
 
   return (
-    <section data-testid="onboarding-done" className="mx-auto max-w-2xl text-center">
-      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-success-soft">
-        <Check className="h-8 w-8 text-success" />
+    <section data-testid="onboarding-done" className="max-w-[720px] py-2 md:py-6">
+      <div className="grid h-14 w-14 place-items-center rounded-2xl border border-success/20 bg-success-soft">
+        <Check className="h-7 w-7 text-success" strokeWidth={3} />
       </div>
-      <h1 className="mt-4 text-2xl font-semibold leading-snug">
+      <h1 className="mt-5 text-[26px] font-bold leading-[1.25] tracking-[-0.022em] md:text-[30px]">
         现在，所有工具
         <br />
         都认识同一个你
       </h1>
-      <p className="mt-3 text-sm text-muted-foreground">一份源，多处消费。以后改人设只需改一次。</p>
+      <p className="mt-3 text-14 leading-relaxed text-muted-foreground">
+        一份源，多处消费。以后改人设只需改一次。
+      </p>
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-3 text-sm">
-        <div className="rounded-lg border px-4 py-3">
-          <p className="text-xl font-semibold">{assetCount}</p>
-          <p className="text-xs text-muted-foreground">资产已收藏</p>
+      <div className="mt-6 grid gap-3 sm:grid-cols-3">
+        <SummaryStat value={String(assetCount)} label="个资产在资产库" />
+        <SummaryStat
+          value={
+            run === null
+              ? '未执行'
+              : `${succeededTools ?? 0}/${run.results.length}`
+          }
+          label={run === null ? '分发未执行，可稍后在同步中心执行' : '个工具分发成功'}
+          tone={
+            run === null
+              ? 'text-muted-foreground'
+              : failedTools > 0
+                ? 'text-warning'
+                : 'text-success'
+          }
+          testId="done-distribute"
+        />
+        <SummaryStat
+          value={String(issueCount ?? collect?.errors ?? 0)}
+          label="项待处理（静态体检）"
+          tone={(issueCount ?? 0) > 0 ? 'text-warning' : 'text-foreground'}
+        />
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div className="rounded-xl border bg-muted/20 px-4 py-3.5">
+          <p className="text-12 font-semibold tracking-wide text-muted-foreground/80">过去</p>
+          <div className="mt-2">
+            <CompareRow label="配置副本" value="多份" tone="text-destructive" />
+            <CompareRow label="维护方式" value="逐处重复维护" tone="text-destructive" />
+            <CompareRow label="换工具成本" value="重写一遍" tone="text-destructive" />
+          </div>
         </div>
-        <div className="rounded-lg border px-4 py-3" data-testid="done-distribute">
-          {run === null ? (
-            <p className="text-xl font-semibold text-muted-foreground">未执行</p>
-          ) : (
-            <p className={`text-xl font-semibold ${failedTools > 0 ? 'text-warning' : 'text-success'}`}>
-              {succeededTools}/{run.results.length}
-            </p>
-          )}
-          <p className="text-xs text-muted-foreground">
-            {run === null ? '分发未执行（可稍后在同步中心执行）' : '个工具分发成功'}
-          </p>
-        </div>
-        <div className="rounded-lg border px-4 py-3">
-          <p className="text-xl font-semibold">{issueCount ?? collect?.errors ?? 0}</p>
-          <p className="text-xs text-muted-foreground">项待处理（静态体检）</p>
+        <div className="rounded-xl border border-primary/25 bg-primary/[0.04] px-4 py-3.5">
+          <p className="text-12 font-semibold tracking-wide text-primary/80">现在</p>
+          <div className="mt-2">
+            <CompareRow label="配置副本" value="1 份源" tone="text-success" />
+            <CompareRow label="维护方式" value="统一维护" tone="text-success" />
+            <CompareRow label="换工具成本" value="一条命令" tone="text-success" />
+          </div>
         </div>
       </div>
 
-      <div className="mt-6 inline-flex items-center gap-2 rounded-lg border bg-muted/40 px-4 py-2">
-        <code className="text-sm">npx assetplex</code>
+      <div className="mt-6 flex w-fit max-w-full items-center gap-3 rounded-lg bg-foreground px-4 py-2.5">
+        <code className="truncate font-mono text-12 text-background">npx assetplex</code>
         <button
           type="button"
-          className="text-xs text-primary underline-offset-4 hover:underline"
+          className="shrink-0 rounded-md bg-background/15 px-2.5 py-1 text-12 font-semibold text-background transition-colors hover:bg-background/25"
           onClick={copyCmd}
         >
           {copied ? '已复制' : '复制命令'}
@@ -87,14 +150,26 @@ export function DoneScreen({
       </div>
 
       <div className="mt-6">
-        <Button size="lg" onClick={onEnter} data-testid="done-enter-vault">
+        <Button
+          size="lg"
+          className="h-11 rounded-lg px-7 text-14 font-semibold"
+          onClick={onEnter}
+          data-testid="done-enter-vault"
+        >
           进入资产库
         </Button>
       </div>
+
       {issueCount !== null && issueCount > 0 && (
-        <p className="mt-4 text-xs text-muted-foreground">
-          静态体检发现的问题已在资产库里排好队，可在首页健康卡下钻逐条整改。
-        </p>
+        <div className="mt-6 flex items-start gap-3 border-t pt-4">
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-warning/30 bg-warning-soft px-2.5 py-0.5 text-12 font-semibold text-warning">
+            <AlertTriangle className="h-3 w-3" />
+            {issueCount} 项待处理
+          </span>
+          <span className="text-12 leading-relaxed text-muted-foreground">
+            静态体检发现的问题已在资产库里排好队，进入后可逐条整改。
+          </span>
+        </div>
       )}
     </section>
   );
