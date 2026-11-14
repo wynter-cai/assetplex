@@ -55,7 +55,7 @@ interface InsightRow {
   group: OnboardingInsightGroup;
 }
 
-const MAX_ROWS = 8;
+const MAX_ROWS = 4;
 
 const TONE_META: Record<InsightTone, { chip: string; dot: string; label: string }> = {
   mismatch: {
@@ -248,7 +248,15 @@ export function ResultScreen({
       group: g,
     })),
   ];
-  const visibleRows = rows.slice(0, MAX_ROWS);
+  const visibleRows = [...rows]
+    .sort((a, b) => {
+      if (a.tone !== b.tone) {
+        const order: Record<InsightTone, number> = { mismatch: 0, duplicate: 1, coverage: 2 };
+        return order[a.tone] - order[b.tone];
+      }
+      return b.group.tools.length - a.group.tools.length;
+    })
+    .slice(0, MAX_ROWS);
   const restRows = rows.length - visibleRows.length;
   const consistentCount = duplicates.length - mismatched.length;
   const legend: InsightTone[] = (['mismatch', 'duplicate', 'coverage'] as const).filter((tone) =>
@@ -346,7 +354,7 @@ export function ResultScreen({
                 </span>
               </div>
               <p className="mt-1.5 text-12 leading-relaxed text-muted-foreground">
-                多个工具各留一份很正常，不是错误。这里只帮你看清三种情况：内容一致、已经改得不一样、只在部分工具里有。
+                内容一旦分叉，各工具行为会不一致，改哪份都可能丢改动。
               </p>
               {rows.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
@@ -433,7 +441,7 @@ export function ResultScreen({
                   })}
                   {restRows > 0 && (
                     <li className="px-5 py-2.5 text-12 text-muted-foreground">
-                      还有 {restRows} 组未显示，可先收进资产库再逐条查看
+                      其余 {restRows} 组未展开，可在资产库中查看
                     </li>
                   )}
                 </ul>
