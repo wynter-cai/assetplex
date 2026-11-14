@@ -97,6 +97,29 @@ describe('buildOnboardingInsights（spec 3.1/3.2）', () => {
     expect(insights.duplicateGroups).toHaveLength(0);
     expect(insights.coverageGroups).toHaveLength(2);
   });
+
+  it('copies 带每个工具的落点、大小、时间与版本前缀（结果页查看详情）', () => {
+    const inventories = [
+      inventory('trae-cn', [item({ tool: 'trae-cn', hubTargetPath: 'rules/always/style.md' })]),
+      inventory('codex', [item({ tool: 'codex', hubTargetPath: 'rules/always/style.md' })]),
+    ];
+    const insights = buildOnboardingInsights(
+      inventories,
+      hashTable({
+        'C:/fake/trae-cn/rules/always/style.md': 'aaaaaaaaaaaa1111',
+        'C:/fake/codex/rules/always/style.md': 'bbbbbbbbbbbb2222',
+      }),
+    );
+
+    const group = insights.duplicateGroups[0];
+    expect(group.copies).toHaveLength(2);
+    expect(group.copies[0]).toMatchObject({
+      tool: 'trae-cn',
+      path: 'C:/fake/trae-cn/rules/always/style.md',
+      contentHash: 'aaaaaaaaaaaa',
+    });
+    expect(group.copies[1].contentHash).toBe('bbbbbbbbbbbb');
+  });
 });
 
 describe('buildOnboardingInsights（spec 3.3 覆盖不全）', () => {

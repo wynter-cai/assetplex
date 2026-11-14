@@ -19,6 +19,17 @@ import type { SyncEngine } from './sync-engine.js';
 /** 内容哈希读取器：无法读取时返回 undefined */
 export type ContentHashReader = (absolutePath: string) => string | undefined;
 
+/** 单个副本（供结果页「查看详情」展开） */
+export interface InsightCopy {
+  tool: string;
+  /** 工具侧绝对路径（本机路径，仅本地展示） */
+  path: string;
+  size: number;
+  modified: string;
+  /** 内容哈希前 12 位；无法读取时缺省 */
+  contentHash?: string;
+}
+
 /** 洞察分组（单条） */
 export interface OnboardingInsightGroup {
   category: string;
@@ -31,6 +42,8 @@ export interface OnboardingInsightGroup {
   distinctVersions: number;
   /** 参与比对的副本数（有哈希的条目数） */
   comparedCopies: number;
+  /** 每个副本的落点与版本，供用户展开看清「到底哪里重复了」 */
+  copies: InsightCopy[];
 }
 
 export interface OnboardingInsights {
@@ -81,6 +94,7 @@ interface MutableGroup {
   hubTargetPath: string;
   tools: string[];
   hashes: string[];
+  copies: InsightCopy[];
 }
 
 /**
@@ -96,20 +110,32 @@ export function buildOnboardingInsights(
   for (const inventory of inventories) {
     if (!inventory.installed) continue;
     for (const entry of inventory.items) {
+      const copy: InsightCopy = {
+        tool: inventory.toolName,
+        path: entry.absolutePath,
+        size: entry.size,
+        modified: entry.modified,
+      };
       const existing = groups.get(entry.hubTargetPath);
       if (existing) {
         if (!existing.tools.includes(inventory.toolName)) existing.tools.push(inventory.toolName);
         const hash = readHash(entry.absolutePath);
-        if (hash !== undefined) existing.hashes.push(hash);
+        if (hash !== undefined) {
+          existing.hashes.push(hash);
+          copy.contentHash = hash.slice(0, 12);
+        }
+        existing.copies.push(copy);
         continue;
       }
       const hash = readHash(entry.absolutePath);
+      if (hash !== undefined) copy.contentHash = hash.slice(0, 12);
       groups.set(entry.hubTargetPath, {
         category: entry.category,
         name: readableName(entry.hubTargetPath),
         hubTargetPath: entry.hubTargetPath,
         tools: [inventory.toolName],
         hashes: hash !== undefined ? [hash] : [],
+        copies: [copy],
       });
     }
   }
@@ -121,6 +147,7 @@ export function buildOnboardingInsights(
     tools: g.tools,
     distinctVersions: new Set(g.hashes).size,
     comparedCopies: g.hashes.length,
+    copies: g.copies,
   });
 
   const all = Array.from(groups.values());

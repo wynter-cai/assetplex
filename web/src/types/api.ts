@@ -1239,6 +1239,14 @@ export interface OnboardingCompleteResponse {
 }
 
 /** 盘点洞察分组（重复 / 内容不一致 / 覆盖不全） */
+export interface OnboardingInsightCopy {
+  tool: string;
+  path: string;
+  size: number;
+  modified: string;
+  contentHash?: string;
+}
+
 export interface OnboardingInsightGroup {
   category: string;
   name: string;
@@ -1246,6 +1254,8 @@ export interface OnboardingInsightGroup {
   tools: string[];
   distinctVersions: number;
   comparedCopies: number;
+  /** 每个副本的落点与版本（结果页「查看详情」） */
+  copies?: OnboardingInsightCopy[];
 }
 
 export interface OnboardingInsights {

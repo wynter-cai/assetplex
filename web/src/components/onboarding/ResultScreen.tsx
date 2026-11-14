@@ -6,9 +6,12 @@
  * 视觉：左侧构成卡（大数字 + 占比条），右侧洞察卡（色点图例 + 分组列表）。
  */
 
-import { AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { useState } from 'react';
+import { AlertTriangle, CheckCircle2, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { toolDisplayName } from '@/components/sync/sync-display';
+import { ToolBadge } from './onboarding-visual';
 import {
   CATEGORY_ICONS,
   DEFAULT_CATEGORY_ICON,
@@ -23,7 +26,12 @@ import {
   OnbHeader,
   OnbScreen,
 } from './ScreenFrame';
-import type { ScanWithInsights, ToolInventory } from '@/types/api';
+import type {
+  OnboardingInsightCopy,
+  OnboardingInsightGroup,
+  ScanWithInsights,
+  ToolInventory,
+} from '@/types/api';
 
 const CATEGORY_LABELS: Record<string, string> = {
   identity: '身份 / 人设',
@@ -43,6 +51,8 @@ interface InsightRow {
   detail: string;
   tag: string;
   tone: InsightTone;
+  kind: 'duplicate' | 'coverage';
+  group: OnboardingInsightGroup;
 }
 
 const MAX_ROWS = 8;
@@ -64,6 +74,112 @@ const TONE_META: Record<InsightTone, { chip: string; dot: string; label: string 
     label: '覆盖不全',
   },
 };
+
+/** 字节数转可读体积 */
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/** ISO 时间转本地日期（只到天，避免时区噪音） */
+function formatDate(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, '0');
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+/**
+ * 副本明细：后端新版直接带 copies；旧响应缺字段时从 inventories 反查，
+ * 保证「查看详情」在任何版本下都能显示真实落点。
+ */
+function copiesOf(group: OnboardingInsightGroup, inventories: ToolInventory[]): OnboardingInsightCopy[] {
+  if (group.copies !== undefined && group.copies.length > 0) return group.copies;
+  return inventories
+    .filter((tool) => tool.installed)
+    .flatMap((tool) =>
+      tool.items
+        .filter((item) => item.hubTargetPath === group.hubTargetPath)
+        .map((item) => ({
+          tool: item.tool,
+          path: item.absolutePath,
+          size: item.size,
+          modified: item.modified,
+        })),
+    );
+}
+
+/** 展开区：说清重复在哪里、版本是否一致、收进库会发生什么 */
+function CopyDetails({
+  row,
+  inventories,
+  installedTools,
+}: {
+  row: InsightRow;
+  inventories: ToolInventory[];
+  installedTools: string[];
+}): JSX.Element {
+  const copies = copiesOf(row.group, inventories);
+  const missing = installedTools.filter((tool) => !row.group.tools.includes(tool));
+  const explanation =
+    row.kind === 'duplicate'
+      ? row.group.distinctVersions > 1
+        ? `这 ${copies.length} 份内容不一致（${row.group.distinctVersions} 个版本）。收进资产库时保留扫描到的第一份，其余同名副本跳过，原文件都不动。`
+        : `这 ${copies.length} 份内容相同。收进资产库后只需维护一份，其余同名副本跳过，原文件都不动。`
+      : `只在 ${row.group.tools.map(toolDisplayName).join('、')} 中存在${
+          missing.length > 0 ? `，${missing.map(toolDisplayName).join('、')} 还没有` : ''
+        }。`;
+
+  return (
+    <div
+      id={`insight-detail-${row.key}`}
+      data-testid={`insight-detail-${row.key}`}
+      className="border-t border-border/60 bg-muted/20 px-5 pb-3 pt-2.5"
+    >
+      <p className="text-12 leading-relaxed text-muted-foreground">{explanation}</p>
+      <ul className="mt-2.5 space-y-2">
+        {copies.map((copy) => (
+          <li
+            key={`${copy.tool}:${copy.path}`}
+            className="flex items-start gap-2.5 rounded-md border bg-background px-3 py-2"
+          >
+            <ToolBadge toolId={copy.tool} name={toolDisplayName(copy.tool)} size="sm" />
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span className="text-12 font-medium text-foreground">
+                  {toolDisplayName(copy.tool)}
+                </span>
+                <span
+                  className={cn(
+                    'rounded-full px-1.5 py-0.5 text-[11px] font-medium tabular-nums',
+                    copy.contentHash !== undefined
+                      ? 'bg-primary/10 text-primary'
+                      : 'bg-muted text-muted-foreground',
+                  )}
+                >
+                  {copy.contentHash !== undefined
+                    ? `版本 ${copy.contentHash.slice(0, 6)}`
+                    : '版本未读取'}
+                </span>
+                <span className="text-[11px] tabular-nums text-muted-foreground">
+                  {formatSize(copy.size)} · {formatDate(copy.modified)}
+                </span>
+              </div>
+              <p className="mt-1 break-all font-mono text-[11px] leading-relaxed text-muted-foreground">
+                {copy.path}
+              </p>
+            </div>
+          </li>
+        ))}
+        {copies.length === 0 && (
+          <li className="text-12 text-muted-foreground">暂未拿到副本路径，请重试盘点。</li>
+        )}
+      </ul>
+    </div>
+  );
+}
 
 export function inventoryTotals(inventories: ToolInventory[]): {
   total: number;
@@ -95,6 +211,11 @@ export function ResultScreen({
   onCollect: () => void;
   onSkip: () => void;
 }): JSX.Element {
+  const [expandedKeys, setExpandedKeys] = useState<string[]>([]);
+  const toggleExpanded = (key: string): void => {
+    setExpandedKeys((keys) => (keys.includes(key) ? keys.filter((k) => k !== key) : [...keys, key]));
+  };
+
   const { total, byCategory, toolCount } = inventoryTotals(scan.inventories);
   const insights = scan.insights;
   const duplicates = insights?.duplicateGroups ?? [];
@@ -111,6 +232,8 @@ export function ResultScreen({
         detail: g.tools.join(' · '),
         tag: isMismatch ? `内容不一致 · ${g.distinctVersions} 版` : `重复 ${g.tools.length} 份`,
         tone: isMismatch ? 'mismatch' : 'duplicate',
+        kind: 'duplicate',
+        group: g,
       };
     }),
     ...coverage.map((g): InsightRow => ({
@@ -119,6 +242,8 @@ export function ResultScreen({
       detail: `只在 ${g.tools.join('、')} 中存在`,
       tag: '覆盖不全',
       tone: 'coverage',
+      kind: 'coverage',
+      group: g,
     })),
   ];
   const visibleRows = rows.slice(0, MAX_ROWS);
@@ -250,32 +375,63 @@ export function ResultScreen({
                   ))}
                 </div>
                 <ul className="divide-y divide-border/70">
-                  {visibleRows.map((row) => (
-                    <li key={row.key} className="flex items-start gap-3 px-5 py-2.5">
-                      <span
-                        aria-hidden="true"
-                        className={cn(
-                          'mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full',
-                          TONE_META[row.tone].dot,
+                  {visibleRows.map((row) => {
+                    const open = expandedKeys.includes(row.key);
+                    return (
+                      <li key={row.key}>
+                        <div className="flex items-start gap-3 px-5 py-2.5">
+                          <span
+                            aria-hidden="true"
+                            className={cn(
+                              'mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full',
+                              TONE_META[row.tone].dot,
+                            )}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-13 font-medium text-foreground">{row.name}</p>
+                            <p className="mt-0.5 truncate text-12 text-muted-foreground">
+                              {row.detail}
+                            </p>
+                          </div>
+                          <span
+                            className={cn(
+                              'shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-12 font-medium',
+                              TONE_META[row.tone].chip,
+                            )}
+                          >
+                            {row.tag}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => toggleExpanded(row.key)}
+                            aria-expanded={open}
+                            aria-controls={`insight-detail-${row.key}`}
+                            data-testid={`insight-toggle-${row.key}`}
+                            className="mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-sm px-1.5 py-0.5 text-12 text-muted-foreground transition-colors hover:text-foreground"
+                          >
+                            {open ? '收起' : '查看详情'}
+                            <ChevronDown
+                              className={cn(
+                                'h-3.5 w-3.5 transition-transform',
+                                open && 'rotate-180',
+                              )}
+                              aria-hidden="true"
+                            />
+                          </button>
+                        </div>
+                        {open && (
+                          <CopyDetails
+                            row={row}
+                            inventories={scan.inventories}
+                            installedTools={insights?.installedTools ?? []}
+                          />
                         )}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-13 font-medium text-foreground">{row.name}</p>
-                        <p className="mt-0.5 truncate text-12 text-muted-foreground">{row.detail}</p>
-                      </div>
-                      <span
-                        className={cn(
-                          'shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-12 font-medium',
-                          TONE_META[row.tone].chip,
-                        )}
-                      >
-                        {row.tag}
-                      </span>
-                    </li>
-                  ))}
+                      </li>
+                    );
+                  })}
                   {restRows > 0 && (
                     <li className="px-5 py-2.5 text-12 text-muted-foreground">
-                      还有 {restRows} 组未展开
+                      还有 {restRows} 组未显示，可先收进资产库再逐条查看
                     </li>
                   )}
                 </ul>
