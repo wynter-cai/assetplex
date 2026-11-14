@@ -21,14 +21,25 @@ import {
 } from '@/components/ui/dialog';
 import { api } from '@/lib/api';
 
+/** 厂商预设（T11）：只填充地址与模型名，绝不预置 Key */
+export interface AiConfigPreset {
+  id: string;
+  label: string;
+  baseUrl: string;
+  model: string;
+}
+
 export function AiConfigDialog({
   open,
   onOpenChange,
   onSaved,
+  presets,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSaved: () => void;
+  /** 可选厂商预设；不传时与原行为一致 */
+  presets?: AiConfigPreset[];
 }): JSX.Element {
   const [baseUrl, setBaseUrl] = useState('');
   const [apiKey, setApiKey] = useState('');
@@ -86,6 +97,25 @@ export function AiConfigDialog({
           <p className="text-xs text-muted-foreground">加载中…</p>
         ) : (
           <div className="space-y-3">
+            {presets !== undefined && presets.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {presets.map((preset) => (
+                  <Button
+                    key={preset.id}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => {
+                      setBaseUrl(preset.baseUrl);
+                      setModel(preset.model);
+                    }}
+                  >
+                    {preset.label}
+                  </Button>
+                ))}
+              </div>
+            )}
             <div className="space-y-1">
               <span className="text-xs font-medium">Base URL</span>
               <Input

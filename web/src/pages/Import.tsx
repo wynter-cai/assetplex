@@ -19,6 +19,8 @@ import { ToolCard } from '@/components/import/ToolCard';
 import { FileItem } from '@/components/import/FileItem';
 import { ConflictDialog } from '@/components/import/ConflictDialog';
 import { ConfirmGroup, ConfirmGroupRow } from '@/components/import/ConfirmGroup';
+import { StepIndicator } from '@/components/common/StepIndicator';
+import { buildImportItems, itemKey, type ConflictResolution } from '@/lib/import-request';
 import type { DiscoveredItem, ConflictStrategy, ImportItem } from '@/types/api';
 
 type Step = 1 | 2 | 3 | 4;
@@ -40,11 +42,7 @@ interface GroupedConflict {
   }>;
 }
 
-/** 冲突项解决状态：策略 + 可选的已采纳仲裁草案（仅 merge 时有意义） */
-interface ConflictResolution {
-  strategy: ConflictStrategy;
-  draft?: string;
-}
+/** 冲突项解决状态已抽取到 lib/import-request（ConflictResolution） */
 
 export default function Import() {
   const [step, setStep] = useState<Step>(1);
@@ -65,9 +63,6 @@ export default function Import() {
 
   const inventories = scanData?.inventories ?? [];
   const installedTools = inventories.filter((t) => t.installed);
-
-  // 键：tool:absolutePath
-  const itemKey = (item: DiscoveredItem) => `${item.tool}:${item.absolutePath}`;
 
   // 所有发现项（仅已安装工具的）
   const allItems = useMemo(
@@ -180,28 +175,9 @@ export default function Import() {
     });
   }, []);
 
-  // 构建导入请求（differs 项携带解决策略；已采纳仲裁草案时透传 mergeDraft，后端以此为准落盘）
+  // 构建导入请求（共享逻辑：differs 携带策略与草案，二进制透传）
   const buildImportRequest = useCallback((): ImportItem[] => {
-    return allItems
-      .filter((i) => selectedItemKeys.has(itemKey(i)))
-      .map((i) => {
-        const resolution = i.conflict === 'differs'
-          ? (conflictResolutions.get(i.hubTargetPath) ?? { strategy: 'merge' as ConflictStrategy })
-          : undefined;
-        return {
-          tool: i.tool,
-          absolutePath: i.absolutePath,
-          hubTargetPath: i.hubTargetPath,
-          category: i.category,
-          conflict: i.conflict,
-          strategy: resolution?.strategy,
-          // 二进制标记透传：后端据此走字节写入，不把图标当文本重编码
-          binary: i.binary,
-          ...(resolution !== undefined && resolution.strategy === 'merge' && resolution.draft !== undefined
-            ? { mergeDraft: resolution.draft }
-            : {}),
-        };
-      });
+    return buildImportItems({ allItems, selectedItemKeys, conflictResolutions });
   }, [allItems, selectedItemKeys, conflictResolutions]);
 
   // 进入 Step 3 时，为冲突项设置默认策略（按 hubTargetPath 分组）：
@@ -241,32 +217,7 @@ export default function Import() {
       />
 
       {/* 步骤指示器 */}
-      <div className="flex items-center gap-2">
-        {stepLabels.map((label, i) => {
-          const s = (i + 1) as Step;
-          const active = s === step;
-          const done = s < step;
-          return (
-            <div key={s} className="flex items-center gap-2">
-              <div
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium ${
-                  active
-                    ? 'bg-primary text-primary-foreground'
-                    : done
-                      ? 'bg-success-soft text-success'
-                      : 'bg-muted text-muted-foreground'
-                }`}
-              >
-                {done ? <CheckCircle className="h-3.5 w-3.5" /> : <span className="text-xs">{s}</span>}
-                {label}
-              </div>
-              {i < stepLabels.length - 1 && (
-                <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
-              )}
-            </div>
-          );
-        })}
-      </div>
+      <StepIndicator labels={stepLabels} current={step} />
 
       {/* Step 1: 检测工具 */}
       {step === 1 && (
