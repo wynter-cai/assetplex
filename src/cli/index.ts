@@ -9,6 +9,10 @@ import { log, setLogLevel } from '../utils/logger.js';
 import { initCommand } from './commands/init.js';
 import { doctorCommand } from './commands/doctor.js';
 import { syncCommand } from './commands/sync.js';
+import { listAssets } from '../core/assets.js';
+import { readOnboardingState } from '../core/onboarding-state.js';
+import { ensureHubSkeleton } from '../core/hub-skeleton.js';
+import { getHubRoot } from '../utils/paths.js';
 
 const program = new Command();
 
@@ -98,8 +102,34 @@ program
     }
   });
 
-// 解析参数
-program.parseAsync(process.argv).catch((err) => {
+// 解析参数（无子命令时先做首次判定：首跑进入向导，否则保持帮助）
+async function main(): Promise<void> {
+  if (process.argv.slice(2).length === 0) {
+    try {
+      const { items } = await listAssets();
+      const state = readOnboardingState({ assetCount: items.length });
+      const { handleBareInvocation } = await import('./commands/bare.js');
+      const invocation = await handleBareInvocation({
+        state,
+        ensureSkeleton: () => {
+          ensureHubSkeleton(getHubRoot());
+          log.info('已创建资产库骨架');
+        },
+        startUi: async () => {
+          log.info('首次使用：即将打开 60 秒引导，盘点本机工具并把资产收进一个库');
+          const { uiCommand } = await import('./commands/ui.js');
+          await uiCommand({});
+        },
+      });
+      if (invocation === 'wizard') return; // uiCommand 持有进程直到 SIGINT
+    } catch (err) {
+      log.warn(`首次状态读取失败，按普通命令处理: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+  await program.parseAsync(process.argv);
+}
+
+main().catch((err) => {
   log.error('执行失败:', err instanceof Error ? err.message : String(err));
   process.exit(1);
 });

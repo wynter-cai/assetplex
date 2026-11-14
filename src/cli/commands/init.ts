@@ -21,6 +21,10 @@ import {
   ENV_TEMPLATE,
 } from '../templates.js';
 import { HUB_DIRECTORIES, HUB_BASE_FILES } from '../../core/hub-skeleton.js';
+import { SyncEngine } from '../../core/sync-engine.js';
+import { getAllAdapters } from '../../core/adapters/registry.js';
+import { loadHubConfig } from '../../core/config.js';
+import type { DiscoveredItem, ImportRequest, ImportResult, ToolInventory } from '../../core/types.js';
 
 export interface InitOptions {
   /** 强制覆盖已存在的目录 */
@@ -29,6 +33,20 @@ export interface InitOptions {
   importExisting?: boolean;
   /** 不显示交互提示 */
   yes?: boolean;
+}
+
+/** 依赖注入（测试用；缺省走真实扫描与导入引擎） */
+export interface InitDeps {
+  scanAll?: () => Promise<ToolInventory[]>;
+  executeImport?: (request: ImportRequest) => Promise<ImportResult>;
+}
+
+/** init 执行摘要（importExisting 时含导入结果） */
+export interface InitSummary {
+  /** 盘点到（已安装工具的）条目总数 */
+  attempted: number;
+  /** 仅 --import-existing 时存在 */
+  imported?: ImportResult;
 }
 
 /** Hub 初始文件定义（路径 -> 内容）；骨架两件套与 core/hub-skeleton 共用同一份内容 */
@@ -130,7 +148,7 @@ const HUB_INITIAL_FILES: Array<{ path: string[]; content: string; overwrite: boo
 /**
  * assetplex init 实现
  */
-export async function initCommand(options: InitOptions = {}): Promise<void> {
+export async function initCommand(options: InitOptions = {}, deps: InitDeps = {}): Promise<InitSummary> {
   const hubRoot = getHubRoot();
 
   log.info(`正在初始化 AssetPlex...`);
@@ -143,7 +161,7 @@ export async function initCommand(options: InitOptions = {}): Promise<void> {
     if (existsSync(hubTomlPath)) {
       log.warn(`Hub 已存在：${hubRoot}`);
       log.warn(`如需重新初始化，请使用 --force 选项`);
-      return;
+      return { attempted: 0 };
     }
   }
 
@@ -178,6 +196,12 @@ export async function initCommand(options: InitOptions = {}): Promise<void> {
     log.info(`  跳过已存在: ${skippedCount} 个`);
   }
 
+  // 盘点式导入（add-zero-config-onboarding T8）：--import-existing 才执行
+  if (options.importExisting) {
+    const imported = await importExistingAssets(deps);
+    return { attempted: imported.attempted, imported: imported.result };
+  }
+
   // 显示后续步骤
   log.info('');
   log.info('下一步：');
@@ -185,4 +209,51 @@ export async function initCommand(options: InitOptions = {}): Promise<void> {
   log.info('  2. 运行 `assetplex doctor` 检测各 AI 工具安装状态');
   log.info('  3. 运行 `assetplex sync` 同步到所有工具');
   log.info('  4. 运行 `assetplex --help` 查看所有命令');
+  return { attempted: 0 };
+}
+
+/** 盘点各工具并导入可收纳条目（同名冲突一律跳过，不覆盖已有内容；spec 9.3） */
+async function importExistingAssets(
+  deps: InitDeps,
+): Promise<{ attempted: number; result?: ImportResult }> {
+  const engine = new SyncEngine(loadHubConfig(hubPath('hub.toml')), getAllAdapters());
+  const inventories = deps.scanAll ? await deps.scanAll() : await engine.scanAll();
+  const installed = inventories.filter((t) => t.installed);
+  const attempted = installed.reduce((sum, t) => sum + t.items.length, 0);
+
+  log.info('');
+  log.info('盘点本机工具...');
+  for (const inventory of inventories) {
+    const note = inventory.installed ? `${inventory.items.length} 个可导入条目` : '未安装';
+    log.info(`  ${inventory.displayName}: ${note}`);
+  }
+
+  if (attempted === 0) {
+    log.info('未检测到可导入的资产——之后可通过 Web 向导或导入页手动添加。');
+    return { attempted: 0 };
+  }
+
+  const items = installed.flatMap((inventory) =>
+    inventory.items.map((item: DiscoveredItem) => ({
+      tool: item.tool,
+      absolutePath: item.absolutePath,
+      hubTargetPath: item.hubTargetPath,
+      category: item.category,
+      conflict: item.conflict,
+      // 库内同名但内容不同：CLI 一律跳过，不覆盖（用户可去导入向导逐条处理）
+      ...(item.conflict === 'differs' ? { strategy: 'skip' as const } : {}),
+      binary: item.binary,
+    })),
+  );
+
+  log.info('导入到资产库...');
+  const result = deps.executeImport
+    ? await deps.executeImport({ items })
+    : await engine.executeImport({ items });
+
+  log.info(
+    `导入完成：新建 ${result.created}、合并 ${result.merged}、覆盖 ${result.overwritten}、跳过 ${result.skipped}` +
+      (result.errors > 0 ? `、失败 ${result.errors}` : ''),
+  );
+  return { attempted, result };
 }
