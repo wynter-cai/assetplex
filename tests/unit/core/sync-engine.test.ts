@@ -149,6 +149,46 @@ describe('SyncEngine', () => {
       expect(profileItem?.action).toBe('skip');
       expect(profileItem?.reason).toContain('Hub 源不存在');
     });
+
+    it('计划条目携带 targetExists 反映目标当前状态（T5）', async () => {
+      const traeCnDir = join(testDir, 'trae-cn');
+      mkdirSync(traeCnDir, { recursive: true });
+      mkdirSync(join(traeCnDir, 'memory'), { recursive: true });
+      writeFileSync(join(traeCnDir, 'argv.json'), '{}');
+      makeHubContent();
+
+      const config = makeTestConfig(traeCnDir);
+      const adapter = new TraeCnAdapter();
+      (adapter as unknown as { defaultConfigDir: string }).defaultConfigDir = traeCnDir;
+      const engine = new SyncEngine(config, [adapter]);
+
+      const plans = await engine.plan({});
+      const all = plans[0].items;
+      for (const item of all) {
+        expect(typeof item.targetExists).toBe('boolean');
+      }
+
+      // 全新工具目录：待执行目标都还不存在
+      const actionable = all.filter((i) => i.action !== 'skip');
+      expect(actionable.length).toBeGreaterThan(0);
+      for (const item of actionable) {
+        expect(item.targetExists).toBe(false);
+      }
+
+      // 创建全部目标后重新 plan：targetExists 变 true
+      for (const item of actionable) {
+        if (item.target.isDirectory) {
+          mkdirSync(item.target.targetPath, { recursive: true });
+        } else {
+          mkdirSync(join(item.target.targetPath, '..'), { recursive: true });
+          writeFileSync(item.target.targetPath, 'existing');
+        }
+      }
+      const replanned = await engine.plan({});
+      for (const item of replanned[0].items.filter((i) => i.action !== 'skip')) {
+        expect(item.targetExists).toBe(true);
+      }
+    });
   });
 
   describe('run', () => {

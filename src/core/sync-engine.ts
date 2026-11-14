@@ -151,6 +151,9 @@ export class SyncEngine {
     const hubItems = adapter.resolveHubItems(this.hubConfig, hubRoot);
 
     const items: SyncPlanItem[] = hubItems.map(({ item, target }) => {
+      // 目标当前状态（add-zero-config-onboarding T5）：分发预览区分新增/覆盖用
+      const targetExists = existsSync(target.targetPath);
+
       // 检查 Hub 源文件是否存在
       if (!item.absolutePath || !existsSync(item.absolutePath)) {
         return {
@@ -158,6 +161,7 @@ export class SyncEngine {
           target,
           action: 'skip',
           reason: `Hub 源不存在: ${item.relativePath || item.absolutePath}`,
+          targetExists,
         };
       }
 
@@ -170,13 +174,14 @@ export class SyncEngine {
             target,
             action: 'skip',
             reason: '已是正确符号链接，跳过',
+            targetExists,
           };
         }
       }
 
       // 检查目标路径是否已有非 symlink 文件（覆盖预警）
       let warning: string | undefined;
-      if (existsSync(target.targetPath) && !isSymlink(target.targetPath)) {
+      if (targetExists && !isSymlink(target.targetPath)) {
         warning = '目标路径已有非 symlink 文件，同步后将覆盖';
       }
 
@@ -186,6 +191,7 @@ export class SyncEngine {
         target,
         action: target.strategy as SyncAction,
         warning,
+        targetExists,
       };
     });
 

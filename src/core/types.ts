@@ -104,6 +104,11 @@ export interface SyncPlanItem {
   reason?: string;
   /** 冲突预警（目标路径已有非 symlink 同名文件） */
   warning?: string;
+  /**
+   * 目标路径当前是否存在（add-zero-config-onboarding T5）：
+   * 分发预览用它区分新增/覆盖/冲突/无变化；未计算时缺省
+   */
+  targetExists?: boolean;
 }
 
 /** 单个工具的同步计划 */

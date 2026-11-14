@@ -33,6 +33,8 @@ export interface SyncPlanItem {
   reason?: string;
   /** 冲突预警（目标路径已有非 symlink 同名文件） */
   warning?: string;
+  /** 目标路径当前是否存在（add-zero-config-onboarding T5，分发四分类用） */
+  targetExists?: boolean;
 }
 
 export interface SyncPlan {
