@@ -40,6 +40,8 @@ interface AssetListPanelProps {
   onDistribute: (asset: Asset) => void;
   /** 空态主动作：去收藏页 */
   onCollect: () => void;
+  /** 可选次出口：重新运行首跑向导（add-zero-config-onboarding，spec 7.6） */
+  onRestartOnboarding?: () => void;
 }
 
 const GRID_CLASS = 'grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(270px,100%),1fr))]';
@@ -122,6 +124,7 @@ export function AssetListPanel({
   onEdit,
   onDistribute,
   onCollect,
+  onRestartOnboarding,
 }: AssetListPanelProps): JSX.Element {
   const [filter, setFilter] = useState<AssetFilter>(DEFAULT_ASSET_FILTER);
   // URL 已锁定类别时，类别维度由接口负责，页内不再叠一层同类筛选
@@ -179,6 +182,11 @@ export function AssetListPanel({
           <Download className="h-3.5 w-3.5 mr-1.5" />
           {scopedLabel ? `从已安装的工具收藏${scopedLabel}` : '从工具收藏到我的库'}
         </Button>
+        {onRestartOnboarding !== undefined && !scopedLabel && (
+          <Button variant="outline" size="sm" onClick={onRestartOnboarding}>
+            重新运行首次引导
+          </Button>
+        )}
       </StateBlock>
     );
   }

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import type { HubConfig } from '@/types/api';
@@ -19,6 +20,7 @@ import { STRATEGY_OPTIONS } from '@/lib/sync-strategy-labels';
 import { toolDisplayList, toolIdFromDisplay } from '@/components/connections/tool-display';
 
 export default function Settings() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data } = useQuery({ queryKey: ['hub-config'], queryFn: api.getHubConfig });
   const [draft, setDraft] = useState<HubConfig | null>(null);
@@ -222,6 +224,24 @@ export default function Settings() {
               className="font-mono text-xs"
             />
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">首次使用引导</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-wrap items-center justify-between gap-4">
+          <p className="text-sm text-muted-foreground">
+            重新走一遍「盘点 → 收纳 → 体检 → 同步」，任何一步都可跳过。
+          </p>
+          <Button
+            variant="outline"
+            onClick={() => navigate('/onboarding')}
+            data-testid="settings-rerun-onboarding"
+          >
+            重新运行首次引导
+          </Button>
         </CardContent>
       </Card>
 

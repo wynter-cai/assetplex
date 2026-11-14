@@ -216,6 +216,7 @@ export default function Vault(): JSX.Element {
           }}
           onDistribute={(asset) => setDistributeAsset(asset)}
           onCollect={() => navigate('/import')}
+          onRestartOnboarding={() => navigate('/onboarding')}
         />
         </div>
         </div>

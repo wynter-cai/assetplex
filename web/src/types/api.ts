@@ -1197,4 +1197,77 @@ export interface GovernanceSuggestionsResponse {
   emptyMessage: string | null;
 }
 
+// ========== 首次使用向导（add-zero-config-onboarding） ==========
+
+/** 向导步骤闭集（与原型 s0–s6 对应） */
+export type OnboardingStepId =
+  | 'welcome'
+  | 'scan'
+  | 'result'
+  | 'collect'
+  | 'doctor'
+  | 'distribute'
+  | 'done';
+
+export interface OnboardingToolSummary {
+  toolId: string;
+  displayName: string;
+  installed: boolean;
+  configDir: string;
+}
+
+export interface OnboardingStateResponse {
+  hubRoot: string;
+  initialized: boolean;
+  onboarded: boolean;
+  autoEnter: boolean;
+  assetCount: number;
+  lastOutcome: { outcome: 'completed' | 'skipped'; step: OnboardingStepId; at: string } | null;
+  tools: OnboardingToolSummary[];
+}
+
+export interface OnboardingStartResponse {
+  created: string[];
+  skipped: string[];
+  state: OnboardingStateResponse;
+}
+
+export interface OnboardingCompleteResponse {
+  ok: boolean;
+  persisted: boolean;
+  state: OnboardingStateResponse;
+}
+
+/** 盘点洞察分组（重复 / 内容不一致 / 覆盖不全） */
+export interface OnboardingInsightGroup {
+  category: string;
+  name: string;
+  hubTargetPath: string;
+  tools: string[];
+  distinctVersions: number;
+  comparedCopies: number;
+}
+
+export interface OnboardingInsights {
+  duplicateGroups: OnboardingInsightGroup[];
+  versionMismatchGroups: OnboardingInsightGroup[];
+  coverageGroups: OnboardingInsightGroup[];
+  installedTools: string[];
+}
+
+export interface ScanWithInsights {
+  inventories: ToolInventory[];
+  insights?: OnboardingInsights;
+}
+
+/** POST /api/sync/run?backup=1 的响应扩展 */
+export interface SyncRunResponse {
+  results: SyncResult[];
+  backupRef?: string | null;
+  backupWarnings?: string[];
+}
+
+/** 分发四分类（纯函数 onboarding-distribute 派生） */
+export type DistributeAction = 'create' | 'overwrite' | 'conflict' | 'unchanged';
+
 

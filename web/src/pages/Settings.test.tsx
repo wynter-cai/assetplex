@@ -7,6 +7,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, type RenderResult } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter } from 'react-router-dom';
 import Settings from './Settings';
 import { api } from '@/lib/api';
 import { APP_VERSION } from '@/lib/app-version';
@@ -46,7 +47,9 @@ function renderPage(): RenderResult {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
-      <Settings />
+      <MemoryRouter>
+        <Settings />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }

@@ -5,7 +5,6 @@
 import type {
   ToolStatus,
   SyncPlan,
-  SyncResult,
   HubFileInfo,
   HubHealth,
   HubConfig,
@@ -43,6 +42,12 @@ import type {
   CurateBatchResult,
   AiClassifyConfigView,
   SaveAiClassifyConfigInput,
+  ScanWithInsights,
+  SyncRunResponse,
+  OnboardingStateResponse,
+  OnboardingStartResponse,
+  OnboardingCompleteResponse,
+  OnboardingStepId,
   AiClassifyResult,
   ArbitrationRequest,
   ArbitrationResponse,
@@ -130,6 +135,16 @@ export const api = {
 
   // Tools
   getTools: () => request<{ tools: ToolStatus[] }>('/tools'),
+  /** 首跑引导状态（add-zero-config-onboarding T7） */
+  getOnboardingState: () => request<OnboardingStateResponse>('/onboarding/state'),
+  /** 幂等创建 Hub 骨架（不含空模板） */
+  startOnboarding: () => request<OnboardingStartResponse>('/onboarding/start', { method: 'POST' }),
+  /** 完成或跳过：写本机标记；persisted=false 时不阻断跳转 */
+  completeOnboarding: (body: { outcome: 'completed' | 'skipped'; step: OnboardingStepId }) =>
+    request<OnboardingCompleteResponse>('/onboarding/complete', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
   getTool: (name: string) => request<ToolStatus>(`/tools/${name}`),
   toggleTool: (name: string, enabled?: boolean) =>
     request<{ success: boolean; enabled: boolean }>(`/tools/${name}/toggle`, {
@@ -144,10 +159,12 @@ export const api = {
     const qs = tools && tools.length ? `?${tools.map((t) => `tool=${encodeURIComponent(t)}`).join('&')}` : '';
     return request<{ plans: SyncPlan[] }>(`/sync/plan${qs}`);
   },
-  runSync: (tools?: string[], dryRun = false) => {
+  runSync: (tools?: string[], dryRun = false, opts?: { backup?: boolean }) => {
     const toolQs = tools && tools.length ? tools.map((t) => `tool=${encodeURIComponent(t)}`).join('&') : '';
-    const qs = [toolQs, dryRun ? 'dryRun=true' : ''].filter(Boolean).join('&');
-    return request<{ results: SyncResult[] }>(`/sync/run${qs ? `?${qs}` : ''}`, { method: 'POST' });
+    const qs = [toolQs, dryRun ? 'dryRun=true' : '', opts?.backup ? 'backup=1' : '']
+      .filter(Boolean)
+      .join('&');
+    return request<SyncRunResponse>(`/sync/run${qs ? `?${qs}` : ''}`, { method: 'POST' });
   },
   reverseImport: (tools?: string[]) => {
     const qs = tools && tools.length ? `?${tools.map((t) => `tool=${encodeURIComponent(t)}`).join('&')}` : '';
@@ -160,6 +177,9 @@ export const api = {
 
   // Import Wizard
   scanTools: () => request<{ inventories: ToolInventory[] }>('/sync/scan'),
+  /** 首跑盘点：附重复/版本不一致洞察（add-zero-config-onboarding T4） */
+  scanToolsWithInsights: () =>
+    request<ScanWithInsights>('/sync/scan?insights=1'),
   executeImport: (items: ImportItem[]) =>
     request<ImportResult>('/sync/execute-import', {
       method: 'POST',

@@ -17,14 +17,25 @@ import Settings from './pages/Settings';
 import Projects from './pages/Projects';
 import Duplicates from './pages/Duplicates';
 import Activities from './pages/Activities';
+import Onboarding from './pages/Onboarding';
+import { FirstRunGate } from './components/onboarding/FirstRunGate';
 import { Toaster } from './components/ui/toast';
 
 export default function App(): JSX.Element {
   return (
     <>
     <Routes>
+      {/* 首次使用向导：独立全屏，不套侧边栏（add-zero-config-onboarding T16） */}
+      <Route path="/onboarding" element={<Onboarding />} />
       <Route element={<AppLayout />}>
-        <Route path="/" element={<Home />} />
+        <Route
+          path="/"
+          element={
+            <FirstRunGate>
+              <Home />
+            </FirstRunGate>
+          }
+        />
         <Route path="/vault" element={<Vault />} />
         <Route path="/vault/:category" element={<Vault />} />
         <Route path="/projects" element={<Projects />} />
