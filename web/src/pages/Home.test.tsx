@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Home from './Home';
 import { api } from '@/lib/api';
-import type { GovernanceHealth, OverviewData } from '@/types/api';
+import type { GovernanceHealth, OnboardingStateResponse, OverviewData } from '@/types/api';
 
 const governanceHealth: GovernanceHealth = {
   score: 85,
@@ -56,10 +56,24 @@ function renderHome(): ReturnType<typeof render> {
   );
 }
 
+function makeOnboardingState(over: Partial<OnboardingStateResponse> = {}): OnboardingStateResponse {
+  return {
+    hubRoot: '/tmp/demo-hub',
+    initialized: true,
+    onboarded: false,
+    autoEnter: false,
+    assetCount: 15,
+    lastOutcome: null,
+    tools: [],
+    ...over,
+  };
+}
+
 describe('Home 页面', () => {
   beforeEach(() => {
     vi.spyOn(api, 'getOverview').mockResolvedValue(overviewData);
     vi.spyOn(api, 'getGovernanceHealth').mockResolvedValue(governanceHealth);
+    vi.spyOn(api, 'getOnboardingState').mockResolvedValue(makeOnboardingState());
   });
 
   it('渲染健康卡主区（真实四维健康分）', async () => {
@@ -114,5 +128,20 @@ describe('Home 页面', () => {
     // mock governance health score = 85
     expect(await screen.findByTestId('health-score')).toHaveTextContent('85');
     expect(screen.getByText('资产健康')).toBeInTheDocument();
+  });
+
+  it('未跑过引导时首页展示入口，跑过或已标记后不展示', async () => {
+    renderHome();
+    expect(await screen.findByTestId('onboarding-resume')).toBeInTheDocument();
+    expect(screen.getByTestId('onboarding-resume-start')).toBeInTheDocument();
+  });
+
+  it('已完成引导的用户不看到入口', async () => {
+    vi.mocked(api.getOnboardingState).mockResolvedValue(
+      makeOnboardingState({ onboarded: true, lastOutcome: { outcome: 'completed', step: 'done', at: '2026-11-14T00:00:00.000Z' } }),
+    );
+    renderHome();
+    expect(await screen.findByText('资产健康')).toBeInTheDocument();
+    expect(screen.queryByTestId('onboarding-resume')).not.toBeInTheDocument();
   });
 });

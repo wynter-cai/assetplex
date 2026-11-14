@@ -7,6 +7,7 @@ import { HealthIssuesPanel } from '@/components/home/HealthIssuesPanel';
 import { RemediationDialog } from '@/components/home/RemediationDialog';
 import { AssetSnapshot } from '@/components/home/AssetSnapshot';
 import { SuggestionRail } from '@/components/home/SuggestionRail';
+import { OnboardingResumeCard } from '@/components/home/OnboardingResumeCard';
 import { ConnectionCard } from '@/components/home/ConnectionCard';
 import { QuickActions } from '@/components/home/QuickActions';
 import { RecentActivity } from '@/components/home/RecentActivity';
@@ -87,13 +88,15 @@ export default function Home(): JSX.Element {
 
   return (
     <div className="space-y-4">
+      <OnboardingResumeCard />
+
       <HomeHero
         hubInitialized={data.hubInitialized}
         health={healthQuery.data ?? null}
         healthLoading={healthQuery.isLoading}
         healthError={healthQuery.isError}
         healthRefreshing={healthRefreshing}
-        onStartOnboarding={() => navigate('/import')}
+        onStartOnboarding={() => navigate('/onboarding')}
         onRefreshHealth={() => void handleRefreshHealth()}
         onOpenIssues={(dimension) => setOpenDimension(dimension)}
         onConfigureAi={() => navigate('/skills')}
