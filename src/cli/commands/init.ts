@@ -12,7 +12,6 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { log } from '../../utils/logger.js';
 import { getHubRoot, hubPath } from '../../utils/paths.js';
-import { generateDefaultConfigToml } from '../../core/config.js';
 import {
   PROFILE_TEMPLATE,
   COMMUNICATION_STYLE_TEMPLATE,
@@ -20,8 +19,8 @@ import {
   CODING_STYLE_TEMPLATE,
   GIT_WORKFLOW_TEMPLATE,
   ENV_TEMPLATE,
-  HUB_README_TEMPLATE,
 } from '../templates.js';
+import { HUB_DIRECTORIES, HUB_BASE_FILES } from '../../core/hub-skeleton.js';
 
 export interface InitOptions {
   /** 强制覆盖已存在的目录 */
@@ -32,32 +31,13 @@ export interface InitOptions {
   yes?: boolean;
 }
 
-/** Hub 目录结构定义 */
-const HUB_DIRECTORIES = [
-  'identity',
-  'skills',
-  'rules/always',
-  'rules/by-glob',
-  'rules/by-project',
-  'preferences',
-  'mcp',
-  'commands',
-  'agents',
-  '.backups',
-];
-
-/** Hub 初始文件定义（路径 -> 内容） */
+/** Hub 初始文件定义（路径 -> 内容）；骨架三件套与 core/hub-skeleton 共用同一份内容 */
 const HUB_INITIAL_FILES: Array<{ path: string[]; content: string; overwrite: boolean }> = [
-  {
-    path: ['hub.toml'],
-    content: generateDefaultConfigToml(),
+  ...HUB_BASE_FILES.map((file) => ({
+    path: file.path.split('/'),
+    content: file.content,
     overwrite: false,
-  },
-  {
-    path: ['README.md'],
-    content: HUB_README_TEMPLATE,
-    overwrite: false,
-  },
+  })),
   {
     path: ['identity', 'profile.md'],
     content: PROFILE_TEMPLATE,
@@ -123,24 +103,6 @@ const HUB_INITIAL_FILES: Array<{ path: string[]; content: string; overwrite: boo
       '- 不要添加未被请求的注释、文档或类型注解',
       '- 优先编辑现有文件，而非创建新文件',
       '- 简单优先，避免过度设计',
-      '',
-    ].join('\n'),
-    overwrite: false,
-  },
-  // MCP 单源配置
-  {
-    path: ['mcp', 'mcp.sources.json'],
-    content: [
-      '{',
-      '  "$schema": "https://json-schema.org/draft-07/schema",',
-      '  "mcpServers": {',
-      '    // 在此添加 MCP 服务器配置，assetplex 会自动同步到各工具：',
-      '    // - Claude Code 的 ~/.claude.json',
-      '    // - Codex 的 ~/.codex/config.toml [mcp_servers.x]',
-      '    // - TRAE CN 的 ~/.trae-cn/mcp.json',
-      '    // - WorkBuddy 的 ~/.workbuddy/.mcp.json',
-      '  }',
-      '}',
       '',
     ].join('\n'),
     overwrite: false,
