@@ -7,6 +7,9 @@ import { hubContext } from '../lib/hub-context.js';
 import { invalidateDistributionIndex } from '../../core/distribution-index.js';
 import { appendActivity } from '../../core/activity-log.js';
 import { buildScanInventoryResponse } from '../../core/onboarding-insights.js';
+import { backupSyncTargets } from '../../core/sync-backup.js';
+import { getHubRoot } from '../../utils/paths.js';
+import { join } from 'node:path';
 import type { ImportRequest, ImportResult, SyncResult } from '../../core/types.js';
 
 export const syncRoutes = new Hono();
@@ -83,11 +86,26 @@ syncRoutes.get('/plan', async (c) => {
   return c.json({ plans });
 });
 
-/** 执行同步 */
+/** 执行同步
+ *  backup=1（且非 dryRun）时先备份将被覆盖的已存在目标再执行
+ *  （add-zero-config-onboarding T6）；不传 backup 时行为与原来完全一致 */
 syncRoutes.post('/run', async (c) => {
   const filter = parseTools(c.req.query() as Record<string, string | string[]>);
   const dryRun = c.req.query('dryRun') === 'true';
+  const wantBackup = c.req.query('backup') === '1' && !dryRun;
   const engine = hubContext.getEngine();
+
+  let backupRef: string | null = null;
+  let backupWarnings: string[] = [];
+  if (wantBackup) {
+    const planned = await engine.plan(filter);
+    const backup = backupSyncTargets(planned, join(getHubRoot(), '.backups', 'onboarding'));
+    if (backup !== null) {
+      backupRef = backup.entries.length > 0 ? `.backups/onboarding/${backup.swapId}` : null;
+      backupWarnings = backup.warnings;
+    }
+  }
+
   const results = await engine.run({ ...filter, dryRun });
   // 真实写入后分发状态已变，缓存必须失效（proposal D2）
   if (!dryRun) invalidateDistributionIndex();
@@ -104,7 +122,9 @@ syncRoutes.post('/run', async (c) => {
   // 保留最近 20 条
   if (syncHistory.length > 20) syncHistory.pop();
 
-  return c.json({ results });
+  // backup=1 时附带备份信息（dryRun 优先，backupRef=null）；其余调用响应结构与原来一致
+  if (c.req.query('backup') !== '1') return c.json({ results });
+  return c.json({ results, backupRef, backupWarnings });
 });
 
 /** 反向导入 */
