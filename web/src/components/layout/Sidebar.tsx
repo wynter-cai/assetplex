@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Boxes, ChevronDown } from 'lucide-react';
+import { Boxes, ChevronDown, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAssetCategories } from '@/lib/use-asset-categories';
 import { useFocusTrap } from '@/lib/use-focus-trap';
@@ -139,6 +139,26 @@ export function Sidebar({ drawerOpen = false, onClose }: SidebarProps = {}): JSX
             </NavLink>
           );
         })}
+
+        {/* 常驻入口：随时可重看首次引导（add-zero-config-onboarding 走查） */}
+        <div className="mt-3 border-t pt-3">
+          <NavLink
+            to="/onboarding"
+            onClick={onClose}
+            data-testid="nav-onboarding"
+            className={({ isActive }) =>
+              cn(
+                'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
+                isActive
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+              )
+            }
+          >
+            <Sparkles className="h-4 w-4" />
+            新手引导
+          </NavLink>
+        </div>
       </nav>
 
       {/* 底部版本 */}

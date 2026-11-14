@@ -53,6 +53,13 @@ describe('Sidebar', () => {
     expect(swapLink).toHaveAttribute('href', '/swap');
   });
 
+  it('新手引导入口常驻，随时可打开', () => {
+    renderSidebar();
+    const onboardingLink = screen.getByTestId('nav-onboarding');
+    expect(onboardingLink).toHaveAttribute('href', '/onboarding');
+    expect(onboardingLink).toHaveTextContent('新手引导');
+  });
+
   it('渲染 4 个资产子类别（从配置读取）', () => {
     renderSidebar();
 
