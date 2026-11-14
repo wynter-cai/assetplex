@@ -9,12 +9,27 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Check, CheckCircle2, ShieldCheck, Sparkles, Stethoscope } from 'lucide-react';
+import {
+  Bot,
+  Brain,
+  Check,
+  CheckCircle2,
+  ChevronDown,
+  ScrollText,
+  ShieldCheck,
+  Sparkles,
+  Stethoscope,
+  Terminal,
+  UserRound,
+  Wrench,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AiConfigDialog, type AiConfigPreset } from '@/components/skills/AiConfigDialog';
 import { SkillsCheckupSection } from '@/components/doctor/SkillsCheckupSection';
 import { cn } from '@/lib/utils';
+import { countBySeverity, groupHealthIssues } from '@/lib/issue-groups';
+import type { IssueWithDimension } from '@/lib/issue-groups';
 import { severityMeta } from './onboarding-visual';
 import {
   ONB_PRIMARY,
@@ -26,7 +41,7 @@ import {
   OnbScreen,
 } from './ScreenFrame';
 import { api } from '@/lib/api';
-import type { GovernanceHealth, HealthIssueRef } from '@/types/api';
+import type { GovernanceHealth } from '@/types/api';
 
 /** 厂商预设（与原型一致；只填地址与模型，Key 由用户自填） */
 export const AI_PRESETS: AiConfigPreset[] = [
@@ -64,9 +79,21 @@ function applicabilityText(appearance: 'applicable' | 'not-applicable' | 'data-m
   return '';
 }
 
-/** 静态检查问题：优先真实 topIssues，没有明细时按维度计数兜底 */
-function staticIssues(health: GovernanceHealth): HealthIssueRef[] {
-  return health.dimensions.flatMap((dimension) => dimension.topIssues).slice(0, 4);
+/** 体检问题按资产类型取图标与中文名 */
+const KIND_META: Record<IssueWithDimension['kind'], { label: string; Icon: typeof Bot }> = {
+  identity: { label: '身份', Icon: UserRound },
+  skill: { label: '技能', Icon: Sparkles },
+  rule: { label: '规则', Icon: ScrollText },
+  agent: { label: '智能体', Icon: Bot },
+  command: { label: '命令', Icon: Terminal },
+  memory: { label: '记忆', Icon: Brain },
+};
+
+/** 静态检查问题：带上所属维度，供展示层按「标题 + 类型」聚合 */
+function collectIssueEntries(health: GovernanceHealth): IssueWithDimension[] {
+  return health.dimensions.flatMap((dimension) =>
+    dimension.topIssues.map((issue) => ({ ...issue, dimensionLabel: dimension.label })),
+  );
 }
 
 /** 健康分环：conic-gradient 只用 CSS 变量取色，不引入新依赖 */
@@ -100,6 +127,7 @@ export function DoctorScreen({
   onSkip: () => void;
 }): JSX.Element {
   const [keyDialogOpen, setKeyDialogOpen] = useState(false);
+  const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
   const healthQuery = useQuery({
     queryKey: ['governance-health'],
     queryFn: () => api.getGovernanceHealth(false),
@@ -116,7 +144,9 @@ export function DoctorScreen({
   const health = healthQuery.data;
   const totalIssues =
     health?.dimensions.reduce((sum, d) => sum + (d.issueCount ?? 0), 0) ?? null;
-  const issues = health !== undefined ? staticIssues(health) : [];
+  const issueEntries = health !== undefined ? collectIssueEntries(health) : [];
+  const groups = groupHealthIssues(issueEntries);
+  const severityCounts = countBySeverity(issueEntries);
 
   return (
     <OnbScreen testId="onboarding-doctor">
@@ -212,8 +242,8 @@ export function DoctorScreen({
           <OnbCard className="p-5">
             <div className="flex items-center justify-between gap-3">
               <h3 className="text-14 font-semibold">待处理问题</h3>
-              <span className="shrink-0 text-12 text-muted-foreground">
-                {issues.length > 0 ? `展示前 ${issues.length} 项` : '静态检查'}
+              <span className="shrink-0 text-12 tabular-nums text-muted-foreground">
+                {totalIssues !== null && totalIssues > 0 ? `共 ${totalIssues} 项` : '静态检查'}
               </span>
             </div>
 
@@ -221,30 +251,124 @@ export function DoctorScreen({
               <p className="mt-3 rounded-md border border-dashed px-3.5 py-3 text-12 text-muted-foreground">
                 问题清单暂不可用
               </p>
-            ) : issues.length > 0 ? (
-              <ul className="mt-2 divide-y divide-border/70">
-                {issues.map((issue) => {
-                  const meta = severityMeta(issue.severity);
-                  return (
-                    <li key={issue.id} className="flex items-start gap-2.5 py-2.5">
+            ) : groups.length > 0 ? (
+              <>
+                <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1.5">
+                  {(['high', 'medium', 'low'] as const).map((severity) => {
+                    const count = severityCounts[severity];
+                    if (count === 0) return null;
+                    const meta = severityMeta(severity);
+                    return (
                       <span
-                        className={cn(
-                          'mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[11px] font-semibold',
-                          meta.className,
-                        )}
+                        key={severity}
+                        className="inline-flex items-center gap-1.5 text-12 text-muted-foreground"
                       >
-                        {meta.label}
+                        <span className={cn('h-1.5 w-1.5 rounded-full', meta.dotClassName)} />
+                        {meta.label} <span className="font-semibold tabular-nums">{count}</span>
                       </span>
-                      <div className="min-w-0">
-                        <p className="truncate text-13 text-foreground">{issue.title}</p>
-                        <p className="mt-0.5 truncate text-12 text-muted-foreground">
-                          {issue.assetName}
-                        </p>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
+                    );
+                  })}
+                  <span className="ml-auto text-12 text-muted-foreground">
+                    {groups.length} 类
+                  </span>
+                </div>
+
+                <ul className="mt-2 divide-y divide-border/70">
+                  {groups.slice(0, 5).map((group) => {
+                    const meta = severityMeta(group.severity);
+                    const kind = KIND_META[group.kind];
+                    const open = expandedGroup === group.key;
+                    const first = group.assets[0];
+                    return (
+                      <li key={group.key}>
+                        <button
+                          type="button"
+                          onClick={() => setExpandedGroup(open ? null : group.key)}
+                          aria-expanded={open}
+                          aria-controls={`doctor-issue-${group.key}`}
+                          data-testid={`doctor-issue-${group.key}`}
+                          className="flex w-full items-start gap-2.5 py-2.5 text-left"
+                        >
+                          <span
+                            className={cn(
+                              'mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[11px] font-semibold',
+                              meta.className,
+                            )}
+                          >
+                            {meta.label}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-13 font-medium text-foreground">
+                              {group.title}
+                            </span>
+                            <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-12 text-muted-foreground">
+                              <span className="inline-flex items-center gap-1">
+                                <kind.Icon className="h-3 w-3" aria-hidden="true" />
+                                {kind.label}
+                              </span>
+                              <span aria-hidden="true">·</span>
+                              <span>
+                                {group.assets.length > 1
+                                  ? `影响 ${group.assets.length} 个资产`
+                                  : group.assets[0].assetName}
+                              </span>
+                              <span aria-hidden="true">·</span>
+                              <span>{group.dimensionLabel}</span>
+                              {group.fixableCount > 0 && (
+                                <span className="inline-flex items-center gap-0.5 rounded-full bg-success-soft px-1.5 py-0.5 text-[11px] font-medium text-success">
+                                  <Wrench className="h-2.5 w-2.5" aria-hidden="true" />
+                                  可一键修复
+                                </span>
+                              )}
+                            </span>
+                            <span className="mt-1 block truncate font-mono text-[11px] text-muted-foreground/80">
+                              {first.hubRelativePath}
+                            </span>
+                          </span>
+                          {group.assets.length > 1 && (
+                            <span className="mt-0.5 shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-muted-foreground">
+                              ×{group.assets.length}
+                            </span>
+                          )}
+                          <ChevronDown
+                            className={cn(
+                              'mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform',
+                              open && 'rotate-180',
+                            )}
+                            aria-hidden="true"
+                          />
+                        </button>
+                        {open && (
+                          <ul
+                            id={`doctor-issue-${group.key}`}
+                            className="mb-2 space-y-1 rounded-md bg-muted/30 px-3 py-2"
+                          >
+                            {group.assets.map((asset) => (
+                              <li key={asset.id} className="flex items-start gap-2 text-12">
+                                <span className="shrink-0 font-medium text-foreground">
+                                  {asset.assetName}
+                                </span>
+                                <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted-foreground">
+                                  {asset.hubRelativePath}
+                                </span>
+                                {asset.fixable && (
+                                  <span className="shrink-0 text-[11px] text-success">可修复</span>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+
+                {groups.length > 5 && (
+                  <p className="mt-2 text-12 text-muted-foreground">
+                    还有 {groups.length - 5} 类问题，收进资产库后可逐条查看
+                  </p>
+                )}
+              </>
             ) : (
               <p className="mt-3 flex items-center gap-2 rounded-md bg-success-soft px-3.5 py-2.5 text-12 text-success">
                 <CheckCircle2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />

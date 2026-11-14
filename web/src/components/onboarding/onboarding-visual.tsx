@@ -45,15 +45,31 @@ export function toolInitials(toolId: string, displayName: string): string {
   return displayName.trim().slice(0, 2);
 }
 
-const SEVERITY_META: Record<DiagnosisSeverity, { label: string; className: string }> = {
-  high: { label: '高', className: 'bg-destructive/10 text-destructive' },
-  medium: { label: '中', className: 'bg-warning-soft text-warning' },
-  low: { label: '低', className: 'bg-muted text-muted-foreground' },
+const SEVERITY_META: Record<
+  DiagnosisSeverity,
+  { label: string; className: string; dotClassName: string }
+> = {
+  high: {
+    label: '高',
+    className: 'bg-destructive/10 text-destructive',
+    dotClassName: 'bg-destructive',
+  },
+  medium: {
+    label: '中',
+    className: 'bg-warning-soft text-warning',
+    dotClassName: 'bg-warning',
+  },
+  low: {
+    label: '低',
+    className: 'bg-muted text-muted-foreground',
+    dotClassName: 'bg-muted-foreground/50',
+  },
 };
 
 export function severityMeta(severity: DiagnosisSeverity): {
   label: string;
   className: string;
+  dotClassName: string;
 } {
   return SEVERITY_META[severity];
 }

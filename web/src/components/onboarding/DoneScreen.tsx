@@ -136,7 +136,7 @@ export function DoneScreen({
             <p className="text-12 font-semibold text-muted-foreground">过去</p>
             <div className="mt-2">
               <CompareRow label="配置副本" value="多份" tone="text-destructive" />
-              <CompareRow label="维护方式" value="逐处重复维护" tone="text-destructive" />
+              <CompareRow label="维护方式" value="多个工具各存一份" tone="text-muted-foreground" />
               <CompareRow label="换工具成本" value="重写一遍" tone="text-destructive" />
             </div>
           </div>

@@ -2,12 +2,12 @@
  * 结果屏（s2）：真实总数、类别分布、重复/不一致/覆盖洞察（add-zero-config-onboarding T12）
  *
  * spec Requirement 3：全部来自扫描数据，不写死、不编造时间成本；
- * 没有重复时如实显示「未发现重复维护」；0 资产显示空态与建议。
- * 视觉：左侧构成卡（大数字 + 占比条），右侧洞察卡（色点图例 + 分组列表）。
+ * 没有同名资产时如实说明；0 资产显示空态与建议。
+ * 视觉：左侧构成卡（大数字 + 占比条），右侧「跨工具分布」卡（中性陈述 + 分组列表）。
  */
 
 import { useState } from 'react';
-import { AlertTriangle, CheckCircle2, ChevronDown } from 'lucide-react';
+import { CheckCircle2, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { toolDisplayName } from '@/components/sync/sync-display';
@@ -59,19 +59,19 @@ const MAX_ROWS = 8;
 
 const TONE_META: Record<InsightTone, { chip: string; dot: string; label: string }> = {
   mismatch: {
-    chip: 'bg-destructive/10 text-destructive',
-    dot: 'bg-destructive',
-    label: '内容不一致',
-  },
-  duplicate: {
     chip: 'bg-warning-soft text-warning',
     dot: 'bg-warning',
-    label: '重复副本',
+    label: '内容已分叉',
+  },
+  duplicate: {
+    chip: 'bg-primary/10 text-primary',
+    dot: 'bg-primary/60',
+    label: '内容一致',
   },
   coverage: {
     chip: 'bg-muted text-muted-foreground',
     dot: 'bg-muted-foreground/50',
-    label: '覆盖不全',
+    label: '仅部分工具',
   },
 };
 
@@ -126,11 +126,11 @@ function CopyDetails({
   const explanation =
     row.kind === 'duplicate'
       ? row.group.distinctVersions > 1
-        ? `这 ${copies.length} 份内容不一致（${row.group.distinctVersions} 个版本）。收进资产库时保留扫描到的第一份，其余同名副本跳过，原文件都不动。`
-        : `这 ${copies.length} 份内容相同。收进资产库后只需维护一份，其余同名副本跳过，原文件都不动。`
+        ? `这 ${copies.length} 份内容已经不一样了（${row.group.distinctVersions} 个版本）。你可以继续各工具分开维护，但需要知道以哪份为准；若收进资产库，只会保留扫描到的第一份，其余同名副本跳过，原文件都不动。`
+        : `这 ${copies.length} 份内容完全相同。你可以继续分开维护，也可以在资产库里留一份统一来源；若收进来，同名只保留一份，原文件都不动。`
       : `只在 ${row.group.tools.map(toolDisplayName).join('、')} 中存在${
           missing.length > 0 ? `，${missing.map(toolDisplayName).join('、')} 还没有` : ''
-        }。`;
+        }。如果希望各工具表现一致，可以收进资产库再分发过去。`;
 
   return (
     <div
@@ -230,7 +230,9 @@ export function ResultScreen({
         key: `dup-${g.hubTargetPath}`,
         name: g.name,
         detail: g.tools.join(' · '),
-        tag: isMismatch ? `内容不一致 · ${g.distinctVersions} 版` : `重复 ${g.tools.length} 份`,
+        tag: isMismatch
+          ? `有差异 · ${g.distinctVersions} 版`
+          : `一致 · ${g.tools.length} 份`,
         tone: isMismatch ? 'mismatch' : 'duplicate',
         kind: 'duplicate',
         group: g,
@@ -239,8 +241,8 @@ export function ResultScreen({
     ...coverage.map((g): InsightRow => ({
       key: `cov-${g.hubTargetPath}`,
       name: g.name,
-      detail: `只在 ${g.tools.join('、')} 中存在`,
-      tag: '覆盖不全',
+      detail: `仅在 ${g.tools.map(toolDisplayName).join('、')} 中存在`,
+      tag: `只在 ${g.tools.length} 个工具`,
       tone: 'coverage',
       kind: 'coverage',
       group: g,
@@ -248,6 +250,7 @@ export function ResultScreen({
   ];
   const visibleRows = rows.slice(0, MAX_ROWS);
   const restRows = rows.length - visibleRows.length;
+  const consistentCount = duplicates.length - mismatched.length;
   const legend: InsightTone[] = (['mismatch', 'duplicate', 'coverage'] as const).filter((tone) =>
     rows.some((row) => row.tone === tone),
   );
@@ -333,48 +336,47 @@ export function ResultScreen({
             </ul>
           </OnbCard>
 
-          {/* 洞察卡：色点图例 + 分组列表 */}
+          {/* 跨工具分布：中性陈述事实，不把「多处维护」当错误 */}
           <OnbCard className="overflow-hidden">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b px-5 py-4">
-              <div className="flex items-center gap-2">
-                {rows.length > 0 && (
-                  <AlertTriangle className="h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
-                )}
-                <h3 className="text-14 font-semibold">
-                  {rows.length > 0
-                    ? mismatched.length > 0
-                      ? '重复维护，且已出现不一致'
-                      : '发现重复维护'
-                    : '重复与不一致'}
-                </h3>
+            <div className="border-b px-5 py-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-14 font-semibold">同一份资产在多处维护</h3>
+                <span className="rounded-full bg-muted px-2 py-0.5 text-12 tabular-nums text-muted-foreground">
+                  {rows.length} 组
+                </span>
               </div>
-              <span className="rounded-full bg-muted px-2 py-0.5 text-12 tabular-nums text-muted-foreground">
-                {rows.length} 组
-              </span>
+              <p className="mt-1.5 text-12 leading-relaxed text-muted-foreground">
+                多个工具各留一份很正常，不是错误。这里只帮你看清三种情况：内容一致、已经改得不一样、只在部分工具里有。
+              </p>
+              {rows.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
+                  {legend.map((tone) => (
+                    <span key={tone} className="inline-flex items-center gap-1.5 text-12 text-foreground">
+                      <span
+                        aria-hidden="true"
+                        className={cn('h-1.5 w-1.5 rounded-full', TONE_META[tone].dot)}
+                      />
+                      <span className="text-muted-foreground">{TONE_META[tone].label}</span>
+                      <span className="font-semibold tabular-nums">
+                        {tone === 'mismatch'
+                          ? mismatched.length
+                          : tone === 'duplicate'
+                            ? consistentCount
+                            : coverage.length}
+                      </span>
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
 
             {rows.length === 0 ? (
               <div className="flex items-center gap-2.5 px-5 py-6 text-13 text-muted-foreground">
                 <CheckCircle2 className="h-4 w-4 shrink-0 text-success" aria-hidden="true" />
-                未发现重复维护，各工具里的配置目前互不冲突。
+                各工具里没有同名资产，不需要合并或多处对照。
               </div>
             ) : (
-              <>
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-b bg-muted/20 px-5 py-2.5">
-                  {legend.map((tone) => (
-                    <span
-                      key={tone}
-                      className="inline-flex items-center gap-1.5 text-12 text-muted-foreground"
-                    >
-                      <span
-                        aria-hidden="true"
-                        className={cn('h-1.5 w-1.5 rounded-full', TONE_META[tone].dot)}
-                      />
-                      {TONE_META[tone].label}
-                    </span>
-                  ))}
-                </div>
-                <ul className="divide-y divide-border/70">
+              <ul className="divide-y divide-border/70">
                   {visibleRows.map((row) => {
                     const open = expandedKeys.includes(row.key);
                     return (
@@ -435,7 +437,6 @@ export function ResultScreen({
                     </li>
                   )}
                 </ul>
-              </>
             )}
           </OnbCard>
         </div>
@@ -443,8 +444,7 @@ export function ResultScreen({
 
       {total > 0 && (
         <p className="mt-4 max-w-[720px] text-13 leading-relaxed text-muted-foreground">
-          收进资产库后，这些内容只需要维护{' '}
-          <b className="font-semibold text-foreground">1 份</b>，换工具时不必再重写一遍。
+          收进资产库后会有一份统一来源，之后改一次就能分发到所有工具；不收藏也完全可以，原有配置不会被改动。
         </p>
       )}
 
@@ -464,7 +464,7 @@ export function ResultScreen({
             跳过，直接进入资产库
           </button>
         }
-        hint="原文件不动，任何一步都可撤销"
+        hint="原文件不会被删除，可随时保留各工具自己的版本"
       />
     </OnbScreen>
   );

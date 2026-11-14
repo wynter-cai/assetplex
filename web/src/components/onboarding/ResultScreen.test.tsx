@@ -1,8 +1,8 @@
 /**
  * 结果屏「查看详情」（add-zero-config-onboarding 走查）
  *
- * spec Requirement 3：重复维护必须能展开看到每个工具的落点与版本，
- * 让用户自己判断「到底哪里重复了」，而不是只看一句结论。
+ * spec Requirement 3：同一资产在多处维护必须能展开看到每个工具的落点与版本，
+ * 让用户自己判断「要不要统一」，而不是直接被判定为错误。
  */
 
 import { describe, it, expect, vi } from 'vitest';
@@ -99,7 +99,7 @@ describe('ResultScreen 洞察详情', () => {
     expect(detail).toHaveTextContent('/tmp/demo/codex/rules/always/style.md');
     expect(detail).toHaveTextContent('版本 aaaaaa');
     expect(detail).toHaveTextContent('版本 bbbbbb');
-    expect(detail).toHaveTextContent('内容不一致');
+    expect(detail).toHaveTextContent('内容已经不一样了');
 
     fireEvent.click(toggle);
     expect(screen.queryByTestId('insight-detail-dup-rules/always/style.md')).not.toBeInTheDocument();
@@ -116,7 +116,9 @@ describe('ResultScreen 洞察详情', () => {
       },
     };
     render(<ResultScreen scan={empty} onCollect={vi.fn()} onSkip={vi.fn()} />);
-    expect(screen.getByText('未发现重复维护，各工具里的配置目前互不冲突。')).toBeInTheDocument();
+    expect(
+      screen.getByText('各工具里没有同名资产，不需要合并或多处对照。'),
+    ).toBeInTheDocument();
     expect(screen.queryByTestId('insight-toggle-dup-rules/always/style.md')).not.toBeInTheDocument();
   });
 });
