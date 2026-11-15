@@ -27,9 +27,19 @@ import {
   type HealthDimensionId,
   type HealthIssueRef,
 } from '../../core/governance-health.js';
-import { assetDeepLink, buildQualityOverview, type QualityCoverage } from '../../core/quality-overview.js';
+import { assetDeepLink, buildQualityOverview, clusterKeyOf, type QualityCoverage } from '../../core/quality-overview.js';
 import { ruleAppliesToKind } from '../../core/diagnosis-static.js';
 import { loadRuleRegistryFromFile, resolveRuleSetFile } from '../../core/diagnosis-rules.js';
+import {
+  estimateBatchDiagnosis,
+  filterCandidatesByRuleIds,
+  type BatchDiagnoseCandidate,
+} from '../../core/quality-batch.js';
+import { computeDoctorCacheKey, hashRuleSet, sanitizeDoctorEntries } from '../../core/doctor-cache.js';
+import { loadAiClassifyConfig, isAiConfigComplete } from '../../core/ai-config.js';
+import { nodeAiConfigStore, nodeDoctorCacheStore } from '../lib/node-ai-classify-store.js';
+import { loadRouteRuleSet } from '../lib/rule-registry.js';
+import { isHubInternalPath } from './doctor.js';
 import {
   countActiveIgnores,
   sanitizeIgnoredFindings,
@@ -37,9 +47,12 @@ import {
 } from '../../core/diagnosis-ignore.js';
 import {
   createGovernanceSnapshot,
+  nodeListAssets,
   nodeRead,
   type GovernanceSnapshotDeps,
 } from '../lib/governance-snapshot.js';
+import type { DiagnosisRuleSet, DoctorAssetKind } from '../../core/types.js';
+import type { DoctorCacheStore } from '../../core/doctor-cache.js';
 import { createRemediationRoutes, type RemediationRouteDeps } from './remediation.js';
 import { createDuplicateRoutes, defaultListAssets, type DuplicateRouteDeps } from './duplicates.js';
 
@@ -52,6 +65,10 @@ export interface GovernanceRouteDeps extends GovernanceSnapshotDeps {
   duplicates?: Omit<Partial<DuplicateRouteDeps>, 'listAssets' | 'read'>;
   /** 忽略清单：概览「已忽略 N 条」取生效条数（缺省 0，不读本机文件） */
   ignoreStore?: DiagnosisIgnoreStore;
+  /** 规则集：缺省按构建产物 / 仓库定义位置加载；显式传 null 表示本轮不跑规则 */
+  ruleSet?: DiagnosisRuleSet | null;
+  /** 诊断缓存（预估命中数用；缺省读本机 ~/.assetplex/doctor-reports.json） */
+  doctorCache?: DoctorCacheStore;
 }
 
 function isDimensionId(raw: string | undefined): raw is HealthDimensionId {
@@ -116,6 +133,48 @@ function overviewCoverage(
     ignoredCount,
     semanticEvaluated: aiConfigured && assets.some((asset) => asset.semanticEvaluated),
   };
+}
+
+function parseStringArray(raw: unknown): string[] | null {
+  if (raw === undefined || raw === null) return [];
+  if (!Array.isArray(raw)) return null;
+  const out: string[] = [];
+  for (const item of raw) {
+    if (typeof item !== 'string' || item.trim() === '') return null;
+    out.push(item.trim());
+  }
+  return [...new Set(out)];
+}
+
+interface BatchEstimateBody {
+  kinds?: DoctorAssetKind[];
+  clusterKeys?: string[];
+  ruleIds?: string[];
+}
+
+/** 批量诊断预估请求体校验：数组元素必须是非空字符串，类别必须在医生闭集内 */
+function parseBatchEstimateBody(body: unknown): { value?: BatchEstimateBody; error?: string } {
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+    return { error: '请求体必须是 JSON 对象' };
+  }
+  const raw = body as Record<string, unknown>;
+  const kindsRaw = parseStringArray(raw['kinds']);
+  if (kindsRaw === null) return { error: 'kinds 必须是非空字符串数组' };
+  for (const kind of kindsRaw) {
+    if (!(DOCTOR_ASSET_KINDS as readonly string[]).includes(kind)) {
+      return { error: `kinds 含医生不支持的类别：${kind}` };
+    }
+  }
+  const clusterKeys = parseStringArray(raw['clusterKeys']);
+  if (clusterKeys === null) return { error: 'clusterKeys 必须是非空字符串数组' };
+  const ruleIds = parseStringArray(raw['ruleIds']);
+  if (ruleIds === null) return { error: 'ruleIds 必须是非空字符串数组' };
+
+  const value: BatchEstimateBody = {};
+  if (kindsRaw.length > 0) value.kinds = kindsRaw as DoctorAssetKind[];
+  if (clusterKeys.length > 0) value.clusterKeys = clusterKeys;
+  if (ruleIds.length > 0) value.ruleIds = ruleIds;
+  return { value };
 }
 
 export function createGovernanceRoutes(deps: GovernanceRouteDeps = {}): Hono {
@@ -197,6 +256,74 @@ export function createGovernanceRoutes(deps: GovernanceRouteDeps = {}): Hono {
         cached: snapshot.health.cached,
       }),
     );
+  });
+
+  /**
+   * 跨类别批量诊断预估（Requirement 3）：零模型零写库。
+   * 圈选 = 类别 ∩ 聚类 ∩ 规则命中；不可诊断项逐条列原因，缺规则集按 422/503 如实报错。
+   */
+  routes.post('/diagnose/estimate', async (c) => {
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: '请求体必须是 JSON' }, 400);
+    }
+    const parsed = parseBatchEstimateBody(body);
+    if (parsed.value === undefined) {
+      return c.json({ error: parsed.error ?? '请求体不合法' }, 400);
+    }
+    const registry = loadRouteRuleSet(deps.ruleSet);
+    if (registry.error !== null) return c.json({ error: registry.error.message }, 422);
+    if (registry.ruleSet === null) return c.json({ error: '规则集未加载，无法预估本轮成本' }, 503);
+    if (registry.ruleSet.version.trim() === '' || registry.ruleSet.rules.length === 0) {
+      return c.json({ error: '规则集不完整（缺版本或无有效规则），无法预估' }, 422);
+    }
+
+    const snapshot = await load();
+    const list = deps.listAssets ?? nodeListAssets;
+    const read = deps.read ?? nodeRead;
+    const kinds = parsed.value.kinds ?? [...DOCTOR_ASSET_KINDS];
+
+    let allowedPaths: Set<string> | null = null;
+    if (parsed.value.clusterKeys !== undefined) {
+      const queue = collectGovernanceQueue(snapshot.assets, snapshot.groups, Number.MAX_SAFE_INTEGER);
+      const keys = new Set(parsed.value.clusterKeys);
+      allowedPaths = new Set(
+        queue.items.filter((item) => keys.has(clusterKeyOf(item))).map((item) => item.hubRelativePath),
+      );
+    }
+
+    const candidates: BatchDiagnoseCandidate[] = [];
+    for (const kind of kinds) {
+      for (const path of list(kind)) {
+        if (allowedPaths !== null && !allowedPaths.has(path)) continue;
+        const hubInternal = isHubInternalPath(path);
+        candidates.push({
+          kind,
+          hubRelativePath: path,
+          content: hubInternal ? read(path) : null,
+          hubInternal,
+        });
+      }
+    }
+    const selected = filterCandidatesByRuleIds(registry.ruleSet, parsed.value.ruleIds ?? [], candidates);
+
+    const config = loadAiClassifyConfig(deps.aiConfigStore ?? nodeAiConfigStore);
+    const aiConfigured = deps.aiConfigured === undefined ? isAiConfigComplete(config) : deps.aiConfigured();
+    const cache = deps.doctorCache ?? nodeDoctorCacheStore;
+    const rulesHash = hashRuleSet(registry.ruleSet);
+    const entries = aiConfigured ? sanitizeDoctorEntries(cache.load()) : {};
+
+    const estimate = estimateBatchDiagnosis({
+      ruleSet: registry.ruleSet,
+      candidates: selected,
+      aiConfigured,
+      isCached: ({ kind, content }) =>
+        entries[computeDoctorCacheKey({ kind, content, rulesHash, model: config.model })] !== undefined,
+      ...(deps.now === undefined ? {} : { now: deps.now }),
+    });
+    return c.json(estimate);
   });
 
   routes.get('/issues', async (c) => {

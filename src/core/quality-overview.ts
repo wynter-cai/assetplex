@@ -123,11 +123,16 @@ function toAssetRef(issue: HealthIssueRef): QualityClusterAssetRef {
   };
 }
 
+/** 聚类键：规则编号就位前按归一化标题；批量诊断圈选复用同一口径 */
+export function clusterKeyOf(issue: HealthIssueRef): string {
+  return `title:${normalizeTitle(issue.title)}`;
+}
+
 /** 聚类分组：key = 归一化标题（规则编号接入后改为按 ruleId） */
 function groupByTitle(items: HealthIssueRef[]): Map<string, HealthIssueRef[]> {
   const groups = new Map<string, HealthIssueRef[]>();
   for (const issue of items) {
-    const key = `title:${normalizeTitle(issue.title)}`;
+    const key = clusterKeyOf(issue);
     const list = groups.get(key);
     if (list === undefined) groups.set(key, [issue]);
     else list.push(issue);
