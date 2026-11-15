@@ -808,18 +808,101 @@ export interface DiagnosisIssue {
   fixable: boolean;
 }
 
+export type DiagnosisConfidence = 'high' | 'medium' | 'low';
+
+/** 问题来源：静态规则 / 模型语义 */
+export type FindingSource = 'rule' | 'llm';
+
+/** 证据：路径必须是库内相对路径；line 为 null 表示无法定位到行 */
+export interface FindingEvidence {
+  hubRelativePath: string;
+  line: number | null;
+  /** ≤200 字，必须能在原文中定位 */
+  snippet: string;
+  snippetIndex?: number;
+}
+
+/** 一条问题（add-diagnosis-rules 契约）：必须绑定规则编号 */
+export interface RuleFinding {
+  id: string;
+  ruleId: string;
+  severity: DiagnosisSeverity;
+  confidence: DiagnosisConfidence;
+  source: FindingSource;
+  title: string;
+  finding: string;
+  /** AI 未参与时允许为空串 */
+  impact: string;
+  suggestion: string;
+  evidence: FindingEvidence[];
+  /** 证据不足：不计分、不可修复、不进建议 */
+  insufficientEvidence: boolean;
+  fixable: boolean;
+  /** 命中忽略清单后仍返回，供「已忽略 N 条」入口使用 */
+  ignored: boolean;
+}
+
+export interface DiagnosisSkippedReason {
+  mode: 'static' | 'llm';
+  reason: 'no-ai-config' | 'budget' | 'timeout';
+  count: number;
+}
+
+/** 本轮查了什么、没查什么 */
+export interface DiagnosisCoverage {
+  evaluatedRules: number;
+  skippedRules: number;
+  skippedReasons: DiagnosisSkippedReason[];
+}
+
 export interface DiagnosisReport {
   kind: DoctorAssetKind;
   hubRelativePath: string;
   overall: DiagnosisOverall;
+  /** 优先读 findings；缺失时回退 issues（旧响应兼容） */
+  findings?: RuleFinding[];
   issues: DiagnosisIssue[];
+  rulesVersion?: string;
+  coverage?: DiagnosisCoverage;
   criteriaUsed: string[];
   criteriaSkipped: number;
   cached: boolean;
   /** AI 未配置：仅机械项 + 配置引导（Scenario 7） */
   mechanicalOnly: boolean;
+  aiEvaluated?: boolean;
+  /** 模型输出被拒条数 */
+  rejected?: number;
   model: string;
   generatedAt: string;
+}
+
+/** 上次诊断摘要（不含正文、不含绝对路径） */
+export interface DoctorLastRunSummary {
+  overall: DiagnosisOverall;
+  issueCount: number;
+  highSeverityCount: number;
+  fixableCount: number;
+  ignoredCount: number;
+  /** true = 仅机械 / 静态结论，语义未评估 */
+  mechanicalOnly: boolean;
+  rulesVersion: string;
+  model: string;
+  generatedAt: string;
+}
+
+/** GET /api/doctor/summary（零模型）：详情打开即用的上次结论 */
+export interface DoctorSummaryResponse {
+  kind: DoctorAssetKind;
+  hubRelativePath: string;
+  /** false = 本机记录或资产内容读取失败；其余字段按未诊断处理 */
+  available: boolean;
+  state: 'never' | 'valid' | 'stale';
+  lastRun: DoctorLastRunSummary | null;
+  /** state='stale' 时的变化项 */
+  staleReasons: Array<'content' | 'criteria' | 'model'>;
+  aiConfigured: boolean;
+  /** 现在点「重新诊断」是否会产生模型调用（服务端判定，前端不得自行推断） */
+  willCallModel: boolean;
 }
 
 /** GET /api/doctor/estimate 响应（批量前预算护栏，Scenario 5） */

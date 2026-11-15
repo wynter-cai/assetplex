@@ -54,6 +54,7 @@ import type {
   DiagnosisReport,
   DiagnoseEstimate,
   DoctorAssetKind,
+  DoctorSummaryResponse,
   DoctorApplyRequest,
   DoctorApplyResponse,
   DoctorUndoResponse,
@@ -340,6 +341,15 @@ export const api = {
     }),
   doctorEstimate: (category: DoctorAssetKind) =>
     request<DiagnoseEstimate>(`/doctor/estimate?category=${encodeURIComponent(category)}`),
+
+  /**
+   * 单资产诊断摘要（refactor-asset-pipeline T3）：详情打开即读上次结论，
+   * 服务端保证零模型调用；是否会花钱看 `willCallModel`，前端不自行推断。
+   */
+  getDoctorSummary: (params: { kind: DoctorAssetKind; hubRelativePath: string }) =>
+    request<DoctorSummaryResponse>(
+      `/doctor/summary?kind=${encodeURIComponent(params.kind)}&hubRelativePath=${encodeURIComponent(params.hubRelativePath)}`,
+    ),
 
   // 医生修复链（Phase F）：草案零写库；落盘唯一入口 apply 携带用户确认内容；撤销走备份区不走分发回滚
   doctorFixDraft: (body: { kind: DoctorAssetKind; hubRelativePath: string; issueIndexes: number[] }) =>
