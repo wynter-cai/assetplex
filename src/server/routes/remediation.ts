@@ -118,6 +118,18 @@ function parseDimension(raw: unknown): HealthDimensionId | undefined | null {
   return raw as HealthDimensionId;
 }
 
+/** 规则编号 / 聚类 key 列表：可缺省，出现则必须是非空字符串数组 */
+function parseStringList(raw: unknown): string[] | undefined | null {
+  if (raw === undefined) return undefined;
+  if (!Array.isArray(raw)) return null;
+  const list: string[] = [];
+  for (const item of raw) {
+    if (typeof item !== 'string' || item.trim() === '') return null;
+    list.push(item.trim());
+  }
+  return list;
+}
+
 export function createRemediationRoutes(deps: RemediationRouteDeps): Hono {
   const routes = new Hono();
   const now = deps.now ?? (() => new Date().toISOString());
@@ -149,6 +161,10 @@ export function createRemediationRoutes(deps: RemediationRouteDeps): Hono {
     if (maxAssets !== undefined && (typeof maxAssets !== 'number' || !Number.isInteger(maxAssets))) {
       return c.json({ error: 'maxAssets 必须是整数' }, 400);
     }
+    const ruleIds = parseStringList(body.ruleIds);
+    if (ruleIds === null) return c.json({ error: 'ruleIds 必须是字符串数组' }, 400);
+    const clusterKeys = parseStringList(body.clusterKeys);
+    if (clusterKeys === null) return c.json({ error: 'clusterKeys 必须是字符串数组' }, 400);
 
     const inputs = await buildPlanInputs();
     const request: RemediationPlanRequest & { now: () => string } = {
@@ -156,6 +172,8 @@ export function createRemediationRoutes(deps: RemediationRouteDeps): Hono {
       ...(kinds === undefined ? {} : { kinds }),
       ...(dimension === undefined ? {} : { dimension }),
       ...(maxAssets === undefined ? {} : { maxAssets: maxAssets as number }),
+      ...(ruleIds === undefined ? {} : { ruleIds }),
+      ...(clusterKeys === undefined ? {} : { clusterKeys }),
     };
     const plan: RemediationPlan = buildRemediationPlan(inputs, request);
     return c.json(plan);
@@ -171,9 +189,12 @@ export function createRemediationRoutes(deps: RemediationRouteDeps): Hono {
     }
     const targets = parseTargets(body.targets);
     if (targets === null) return c.json({ error: 'targets 必须是工具名字符串数组' }, 400);
+    // 计划页可能按规则圈选：apply 必须用同一过滤重建计划，否则 itemId 对不上
+    const ruleIds = parseStringList(body.ruleIds);
+    if (ruleIds === null) return c.json({ error: 'ruleIds 必须是字符串数组' }, 400);
 
     const inputs = await buildPlanInputs();
-    const plan = buildRemediationPlan(inputs);
+    const plan = buildRemediationPlan(inputs, ruleIds === undefined ? {} : { ruleIds });
     const byId = new Map(inputs.map((input) => [`${input.kind}:${input.hubRelativePath}`, input]));
     const known = new Set(plan.items.map((item) => item.id));
     const unknown = itemIds.filter((id) => !known.has(id));

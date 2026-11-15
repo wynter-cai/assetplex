@@ -1245,6 +1245,10 @@ export interface RemediationPlanRequest {
   kinds?: DoctorAssetKind[];
   dimension?: HealthDimensionId;
   maxAssets?: number;
+  /** 只处理命中这些规则的可修复项（refactor-governance-center T6） */
+  ruleIds?: string[];
+  /** 来自问题聚类圈选的聚类 key，仅回传来源，不参与过滤 */
+  clusterKeys?: string[];
 }
 
 export interface RemediationPlanItem {
@@ -1253,6 +1257,8 @@ export interface RemediationPlanItem {
   hubRelativePath: string;
   assetName: string;
   issueIndexes: number[];
+  /** 本项涉及的规则编号（去重） */
+  ruleIds: string[];
   issueSummary: string;
   severity: DiagnosisSeverity;
   /** 0 = 草案命中缓存（不消耗调用）；1 = 需一次草案调用 */
@@ -1273,6 +1279,10 @@ export interface RemediationPlan {
   estimatedCalls: number;
   truncated: boolean;
   batchLimit: number;
+  /** 类别分布（影响清单摘要） */
+  kindDistribution: Partial<Record<DoctorAssetKind, number>>;
+  /** 有可修复项但因维度 / 规则过滤被排除的资产数 */
+  nonBatchableCount: number;
   generatedAt: string;
 }
 
@@ -1280,6 +1290,8 @@ export interface RemediationApplyRequest {
   itemIds: string[];
   distribute: boolean;
   targets?: string[];
+  /** 与 plan 使用同一规则过滤，否则 itemId 对不上（T6） */
+  ruleIds?: string[];
 }
 
 export interface RemediationApplyItemResult {

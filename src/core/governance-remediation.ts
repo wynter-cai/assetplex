@@ -20,6 +20,10 @@ export interface RemediationPlanRequest {
   dimension?: HealthDimensionId;
   /** 默认 20，服务端硬上限 20 */
   maxAssets?: number;
+  /** 只处理命中这些规则的可修复项（finding.criterion = ruleId）；缺省 = 不按规则过滤 */
+  ruleIds?: string[];
+  /** 来自问题聚类圈选时的聚类 key，仅回传来源，不参与过滤逻辑 */
+  clusterKeys?: string[];
 }
 
 export interface RemediationPlanItem {
@@ -29,6 +33,8 @@ export interface RemediationPlanItem {
   assetName: string;
   /** 对应 DiagnosisReport.issues 下标 */
   issueIndexes: number[];
+  /** 本项涉及的规则编号（去重，影响清单据此披露） */
+  ruleIds: string[];
   issueSummary: string;
   severity: DiagnosisIssue['severity'];
   /** 0 = 全部命中草案缓存；1 = 需一次草案调用 */
@@ -49,6 +55,10 @@ export interface RemediationPlan {
   estimatedCalls: number;
   truncated: boolean;
   batchLimit: number;
+  /** 类别分布：影响清单的一句话摘要用 */
+  kindDistribution: Partial<Record<DoctorAssetKind, number>>;
+  /** 有可修复问题但因维度/规则过滤被排除的资产数（区别于需人工判断项） */
+  nonBatchableCount: number;
   generatedAt: string;
 }
 
@@ -98,8 +108,10 @@ export function buildRemediationPlan(
 ): RemediationPlan {
   const now = (options.now ?? (() => new Date().toISOString()))();
   const limit = Math.max(1, Math.min(options.maxAssets ?? REMEDIATION_BATCH_LIMIT, REMEDIATION_BATCH_LIMIT));
+  const ruleFilter = options.ruleIds === undefined || options.ruleIds.length === 0 ? null : new Set(options.ruleIds);
   const skipped: RemediationSkipItem[] = [];
   const candidates: Array<{ item: RemediationPlanItem; selected: DiagnosisIssue[] }> = [];
+  let nonBatchableCount = 0;
 
   for (const asset of assets) {
     if (options.kinds !== undefined && !options.kinds.includes(asset.kind)) continue;
@@ -112,11 +124,13 @@ export function buildRemediationPlan(
       continue;
     }
 
+    const fixable = asset.issues.filter((issue) => issue.fixable);
     const selectedIndexes: number[] = [];
     const selected: DiagnosisIssue[] = [];
     asset.issues.forEach((issue, index) => {
       if (!issue.fixable) return;
       if (options.dimension !== undefined && !matchesDimension(options.dimension, issue)) return;
+      if (ruleFilter !== null && !ruleFilter.has(issue.criterion)) return;
       selectedIndexes.push(index);
       selected.push(issue);
     });
@@ -128,6 +142,8 @@ export function buildRemediationPlan(
           assetName: asset.name,
           reason: '仅建议，需人工判断',
         });
+        // 有可修复项却被维度 / 规则过滤挡掉：单独计数，便于影响清单解释「为什么少了」
+        if (fixable.length > 0) nonBatchableCount += 1;
       }
       continue;
     }
@@ -140,6 +156,7 @@ export function buildRemediationPlan(
         hubRelativePath: asset.hubRelativePath,
         assetName: asset.name,
         issueIndexes: selectedIndexes,
+        ruleIds: [...new Set(selected.map((issue) => issue.criterion))],
         issueSummary: summarize(selected),
         severity: worstSeverity(selected),
         estimatedCalls: asset.cached ? 0 : 1,
@@ -165,6 +182,11 @@ export function buildRemediationPlan(
     });
   }
 
+  const kindDistribution: Partial<Record<DoctorAssetKind, number>> = {};
+  for (const item of kept) {
+    kindDistribution[item.kind] = (kindDistribution[item.kind] ?? 0) + 1;
+  }
+
   return {
     items: kept,
     skipped,
@@ -172,6 +194,8 @@ export function buildRemediationPlan(
     estimatedCalls: kept.reduce((sum, item) => sum + item.estimatedCalls, 0),
     truncated: ordered.length > limit,
     batchLimit: limit,
+    kindDistribution,
+    nonBatchableCount,
     generatedAt: now,
   };
 }

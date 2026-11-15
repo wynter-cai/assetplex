@@ -24,6 +24,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { KIND_LABEL } from '@/components/quality/ClusterList';
+import { BatchFixPanel } from '@/components/quality/BatchFixPanel';
 import {
   BatchDiagnosisResults,
   runItemKey,
@@ -253,6 +254,14 @@ export default function QualityBatch(): JSX.Element {
           onRetryFailed={retryFailed}
         />
       )}
+
+      <section className="space-y-2 border-t pt-4">
+        <h2 className="text-lg font-semibold">跨类别批量修复</h2>
+        <p className="text-sm text-muted-foreground">
+          只处理可自动修复的问题（改前备份、可整批撤销）；单条修复请到资产详情完成。
+        </p>
+        <BatchFixPanel {...(clusterKeys.length > 0 ? { clusterKeys } : {})} />
+      </section>
 
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent>

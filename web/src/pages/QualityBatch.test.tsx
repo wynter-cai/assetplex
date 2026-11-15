@@ -135,6 +135,17 @@ describe('QualityBatch 跨类别批量诊断', () => {
     vi.spyOn(api, 'getQualityOverview').mockResolvedValue(overview());
     vi.spyOn(api, 'estimateBatchDiagnosis').mockResolvedValue(estimate());
     vi.spyOn(api, 'doctorDiagnose').mockResolvedValue(report());
+    vi.spyOn(api, 'getRemediationPlan').mockResolvedValue({
+      items: [],
+      skipped: [],
+      totalAssets: 0,
+      estimatedCalls: 0,
+      truncated: false,
+      batchLimit: 20,
+      kindDistribution: {},
+      nonBatchableCount: 0,
+      generatedAt: '2026-11-15T00:00:00.000Z',
+    });
   });
 
   it('按类别与问题类型圈选，预估同时显示缓存命中与需调用（Scenario 3.1 / 3.2）', async () => {

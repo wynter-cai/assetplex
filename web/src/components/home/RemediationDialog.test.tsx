@@ -22,6 +22,7 @@ function planFixture(): RemediationPlan {
         hubRelativePath: 'skills/demo-skill-a/SKILL.md',
         assetName: 'demo-skill-a',
         issueIndexes: [0],
+        ruleIds: ['SK-03'],
         issueSummary: 'description 为空',
         severity: 'high',
         estimatedCalls: 1,
@@ -33,6 +34,7 @@ function planFixture(): RemediationPlan {
         hubRelativePath: 'rules/demo-rule.md',
         assetName: 'demo-rule',
         issueIndexes: [1],
+        ruleIds: ['RULE-02'],
         issueSummary: '缺少优先级说明',
         severity: 'medium',
         estimatedCalls: 0,
@@ -46,6 +48,8 @@ function planFixture(): RemediationPlan {
     estimatedCalls: 1,
     truncated: false,
     batchLimit: 20,
+    kindDistribution: { skill: 1, rule: 1 },
+    nonBatchableCount: 1,
     generatedAt: '2026-11-08T00:00:00.000Z',
   };
 }
