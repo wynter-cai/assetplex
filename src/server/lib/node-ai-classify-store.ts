@@ -25,8 +25,11 @@ import {
 } from '../../core/arbitration-cache.js';
 import {
   sanitizeDoctorEntries,
+  sanitizeDoctorLastRuns,
   type DoctorCacheEntry,
   type DoctorCacheStore,
+  type DoctorLastRunRecord,
+  type DoctorLastRunStore,
 } from '../../core/doctor-cache.js';
 import {
   sanitizeFixDraftEntries,
@@ -141,6 +144,22 @@ export function createNodeFixDraftCacheStore(
 }
 
 export const nodeFixDraftCacheStore = createNodeFixDraftCacheStore();
+
+/** 上次诊断记录存储（doctor-last.json，key = kind + '\u0000' + 库内相对路径；只存摘要与指纹） */
+export function createNodeDoctorLastRunStore(
+  filePath: string = resolveAssetplexFile('doctor-last.json'),
+): DoctorLastRunStore {
+  return {
+    load(): Record<string, DoctorLastRunRecord> {
+      return sanitizeDoctorLastRuns(readJson(filePath));
+    },
+    save(records: Record<string, DoctorLastRunRecord>): void {
+      writeJson(filePath, records);
+    },
+  };
+}
+
+export const nodeDoctorLastRunStore = createNodeDoctorLastRunStore();
 
 /** 读取当前生效配置的便捷封装（路由层使用） */
 export function loadCurrentAiConfig(store: AiConfigStore = nodeAiConfigStore): AiClassifyConfig {

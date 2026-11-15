@@ -2,6 +2,7 @@
  * 资产医生路由（add-asset-doctor E5）
  *
  * POST /api/doctor/diagnose  单资产体检（advisory-only：只读+调模型，永不写库）
+ * GET  /api/doctor/summary   诊断摘要（零模型：只读上次记录与缓存键，不创建 LlmClient）
  * GET  /api/doctor/estimate  批量体检前的预算估算（Scenario 5：>50 次调用需二次确认）
  *
  * 错误约定（api-contract）：400 请求体非法 / 403 非库内资产（医生只服务资产侧）/
@@ -15,9 +16,19 @@ import { existsSync, readFileSync } from 'node:fs';
 import { isAbsolute, resolve, sep } from 'node:path';
 import { getHubRoot } from '../../utils/paths.js';
 import { diagnoseAsset, DiagnosisAssetError, DiagnosisOutputError } from '../../core/doctor.js';
-import { computeDoctorCacheKey, sanitizeDoctorEntries, type DoctorCacheStore } from '../../core/doctor-cache.js';
+import {
+  computeDoctorCacheKey,
+  sanitizeDoctorEntries,
+  type DoctorCacheStore,
+  type DoctorLastRunStore,
+} from '../../core/doctor-cache.js';
+import { readDoctorSummary } from '../../core/doctor-summary.js';
 import { hashCriteria, listCriteria, type CriterionAsset } from '../../core/criteria.js';
-import { loadAiClassifyConfig, isAiConfigComplete, type AiConfigStore } from '../../core/ai-config.js';
+import {
+  loadAiClassifyConfig,
+  isAiConfigComplete,
+  type AiConfigStore,
+} from '../../core/ai-config.js';
 import type { LlmClient } from '../../core/skill-ai-classification.js';
 import { DOCTOR_ASSET_KINDS, type DiagnosisRuleSet, type DoctorAssetKind } from '../../core/types.js';
 import {
@@ -26,7 +37,7 @@ import {
   resolveRuleSetFile,
 } from '../../core/diagnosis-rules.js';
 import { listHubFiles, type HubFileCategory } from '../../core/hub-files.js';
-import { nodeAiConfigStore, nodeDoctorCacheStore } from '../lib/node-ai-classify-store.js';
+import { nodeAiConfigStore, nodeDoctorCacheStore, nodeDoctorLastRunStore } from '../lib/node-ai-classify-store.js';
 import { createOpenAiLlmClient } from '../lib/openai-llm-client.js';
 
 export interface DoctorRouteDeps {
@@ -40,6 +51,8 @@ export interface DoctorRouteDeps {
   aiConfigStore?: AiConfigStore;
   /** 规则集：缺省按构建产物 / 仓库定义位置加载；显式传 null 表示本轮不跑规则 */
   ruleSet?: DiagnosisRuleSet | null;
+  /** 上次诊断记录：缺省 Node 实现（~/.assetplex/doctor-last.json），读不到按未诊断处理 */
+  lastRunStore?: DoctorLastRunStore;
   now?: () => string;
 }
 
@@ -134,6 +147,15 @@ function parseEstimateCategory(raw: string | undefined): { kind?: DoctorAssetKin
   return { kind: raw as DoctorAssetKind };
 }
 
+/** summary 查询参数 kind 的闭集校验（与 parseEstimateCategory 同风格） */
+function parseSummaryKind(raw: string | undefined): { kind?: DoctorAssetKind; error?: string } {
+  if (raw === undefined || raw === '') return { error: `kind 必须是 ${DOCTOR_ASSET_KINDS.join('/')}` };
+  if (!(DOCTOR_ASSET_KINDS as readonly string[]).includes(raw)) {
+    return { error: `kind「${raw}」不在医生类别闭集内` };
+  }
+  return { kind: raw as DoctorAssetKind };
+}
+
 export function createDoctorRoutes(deps: DoctorRouteDeps = {}): Hono {
   const routes = new Hono();
   const fs = deps.fs ?? nodeRead;
@@ -166,6 +188,8 @@ export function createDoctorRoutes(deps: DoctorRouteDeps = {}): Hono {
         llm,
         config,
         ruleSet: registry.ruleSet,
+        // 写入端只在组合根显式注入时启用：避免测试 / 嵌入式调用把摘要落到使用者本机
+        ...(deps.lastRunStore === undefined ? {} : { lastRunStore: deps.lastRunStore }),
         ...(deps.now === undefined ? {} : { now: deps.now }),
       });
       return c.json(report);
@@ -174,6 +198,32 @@ export function createDoctorRoutes(deps: DoctorRouteDeps = {}): Hono {
       if (err instanceof DiagnosisOutputError) return c.json({ error: err.message }, 422);
       return c.json({ error: err instanceof Error ? err.message : String(err) }, 500);
     }
+  });
+
+  /** 只读摘要：详情首屏判定「上次结论是否仍有效 + 点一次会不会调模型」，保证零模型调用 */
+  routes.get('/summary', (c) => {
+    const { kind, error } = parseSummaryKind(c.req.query('kind'));
+    if (kind === undefined) {
+      return c.json({ error: error ?? 'kind 非法' }, 400);
+    }
+    const hubRelativePath = c.req.query('hubRelativePath');
+    if (hubRelativePath === undefined || hubRelativePath.trim() === '') {
+      return c.json({ error: 'hubRelativePath 必须是非空字符串' }, 400);
+    }
+    if (!isHubInternalPath(hubRelativePath)) {
+      return c.json({ error: '医生只服务库内资产：hubRelativePath 必须是 Hub 内相对路径' }, 403);
+    }
+    const summary = readDoctorSummary(
+      { kind, hubRelativePath },
+      {
+        fs,
+        getCriteria: deps.getCriteria ?? listCriteria,
+        cache: deps.cache ?? nodeDoctorCacheStore,
+        lastRunStore: deps.lastRunStore ?? nodeDoctorLastRunStore,
+        config: loadAiClassifyConfig(deps.aiConfigStore ?? nodeAiConfigStore),
+      },
+    );
+    return c.json(summary);
   });
 
   routes.get('/estimate', (c) => {
