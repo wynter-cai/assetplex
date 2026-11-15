@@ -13,7 +13,7 @@ import type { HomeDashboardResponse } from '@/types/api';
  * Sidebar 组件测试
  *
  * 验证 spec: refactor-home-action-panel/specs/navigation.spec.md
- *   R1 五组结构 / R2 命中自动展开与手动折叠 / R3 治理徽标 / R6 键盘与语义
+ *   R1 五组结构 / R2 命中自动展开与手动折叠 / R3 质量中心徽标 / R6 键盘与语义
  * 验证 spec: asset-center-consistency Scenario 1（类别清单唯一声明源在后端）
  */
 
@@ -62,11 +62,11 @@ afterEach(() => {
 });
 
 describe('Sidebar — 五组结构（navigation Scenario 1.1/1.2）', () => {
-  it('从上到下呈现总览 / 资产库 / 治理 / 连接与同步 / 活动', () => {
+  it('从上到下呈现总览 / 资产库 / 质量中心 / 连接与同步 / 活动', () => {
     renderSidebar();
     const nav = screen.getByRole('navigation', { name: '主导航' });
     const text = nav.textContent ?? '';
-    const order = ['总览', '资产库', '治理', '连接与同步', '活动'].map((label) =>
+    const order = ['总览', '资产库', '质量中心', '连接与同步', '活动'].map((label) =>
       text.indexOf(label),
     );
     order.forEach((index) => expect(index).toBeGreaterThanOrEqual(0));
@@ -82,9 +82,9 @@ describe('Sidebar — 五组结构（navigation Scenario 1.1/1.2）', () => {
     expect(screen.queryByRole('button', { name: /总览|活动/ })).not.toBeInTheDocument();
   });
 
-  it('资产库 / 治理 / 连接与同步是组按钮，带 aria-expanded 与 aria-controls（Scenario 1.2/6.1）', () => {
+  it('资产库 / 质量中心 / 连接与同步是组按钮，带 aria-expanded 与 aria-controls（Scenario 1.2/6.1）', () => {
     renderSidebar('/vault');
-    for (const label of ['资产库', '治理', '连接与同步']) {
+    for (const label of ['资产库', '质量中心', '连接与同步']) {
       const groupButton = screen.getByRole('button', { name: new RegExp(label) });
       expect(groupButton).toHaveAttribute('aria-expanded');
       const controls = groupButton.getAttribute('aria-controls');
@@ -111,13 +111,15 @@ describe('Sidebar — 五组结构（navigation Scenario 1.1/1.2）', () => {
 });
 
 describe('Sidebar — 子项内容（Scenario 1.3/1.4）', () => {
-  it('资产库子项为动态类别清单 +「发现外部技能」', () => {
+  it('资产库子项为动态类别清单 +「发现外部技能」，不再列出裁决准则', () => {
     renderSidebar('/vault');
     const list = screen.getByRole('navigation', { name: '资产类别' });
     expect(within(list).getByText('身份')).toBeInTheDocument();
     expect(within(list).getByText('技能')).toBeInTheDocument();
     expect(within(list).getByText('规则')).toBeInTheDocument();
     expect(within(list).getByText('MCP')).toBeInTheDocument();
+    // governance-center Scenario 6.1：裁决准则迁入质量中心，资产库不再单列
+    expect(within(list).queryByText('裁决准则')).not.toBeInTheDocument();
     expect(within(list).getByRole('link', { name: '发现外部技能' })).toHaveAttribute(
       'href',
       '/discover',
@@ -150,17 +152,19 @@ describe('Sidebar — 子项内容（Scenario 1.3/1.4）', () => {
     expect(screen.getByRole('link', { name: '总览' })).toBeInTheDocument();
   });
 
-  it('治理子项为「体检与待办」「重复项」', () => {
-    renderSidebar('/governance');
-    const list = screen.getByRole('navigation', { name: '治理子项' });
-    expect(within(list).getByRole('link', { name: '体检与待办' })).toHaveAttribute(
-      'href',
-      '/governance',
-    );
-    expect(within(list).getByRole('link', { name: '重复项' })).toHaveAttribute(
-      'href',
-      '/duplicates',
-    );
+  it('质量中心子项为体检报告 / 跨类别批量 / 规则与忽略 / 重复项 / 裁决准则（Scenario 1.1 / 6.1）', () => {
+    renderSidebar('/quality');
+    const list = screen.getByRole('navigation', { name: '质量中心子项' });
+    const expected: Array<[string, string]> = [
+      ['体检报告', '/quality'],
+      ['跨类别批量', '/quality/batch'],
+      ['规则与忽略', '/quality/rules'],
+      ['重复项', '/duplicates'],
+      ['裁决准则', '/quality/criteria'],
+    ];
+    for (const [label, to] of expected) {
+      expect(within(list).getByRole('link', { name: label })).toHaveAttribute('href', to);
+    }
   });
 
   it('连接与同步子项为工具连接 / 分发与同步 / 项目工作区', () => {
@@ -214,14 +218,17 @@ describe('Sidebar — 命中与展开（Scenario 2.1–2.4）', () => {
 
   it('手动折叠后子项隐藏，组按钮保留命中态且页面不卸载（Scenario 2.3）', () => {
     renderSidebar('/duplicates');
-    const groupButton = screen.getByRole('button', { name: /治理/ });
+    const groupButton = screen.getByRole('button', { name: /质量中心/ });
     expect(screen.getByRole('link', { name: '重复项' })).toBeInTheDocument();
 
     fireEvent.click(groupButton);
 
     expect(screen.queryByRole('link', { name: '重复项' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /治理/ })).toHaveAttribute('data-active', 'true');
-    expect(screen.getByRole('button', { name: /治理/ })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: /质量中心/ })).toHaveAttribute(
+      'data-active',
+      'true',
+    );
+    expect(screen.getByRole('button', { name: /质量中心/ })).toHaveAttribute(
       'aria-expanded',
       'false',
     );
@@ -273,20 +280,41 @@ describe('Sidebar — 命中与展开（Scenario 2.1–2.4）', () => {
 
   it('可手动展开未命中的组（渐进披露，不强制只看命中组）', () => {
     renderSidebar('/');
-    const groupButton = screen.getByRole('button', { name: /治理/ });
+    const groupButton = screen.getByRole('button', { name: /质量中心/ });
     expect(groupButton).toHaveAttribute('aria-expanded', 'false');
     fireEvent.click(groupButton);
     expect(groupButton).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByRole('link', { name: '重复项' })).toBeInTheDocument();
   });
+
+  it('访问 /quality 自动展开质量中心组并高亮体检报告（Scenario 1.4）', () => {
+    renderSidebar('/quality');
+    expect(screen.getByRole('button', { name: /质量中心/ })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+    expect(screen.getByRole('link', { name: '体检报告' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+  });
+
+  it('访问 /quality/batch 时只有跨类别批量高亮（Scenario 1.4）', () => {
+    renderSidebar('/quality/batch');
+    expect(screen.getByRole('link', { name: '跨类别批量' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    expect(screen.getByRole('link', { name: '体检报告' })).not.toHaveAttribute('aria-current');
+  });
 });
 
-describe('Sidebar — 治理徽标（Scenario 3.1–3.3）', () => {
+describe('Sidebar — 质量中心徽标（Scenario 3.1–3.3）', () => {
   it('首页数据已加载且待治理为 12 时，组按钮显示 12（与状态条同源）', () => {
     renderSidebar('/', { dashboardTotal: 12 });
     const badge = screen.getByLabelText('12 项待治理');
     expect(badge).toHaveTextContent('12');
-    const groupButton = screen.getByRole('button', { name: /治理/ });
+    const groupButton = screen.getByRole('button', { name: /质量中心/ });
     expect(within(groupButton).getByText('12')).toBeInTheDocument();
   });
 
@@ -316,7 +344,7 @@ describe('Sidebar — 语义与无障碍（Scenario 6.1/6.2）', () => {
 
   it('组按钮与链接并列，Tab 顺序不被非法结构打断', () => {
     renderSidebar('/');
-    const groupButton = screen.getByRole('button', { name: /治理/ });
+    const groupButton = screen.getByRole('button', { name: /质量中心/ });
     expect(groupButton.closest('a')).toBeNull();
   });
 

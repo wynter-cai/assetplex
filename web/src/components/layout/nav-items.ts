@@ -10,6 +10,9 @@ import {
   History,
   ShieldCheck,
   Stethoscope,
+  Layers,
+  ListChecks,
+  Scale,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -69,15 +72,18 @@ export const NAV_GROUPS: NavGroup[] = [
     sublistLabel: '资产类别',
   },
   {
-    id: 'governance',
-    to: '/governance',
-    label: '治理',
+    id: 'quality',
+    to: '/quality',
+    label: '质量中心',
     icon: ShieldCheck,
     children: [
-      { to: '/governance', label: '体检与待办', icon: Stethoscope },
+      { to: '/quality', label: '体检报告', icon: Stethoscope },
+      { to: '/quality/batch', label: '跨类别批量', icon: Layers },
+      { to: '/quality/rules', label: '规则与忽略', icon: ListChecks },
       { to: '/duplicates', label: '重复项', icon: Copy },
+      { to: '/quality/criteria', label: '裁决准则', icon: Scale },
     ],
-    sublistLabel: '治理子项',
+    sublistLabel: '质量中心子项',
     badge: 'governance-pending',
   },
   {

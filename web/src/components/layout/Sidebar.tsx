@@ -9,6 +9,7 @@ import { useFocusTrap } from '@/lib/use-focus-trap';
 import { HOME_DASHBOARD_QUERY_KEY } from '@/lib/use-home-dashboard';
 import { APP_VERSION } from '@/lib/app-version';
 import type { AssetCategoryConfig } from '@/config/asset-categories';
+import { NAV_HIDDEN_CATEGORY_CODES } from '@/config/asset-categories';
 import {
   NAV_GROUPS,
   SETTINGS_NAV,
@@ -33,7 +34,7 @@ const GROUP_BASE = 'flex flex-1 items-center gap-3 rounded-md px-3 py-2 text-sm 
 const GROUP_HIT = 'font-medium text-foreground';
 
 /**
- * 治理徽标：只读首页聚合缓存（['home-dashboard']），不自己发请求、不轮询。
+ * 质量中心徽标：只读首页聚合缓存（['home-dashboard']），不自己发请求、不轮询。
  * 未加载 / 读取失败 / 为 0 时返回 null（navigation Scenario 3.2/3.3）。
  */
 function useGovernancePending(): number | null {
@@ -51,11 +52,14 @@ function useGovernancePending(): number | null {
 function resolveChildren(group: NavGroup, categories: AssetCategoryConfig[]): NavSubItem[] {
   if (group.childSource !== 'asset-categories') return group.children;
   return [
-    ...categories.map((category) => ({
-      to: `${group.to}/${category.code}`,
-      label: category.label,
-      icon: category.icon,
-    })),
+    ...categories
+      // 裁决准则已迁入质量中心，资产库类别子项不再列出（governance-center Scenario 6.1）
+      .filter((category) => !NAV_HIDDEN_CATEGORY_CODES.has(category.code))
+      .map((category) => ({
+        to: `${group.to}/${category.code}`,
+        label: category.label,
+        icon: category.icon,
+      })),
     ...group.children,
   ];
 }
@@ -127,6 +131,8 @@ function GroupSection({
             <NavLink
               key={child.to}
               to={child.to}
+              // 子项与组同址时只在本页精确高亮，避免 /quality/criteria 同时点亮「体检报告」
+              end={child.to === group.to}
               onClick={onNavigate}
               className={({ isActive }) =>
                 cn(

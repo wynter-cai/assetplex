@@ -1,8 +1,9 @@
 /**
- * 治理临时容器页测试（refactor-home-action-panel T11）
+ * 质量中心页测试（refactor-governance-center T1，原治理临时容器页测试平移）
  *
- * spec: specs/navigation.spec.md Requirement 7 Scenario 7.1
- * 断言：健康分与四维清单可见；点条目就地展开体检报告；不提供筛选/批量/忽略/一键修复。
+ * spec: governance-center.spec.md Scenario 1.1
+ * 断言：页面以「质量中心」命名；健康分与四维清单可见；点条目就地展开体检报告；
+ * 不提供筛选/批量/忽略/一键修复。
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -10,7 +11,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import Governance from './Governance';
+import QualityCenter from './QualityCenter';
 import { api } from '@/lib/api';
 import type {
   DiagnosisReport,
@@ -85,14 +86,14 @@ function renderPage(): ReturnType<typeof render> {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={['/governance']}>
-        <Governance />
+      <MemoryRouter initialEntries={['/quality']}>
+        <QualityCenter />
       </MemoryRouter>
     </QueryClientProvider>,
   );
 }
 
-describe('Governance 临时容器页', () => {
+describe('QualityCenter 页', () => {
   beforeEach(() => {
     vi.spyOn(api, 'getGovernanceHealth').mockResolvedValue(health);
     vi.spyOn(api, 'getGovernanceIssues').mockImplementation(
@@ -106,9 +107,9 @@ describe('Governance 临时容器页', () => {
     vi.spyOn(api, 'doctorDiagnose').mockResolvedValue(report);
   });
 
-  it('标注「治理中心建设中」，并说明当前为体检与待办视图', async () => {
+  it('标注「质量中心建设中」，并说明当前为体检与待办视图', async () => {
     renderPage();
-    expect(await screen.findByRole('heading', { name: '治理中心建设中' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: '质量中心建设中' })).toBeInTheDocument();
     expect(screen.getByText(/体检与待办视图/)).toBeInTheDocument();
   });
 

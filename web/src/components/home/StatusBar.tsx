@@ -82,13 +82,13 @@ export function StatusBar({ status, pendingCount }: StatusBarProps): JSX.Element
     <section aria-label="状态条" data-testid="status-bar" className="rounded-xl border bg-card">
       <dl className="flex flex-wrap items-start gap-x-10 gap-y-3 px-4 py-3">
         <Cell label="健康分">
-          <Link to="/governance" className={LINK_CLASS} aria-label="健康分" data-testid="status-health">
+          <Link to="/quality" className={LINK_CLASS} aria-label="健康分" data-testid="status-health">
             <HealthValue status={status} />
           </Link>
         </Cell>
 
         <Cell label="待治理">
-          <Link to="/governance" className={LINK_CLASS} aria-label="待治理">
+          <Link to="/quality" className={LINK_CLASS} aria-label="待治理">
             <NumberValue
               testId="status-pending"
               value={pendingCount === null ? UNAVAILABLE : String(pendingCount)}

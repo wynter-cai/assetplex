@@ -40,6 +40,14 @@ export const CATEGORY_ICONS: Record<string, LucideIcon> = {
 export const DEFAULT_CATEGORY_ICON: LucideIcon = Package;
 
 /**
+ * 不在资产库导航里展示的类别（refactor-governance-center T1）
+ *
+ * `criteria`（裁决准则）已迁入质量中心 `/quality/criteria`，资产库类别子项不再列出；
+ * 后端声明源、`/api/asset-categories` 与 criteria 数据目录零改动。
+ */
+export const NAV_HIDDEN_CATEGORY_CODES: ReadonlySet<string> = new Set(['criteria']);
+
+/**
  * fallback 清单（字段与后端声明源同名同值）
  *
  * external 供数类别走专用接口，不经 /api/assets；

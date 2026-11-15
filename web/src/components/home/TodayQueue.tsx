@@ -3,7 +3,7 @@
  *
  * spec: 设计文档/changes/refactor-home-action-panel/specs/home-dashboard.spec.md
  * Requirement 2：按严重度排序、首屏前 5 条、行内「查看」就地展开体检报告、
- * 可修复项给「去资产库修改」；忽略/稍后/一键修复属于治理中心，这里一律不出现。
+ * 可修复项给「去资产库修改」；忽略/稍后/一键修复属于质量中心，这里一律不出现。
  * 0 条与数据不可用由上层渲染空态，本组件返回 null。
  */
 
@@ -134,7 +134,7 @@ export function TodayQueue({ issues }: TodayQueueProps): JSX.Element | null {
       </ul>
 
       <footer className="border-t px-4 py-2.5 text-right">
-        <Link to="/governance" className={LINK_CLASS}>
+        <Link to="/quality" className={LINK_CLASS}>
           查看全部 {total} 项
         </Link>
       </footer>

@@ -1,5 +1,5 @@
 /**
- * 治理页单维度问题清单（refactor-home-action-panel T11）
+ * 质量中心页单维度问题清单（refactor-home-action-panel T11）
  *
  * 复用健康分下钻的查询口径（queryKey `['governance-issues', dimension]` + limit 50），
  * 点条目在页内就地渲染体检报告（DiagnosisPanel autoStart），不跳页、不写库。

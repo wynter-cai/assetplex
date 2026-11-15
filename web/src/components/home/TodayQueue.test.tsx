@@ -3,7 +3,7 @@
  *
  * spec: specs/home-dashboard.spec.md Requirement 2
  * 断言重点：严重度排序与截断、total 与状态条同源、就地展开体检报告、Esc 归还焦点、
- * 0 条交给上层空态、不出现治理中心才有的动作。
+ * 0 条交给上层空态、不出现质量中心才有的动作。
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -89,10 +89,10 @@ describe('TodayQueue — 今日待办', () => {
       'F',
     ]);
     // total 是全量去重后的 7，不是当前渲染的 5 条
-    expect(screen.getByRole('link', { name: /查看全部 7 项/ })).toHaveAttribute('href', '/governance');
+    expect(screen.getByRole('link', { name: /查看全部 7 项/ })).toHaveAttribute('href', '/quality');
   });
 
-  it('Scenario 2.2：行内含严重度、标题、资产名与「查看」，不出现治理中心动作', () => {
+  it('Scenario 2.2：行内含严重度、标题、资产名与「查看」，不出现质量中心动作', () => {
     renderQueue(queue([issue({ id: 'A', severity: 'high', title: '人设缺少边界' })]));
     const row = screen.getByTestId('queue-item');
     expect(within(row).getByText('高')).toBeInTheDocument();

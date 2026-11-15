@@ -46,10 +46,10 @@ describe('StatusBar — 状态条', () => {
     expect(screen.queryByText(/资产总数/)).not.toBeInTheDocument();
   });
 
-  it('Scenario 1.2：健康分与待治理下钻 /governance，未同步下钻 /sync', () => {
+  it('Scenario 1.2：健康分与待治理下钻 /quality，未同步下钻 /sync', () => {
     renderBar({ status: status(), pendingCount: 12 });
-    expect(screen.getByRole('link', { name: /健康分/ })).toHaveAttribute('href', '/governance');
-    expect(screen.getByRole('link', { name: /待治理/ })).toHaveAttribute('href', '/governance');
+    expect(screen.getByRole('link', { name: /健康分/ })).toHaveAttribute('href', '/quality');
+    expect(screen.getByRole('link', { name: /待治理/ })).toHaveAttribute('href', '/quality');
     expect(screen.getByRole('link', { name: /未同步/ })).toHaveAttribute('href', '/sync');
   });
 
