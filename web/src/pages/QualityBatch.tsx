@@ -189,6 +189,9 @@ export default function QualityBatch(): JSX.Element {
             <p className="text-sm text-destructive">
               预估失败：{estimateQuery.error instanceof Error ? estimateQuery.error.message : '请稍后重试'}
               <span className="ml-1 text-muted-foreground">（无法估算成本，暂不能发起）</span>
+              <Link to="/quality/rules" className="ml-2 text-primary underline underline-offset-2">
+                去规则页检查
+              </Link>
             </p>
           )}
           {estimate !== null && (

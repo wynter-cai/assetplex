@@ -102,7 +102,7 @@ function CriterionCard({
   );
 }
 
-/** 裁决准则主视图（在资产库 /vault/criteria 下渲染） */
+/** 裁决准则主视图（refactor-governance-center T8 起挂在质量中心 /quality/criteria） */
 export function CriteriaView(): JSX.Element {
   const queryClient = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
@@ -184,7 +184,8 @@ export function CriteriaView(): JSX.Element {
           <Scale className="h-12 w-12 text-muted-foreground mb-4" />
           <h3 className="text-lg font-medium mb-1">还没有准则</h3>
           <p className="text-sm text-muted-foreground mb-4">
-            准则是裁决模型仲裁冲突、诊断资产时的依据。可从页头新建，或导入业内精选准则包快速起步
+            准则是裁决模型仲裁冲突时的偏好依据。注意：准则不新增诊断规则编号，也不计入健康分——
+            资产体检的结论只来自诊断规则集。可从页头新建，或导入业内精选准则包快速起步
           </p>
         </div>
       )}
