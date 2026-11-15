@@ -1,52 +1,114 @@
+/**
+ * 首页行动面板测试（refactor-home-action-panel T10）
+ *
+ * spec: 设计文档/changes/refactor-home-action-panel/specs/home-dashboard.spec.md
+ * 断言重点：四区块装配、三种空态互不混淆、局部失败不整页崩、
+ * 「重新体检」显式 refresh=1、旧资产快照与快捷动作已下线、新手引导续跑卡保留。
+ */
+
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Home from './Home';
 import { api } from '@/lib/api';
-import type { GovernanceHealth, OnboardingStateResponse, OverviewData } from '@/types/api';
+import type {
+  ActivityEntry,
+  HealthIssueRef,
+  HomeDashboardResponse,
+  HomeToolRow,
+  OnboardingStateResponse,
+} from '@/types/api';
 
-const governanceHealth: GovernanceHealth = {
-  score: 85,
-  grade: 'good',
-  totalAssets: 15,
-  dimensions: [
-    { id: 'completeness', label: '完整性', applicability: 'applicable', weight: 30, effectiveWeight: 30, score: 90, evaluatedAssets: 15, issueCount: 1, topIssues: [] },
-    { id: 'quality', label: '规范性', applicability: 'applicable', weight: 30, effectiveWeight: 30, score: 80, evaluatedAssets: 15, issueCount: 2, topIssues: [] },
-    { id: 'distribution', label: '分发一致性', applicability: 'applicable', weight: 25, effectiveWeight: 25, score: 85, evaluatedAssets: 10, issueCount: 1, topIssues: [] },
-    { id: 'uniqueness', label: '唯一性', applicability: 'applicable', weight: 15, effectiveWeight: 15, score: 100, evaluatedAssets: 15, issueCount: 0, topIssues: [] },
-  ],
-  qualityMode: 'mechanical+ai',
-  computedAt: '2026-11-08T00:00:00.000Z',
-  cached: false,
+const issueItems: HealthIssueRef[] = [
+  {
+    id: 'i1',
+    severity: 'high',
+    title: '人设缺少边界',
+    kind: 'identity',
+    hubRelativePath: 'identity/profile.md',
+    assetName: '人设',
+    fixable: true,
+  },
+  {
+    id: 'i2',
+    severity: 'medium',
+    title: '规则缺少适用说明',
+    kind: 'rule',
+    hubRelativePath: 'rules/style.md',
+    assetName: '风格规则',
+    fixable: false,
+  },
+];
+
+const toolRows: HomeToolRow[] = [
+  {
+    toolId: 'trae-cn',
+    toolName: 'TRAE 中国版',
+    state: 'drift',
+    driftAssetCount: 3,
+    lastSyncedAt: '2026-11-14T09:00:00.000Z',
+  },
+  {
+    toolId: 'codex',
+    toolName: 'Codex',
+    state: 'not_installed',
+    driftAssetCount: 0,
+    lastSyncedAt: null,
+  },
+];
+
+const activity: ActivityEntry = {
+  id: 'act-1',
+  at: '2026-11-15T08:00:00.000Z',
+  type: 'sync',
+  actor: 'web',
+  summary: '同步 3 项到 TRAE 中国版',
 };
 
-/**
- * Home 页面测试
- *
- * 验证 spec: home-page 的核心 Scenario
- * Home 已接入 GET /api/hub/overview（TanStack Query），此处 mock api.getOverview
- * 返回固定数据验证各区域渲染。断言用 findBy* 等待查询异步加载完成。
- */
+function dashboard(overrides: Partial<HomeDashboardResponse> = {}): HomeDashboardResponse {
+  return {
+    generatedAt: '2026-11-15T09:00:00.000Z',
+    hubInitialized: true,
+    status: {
+      healthScore: 78,
+      healthGrade: 'good',
+      totalAssets: 12,
+      unsyncedCount: 3,
+      lastBackupAt: '2026-11-14T08:30:00.000Z',
+      backupState: 'recorded',
+    },
+    issues: {
+      available: true,
+      total: 2,
+      bySeverity: { high: 1, medium: 1, low: 0 },
+      items: issueItems,
+    },
+    tools: toolRows,
+    recentActivity: [activity],
+    healthComputedAt: '2026-11-15T07:00:00.000Z',
+    partial: false,
+    failedTools: [],
+    ...overrides,
+  };
+}
 
-const overviewData: OverviewData = {
-  hubInitialized: true,
-  assetStats: { identity: 1, skill: 3, rule: 5, mcp: 2, agent: 4 },
-  connections: [
-    { toolId: 'trae-cn', toolName: 'TRAE 中国版', status: 'synced', assetCount: 3, pendingCount: 0 },
-    { toolId: 'workbuddy', toolName: 'WorkBuddy', status: 'synced', assetCount: 2, pendingCount: 0 },
-    { toolId: 'claude', toolName: 'Claude Code', status: 'synced', assetCount: 4, pendingCount: 0 },
-    { toolId: 'codex', toolName: 'Codex', status: 'not_connected', assetCount: 0, pendingCount: 0 },
-  ],
-  recentActivities: [
-    { id: 'a1', type: 'import', description: '从 TRAE 导入 identity/profile.md', occurredAt: new Date().toISOString() },
-  ],
-};
+function onboardingState(overrides: Partial<OnboardingStateResponse> = {}): OnboardingStateResponse {
+  return {
+    hubRoot: '/tmp/demo-hub',
+    initialized: true,
+    onboarded: false,
+    autoEnter: false,
+    assetCount: 12,
+    lastOutcome: null,
+    tools: [],
+    ...overrides,
+  };
+}
 
 function renderHome(): ReturnType<typeof render> {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter>
@@ -56,92 +118,162 @@ function renderHome(): ReturnType<typeof render> {
   );
 }
 
-function makeOnboardingState(over: Partial<OnboardingStateResponse> = {}): OnboardingStateResponse {
-  return {
-    hubRoot: '/tmp/demo-hub',
-    initialized: true,
-    onboarded: false,
-    autoEnter: false,
-    assetCount: 15,
-    lastOutcome: null,
-    tools: [],
-    ...over,
-  };
-}
+beforeEach(() => {
+  vi.restoreAllMocks();
+  vi.spyOn(api, 'getHomeDashboard').mockResolvedValue(dashboard());
+  vi.spyOn(api, 'getOnboardingState').mockResolvedValue(onboardingState());
+});
 
-describe('Home 页面', () => {
-  beforeEach(() => {
-    vi.spyOn(api, 'getOverview').mockResolvedValue(overviewData);
-    vi.spyOn(api, 'getGovernanceHealth').mockResolvedValue(governanceHealth);
-    vi.spyOn(api, 'getOnboardingState').mockResolvedValue(makeOnboardingState());
-  });
-
-  it('渲染健康卡主区（真实四维健康分）', async () => {
+describe('Home — 老用户日常首页', () => {
+  it('渲染状态条 → 今日待办 → 工具与同步 → 最近变化四区块', async () => {
     renderHome();
-    expect(await screen.findByText('资产健康')).toBeInTheDocument();
-    expect(screen.getByText(/共 15 项/)).toBeInTheDocument();
-    expect(screen.getByText('完整性')).toBeInTheDocument();
-    expect(screen.getByText('规范性')).toBeInTheDocument();
-  });
 
-  it('渲染资产快照区域（含 5 类资产数量与总数）', async () => {
-    renderHome();
-    expect(await screen.findByText('资产快照')).toBeInTheDocument();
-    // mock 数据中 identity=1, skill=3, rule=5, mcp=2, agent=4 → 共 15 项
-    expect(screen.getByText('身份')).toBeInTheDocument();
-    expect(screen.getByText('技能')).toBeInTheDocument();
-    expect(screen.getByText('规则')).toBeInTheDocument();
-    expect(screen.getByText('MCP')).toBeInTheDocument();
-    expect(screen.getByText('智能体')).toBeInTheDocument();
-    expect(screen.getByText('4')).toBeInTheDocument();
-    expect(screen.getByText(/我的库 15 项/)).toBeInTheDocument();
-  });
+    expect(await screen.findByTestId('status-bar')).toBeInTheDocument();
+    expect(screen.getByTestId('status-health-score')).toHaveTextContent('78');
+    expect(screen.getByTestId('status-pending')).toHaveTextContent('2');
+    expect(screen.getByTestId('status-unsynced')).toHaveTextContent('3');
 
-  it('渲染连接状态区域（含工具列表）', async () => {
-    renderHome();
-    expect(await screen.findByText('连接状态')).toBeInTheDocument();
+    expect(screen.getByTestId('today-queue')).toBeInTheDocument();
+    expect(screen.getByText('人设缺少边界')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /查看全部 2 项/ })).toBeInTheDocument();
+
+    expect(screen.getByTestId('tool-sync-matrix')).toBeInTheDocument();
     expect(screen.getByText('TRAE 中国版')).toBeInTheDocument();
-    expect(screen.getByText('WorkBuddy')).toBeInTheDocument();
-    expect(screen.getByText('Claude Code')).toBeInTheDocument();
-    expect(screen.getByText('Codex')).toBeInTheDocument();
+    expect(screen.getByText('3 处')).toBeInTheDocument();
+
+    expect(screen.getByTestId('recent-changes')).toBeInTheDocument();
+    expect(screen.getByText('同步 3 项到 TRAE 中国版')).toBeInTheDocument();
   });
 
-  it('渲染快速动作区域（含收藏按钮）', async () => {
+  it('旧首页区块已下线：不再出现资产快照 / 快速动作 / 连接状态卡', async () => {
     renderHome();
-    expect(await screen.findByText('快速动作')).toBeInTheDocument();
-    expect(screen.getByText('收藏资产')).toBeInTheDocument();
-    expect(screen.getByText('同步')).toBeInTheDocument();
-    expect(screen.getByText('新建技能')).toBeInTheDocument();
+    await screen.findByTestId('status-bar');
+    expect(screen.queryByText('资产快照')).not.toBeInTheDocument();
+    expect(screen.queryByText('快速动作')).not.toBeInTheDocument();
+    expect(screen.queryByText('连接状态')).not.toBeInTheDocument();
+    expect(screen.queryByText(/我的库/)).not.toBeInTheDocument();
+    expect(screen.queryByText('最近活动')).not.toBeInTheDocument();
   });
 
-  it('渲染最近活动区域（含活动记录，不提供查看全部死链）', async () => {
+  it('空态一：库为空显示两个出口，不显示待办队列与 0 分', async () => {
+    vi.mocked(api.getHomeDashboard).mockResolvedValue(
+      dashboard({
+        hubInitialized: false,
+        status: {
+          healthScore: null,
+          healthGrade: 'empty',
+          totalAssets: 0,
+          unsyncedCount: null,
+          lastBackupAt: null,
+          backupState: 'none',
+        },
+        issues: { available: true, total: 0, bySeverity: { high: 0, medium: 0, low: 0 }, items: [] },
+        recentActivity: [],
+      }),
+    );
     renderHome();
-    expect(await screen.findByText('最近活动')).toBeInTheDocument();
-    // mock 数据中的第一条活动
-    expect(screen.getByText(/从 TRAE 导入 identity\/profile.md/)).toBeInTheDocument();
-    // 活动页尚未实现，P0 移除指向不存在页面的「查看全部」
-    expect(screen.queryByText('查看全部')).not.toBeInTheDocument();
+
+    expect(await screen.findByTestId('home-empty-library')).toBeInTheDocument();
+    expect(screen.getByText('从已安装工具收藏第一批资产')).toBeInTheDocument();
+    expect(screen.getByText('运行首次引导')).toBeInTheDocument();
+    expect(screen.getByTestId('status-health')).toHaveTextContent('待盘点');
+    expect(screen.getByTestId('status-pending')).toHaveTextContent('暂不可用');
+    expect(screen.queryByTestId('today-queue')).not.toBeInTheDocument();
+    expect(screen.queryByText('全部健康')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('recent-changes')).not.toBeInTheDocument();
+    // 工具状态与库是否为空无关，仍正常显示
+    expect(screen.getByTestId('tool-sync-matrix')).toBeInTheDocument();
   });
 
-  it('渲染健康度分数', async () => {
+  it('空态二：全部健康显示最近体检时间与「重新体检」，不制造虚假待办', async () => {
+    vi.mocked(api.getHomeDashboard).mockResolvedValue(
+      dashboard({
+        issues: { available: true, total: 0, bySeverity: { high: 0, medium: 0, low: 0 }, items: [] },
+      }),
+    );
     renderHome();
-    // mock governance health score = 85
-    expect(await screen.findByTestId('health-score')).toHaveTextContent('85');
-    expect(screen.getByText('资产健康')).toBeInTheDocument();
+
+    expect(await screen.findByTestId('home-all-healthy')).toBeInTheDocument();
+    expect(screen.getByText('全部健康')).toBeInTheDocument();
+    expect(screen.getByText(/最近一次体检/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '重新体检' })).toBeInTheDocument();
+    expect(screen.queryByTestId('today-queue')).not.toBeInTheDocument();
   });
 
-  it('未跑过引导时首页展示入口，跑过或已标记后不展示', async () => {
+  it('空态三：待办不可用显示「暂不可用」与重试，不显示全部健康', async () => {
+    vi.mocked(api.getHomeDashboard).mockResolvedValue(
+      dashboard({
+        status: {
+          healthScore: 78,
+          healthGrade: 'good',
+          totalAssets: 12,
+          unsyncedCount: null,
+          lastBackupAt: null,
+          backupState: 'none',
+        },
+        issues: { available: false, total: null, bySeverity: null, items: [] },
+      }),
+    );
+    renderHome();
+
+    expect(await screen.findByTestId('home-issues-unavailable')).toBeInTheDocument();
+    expect(screen.getByTestId('status-pending')).toHaveTextContent('暂不可用');
+    expect(screen.getByRole('button', { name: '重试' })).toBeInTheDocument();
+    expect(screen.queryByText('全部健康')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('today-queue')).not.toBeInTheDocument();
+  });
+
+  it('局部失败不整页崩：健康分与某工具不可用时其余区块照常渲染', async () => {
+    vi.mocked(api.getHomeDashboard).mockResolvedValue(
+      dashboard({
+        status: {
+          healthScore: null,
+          healthGrade: null,
+          totalAssets: null,
+          unsyncedCount: null,
+          lastBackupAt: null,
+          backupState: 'unavailable',
+        },
+        tools: [
+          { toolId: 'trae-cn', toolName: 'TRAE 中国版', state: 'unknown', driftAssetCount: null, lastSyncedAt: null },
+        ],
+        partial: true,
+        failedTools: ['trae-cn'],
+      }),
+    );
+    renderHome();
+
+    expect(await screen.findByTestId('status-bar')).toBeInTheDocument();
+    expect(screen.getByTestId('status-health')).toHaveTextContent('暂不可用');
+    expect(screen.getByTestId('status-unsynced')).toHaveTextContent('暂不可用');
+    expect(screen.getByTestId('status-last-backup')).toHaveTextContent('暂不可用');
+    expect(screen.getByTestId('today-queue')).toBeInTheDocument();
+    expect(screen.getByTestId('tool-row-trae-cn')).toHaveTextContent('状态暂不可用');
+  });
+
+  it('「重新体检」走 refresh=1，四个数字与待办一起更新', async () => {
+    vi.mocked(api.getHomeDashboard).mockResolvedValue(
+      dashboard({
+        issues: { available: true, total: 0, bySeverity: { high: 0, medium: 0, low: 0 }, items: [] },
+      }),
+    );
+    renderHome();
+
+    await userEvent.click(await screen.findByRole('button', { name: '重新体检' }));
+    expect(api.getHomeDashboard).toHaveBeenLastCalledWith({ refresh: true });
+  });
+
+  it('接口整体失败显示连接失败提示，可重试且不白屏', async () => {
+    vi.mocked(api.getHomeDashboard).mockRejectedValue(new Error('boom'));
+    renderHome();
+
+    expect(await screen.findByText('无法连接到 AssetPlex 服务')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '重试' })).toBeInTheDocument();
+  });
+
+  it('保留新手引导续跑卡', async () => {
     renderHome();
     expect(await screen.findByTestId('onboarding-resume')).toBeInTheDocument();
     expect(screen.getByTestId('onboarding-resume-start')).toBeInTheDocument();
-  });
-
-  it('已完成引导的用户不看到入口', async () => {
-    vi.mocked(api.getOnboardingState).mockResolvedValue(
-      makeOnboardingState({ onboarded: true, lastOutcome: { outcome: 'completed', step: 'done', at: '2026-11-14T00:00:00.000Z' } }),
-    );
-    renderHome();
-    expect(await screen.findByText('资产健康')).toBeInTheDocument();
-    expect(screen.queryByTestId('onboarding-resume')).not.toBeInTheDocument();
   });
 });

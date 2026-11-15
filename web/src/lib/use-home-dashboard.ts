@@ -63,7 +63,6 @@ export function useHomeDashboard(): HomeDashboardView {
   const query = useQuery({
     queryKey: HOME_DASHBOARD_QUERY_KEY,
     queryFn: () => api.getHomeDashboard(),
-    retry: 1,
   });
 
   const retry = useCallback((): void => {

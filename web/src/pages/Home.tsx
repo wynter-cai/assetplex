@@ -1,201 +1,220 @@
-import { useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, RefreshCw } from 'lucide-react';
-import { HomeHero } from '@/components/home/HomeHero';
-import { HealthIssuesPanel } from '@/components/home/HealthIssuesPanel';
-import { RemediationDialog } from '@/components/home/RemediationDialog';
-import { AssetSnapshot } from '@/components/home/AssetSnapshot';
-import { SuggestionRail } from '@/components/home/SuggestionRail';
-import { OnboardingResumeCard } from '@/components/home/OnboardingResumeCard';
-import { ConnectionCard } from '@/components/home/ConnectionCard';
-import { QuickActions } from '@/components/home/QuickActions';
-import { RecentActivity } from '@/components/home/RecentActivity';
-import { api } from '@/lib/api';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Button } from '@/components/ui/button';
-import { ASSET_CATEGORIES } from '@/config/asset-categories';
-import type { HealthDimensionId } from '@/types/api';
-
 /**
- * 首页 - 指挥中心
+ * 首页 - 行动面板（refactor-home-action-panel T10）
  *
- * 接入 GET /api/hub/overview 聚合数据。
- * 布局：
- *   ┌─ HomeHero ──────────────────────────────────┐
- *   ├─ AssetSnapshot ─────────────────────────────┤
- *   ├─ ConnectionCard ────────────────────────────┤
- *   ├─ QuickActions ─┬─ RecentActivity ───────────┤
- *   └────────────────┴────────────────────────────┘
+ * spec: 设计文档/changes/refactor-home-action-panel/specs/home-dashboard.spec.md
+ * 结构：状态条 → 今日待办 →（宽屏两栏）工具与同步矩阵 → 最近变化。
+ * 旧资产快照 / 快捷动作 / 建议条 / 旧连接卡已下线（组件文件保留，其他页面引用不受影响）。
+ * 空态互不混淆：库为空、全部健康、待办不可用各自诚实呈现，不填 0、不伪造健康。
  */
+
+import { useNavigate } from 'react-router-dom';
+import { AlertTriangle, Boxes, CheckCircle2, RefreshCw } from 'lucide-react';
+import { StatusBar } from '@/components/home/StatusBar';
+import { TodayQueue } from '@/components/home/TodayQueue';
+import { ToolSyncMatrix } from '@/components/home/ToolSyncMatrix';
+import { RecentChanges } from '@/components/home/RecentChanges';
+import { OnboardingResumeCard } from '@/components/home/OnboardingResumeCard';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useHomeDashboard, formatHomeTimestamp } from '@/lib/use-home-dashboard';
+
 export default function Home(): JSX.Element {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const [openDimension, setOpenDimension] = useState<HealthDimensionId | null>(null);
-  const [healthRefreshing, setHealthRefreshing] = useState(false);
-  const [remediationOpen, setRemediationOpen] = useState(false);
-  const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['overview'],
-    queryFn: api.getOverview,
-    retry: 1,
-  });
+  const { data, isLoading, isError, isRefreshing, refreshError, retry, refresh } = useHomeDashboard();
 
-  // 真实健康分：默认只读缓存，点「重新体检」才 refresh=1 重算
-  const healthQuery = useQuery({
-    queryKey: ['governance-health'],
-    queryFn: () => api.getGovernanceHealth(false),
-    retry: 1,
-  });
+  if (isLoading) return <HomeSkeleton />;
+  if (isError || data === undefined) return <ServiceUnavailable onRetry={retry} />;
 
-  const handleRefreshHealth = async (): Promise<void> => {
-    setHealthRefreshing(true);
-    try {
-      const fresh = await api.getGovernanceHealth(true);
-      queryClient.setQueryData(['governance-health'], fresh);
-      queryClient.invalidateQueries({ queryKey: ['governance-issues'] });
-    } catch {
-      // 失败保持旧数据可见，卡片会提示「健康分暂不可用」仅在无数据时
-      healthQuery.refetch().catch(() => undefined);
-    } finally {
-      setHealthRefreshing(false);
-    }
-  };
-
-  const openDimensionLabel =
-    healthQuery.data?.dimensions.find((d) => d.id === openDimension)?.label ?? '健康';
-
-  // 加载状态：骨架屏
-  if (isLoading) {
-    return <HomeSkeleton />;
-  }
-
-  // 错误状态
-  if (isError || !data) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-        <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
-        <h2 className="text-lg font-semibold mb-2">无法连接到 AssetPlex 服务</h2>
-        <p className="text-sm text-muted-foreground mb-4">
-          请确认服务正在运行，然后重试。
-        </p>
-        <Button onClick={() => refetch()} variant="default" size="sm">
-          <RefreshCw className="h-4 w-4 mr-1.5" />
-          重试
-        </Button>
-      </div>
-    );
-  }
+  const emptyLibrary = !data.hubInitialized;
+  const issuesUnavailable = !data.issues.available;
+  const allHealthy = !emptyLibrary && data.issues.available && (data.issues.total ?? 0) === 0;
 
   return (
     <div className="space-y-4">
       <OnboardingResumeCard />
 
-      <HomeHero
-        hubInitialized={data.hubInitialized}
-        health={healthQuery.data ?? null}
-        healthLoading={healthQuery.isLoading}
-        healthError={healthQuery.isError}
-        healthRefreshing={healthRefreshing}
-        onStartOnboarding={() => navigate('/onboarding')}
-        onRefreshHealth={() => void handleRefreshHealth()}
-        onOpenIssues={(dimension) => setOpenDimension(dimension)}
-        onConfigureAi={() => navigate('/skills')}
-        onStartRemediation={() => setRemediationOpen(true)}
+      {refreshError !== null && (
+        <p
+          role="status"
+          data-testid="home-refresh-error"
+          className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-12 text-destructive"
+        >
+          重新体检失败，仍显示上一次结果：{refreshError}
+        </p>
+      )}
+
+      <StatusBar
+        status={data.status}
+        pendingCount={emptyLibrary ? null : data.issues.total}
       />
 
-      <SuggestionRail onOpenRemediation={() => setRemediationOpen(true)} />
-
-      {remediationOpen && (
-        <RemediationDialog
-          onClose={() => setRemediationOpen(false)}
-          onCompleted={() => void handleRefreshHealth()}
-        />
-      )}
-
-      {openDimension !== null && (
-        <HealthIssuesPanel
-          dimension={openDimension}
-          label={openDimensionLabel}
-          onClose={() => setOpenDimension(null)}
-        />
-      )}
-
-      {data.hubInitialized && (
-        <>
-          <AssetSnapshot assetStats={data.assetStats} />
-          <ConnectionCard connections={data.connections} />
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <QuickActions
-              hubInitialized={data.hubInitialized}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(300px,380px)]">
+        <div className="min-w-0">
+          {emptyLibrary ? (
+            <EmptyLibraryPanel
               onImport={() => navigate('/import')}
+              onStartOnboarding={() => navigate('/onboarding')}
             />
-            <div className="lg:col-span-2">
-              <RecentActivity activities={data.recentActivities} />
-            </div>
-          </div>
-        </>
-      )}
+          ) : issuesUnavailable ? (
+            <IssuesUnavailable onRetry={retry} />
+          ) : allHealthy ? (
+            <AllHealthyPanel
+              computedAt={data.healthComputedAt}
+              isRefreshing={isRefreshing}
+              onRefresh={refresh}
+            />
+          ) : (
+            <TodayQueue issues={data.issues} />
+          )}
+        </div>
+        <aside className="min-w-0">
+          <ToolSyncMatrix tools={data.tools} />
+        </aside>
+      </div>
+
+      {!emptyLibrary && <RecentChanges activities={data.recentActivity} />}
     </div>
   );
 }
 
-/**
- * 首页加载骨架屏
- */
+/** 库为空态：两个出口，不显示待办队列与 0 分（Scenario 3.2） */
+function EmptyLibraryPanel({
+  onImport,
+  onStartOnboarding,
+}: {
+  onImport: () => void;
+  onStartOnboarding: () => void;
+}): JSX.Element {
+  return (
+    <section
+      aria-label="库为空"
+      data-testid="home-empty-library"
+      className="rounded-xl border bg-card p-8 text-center"
+    >
+      <Boxes className="mx-auto h-9 w-9 text-primary" />
+      <h2 className="mt-3 text-18 font-semibold">库里还没有可评估的资产</h2>
+      <p className="mt-1 text-13 text-muted-foreground">
+        先把散落在各工具里的身份、技能、规则收进库，首页才知道该提醒你什么。
+      </p>
+      <div className="mt-5 flex flex-wrap justify-center gap-2">
+        <Button onClick={onImport}>从已安装工具收藏第一批资产</Button>
+        <Button variant="outline" onClick={onStartOnboarding}>
+          运行首次引导
+        </Button>
+      </div>
+    </section>
+  );
+}
+
+/** 全部健康态：显示体检时间 + 显式重算，打开页面不自动重算（Scenario 3.1） */
+function AllHealthyPanel({
+  computedAt,
+  isRefreshing,
+  onRefresh,
+}: {
+  computedAt: string | null;
+  isRefreshing: boolean;
+  onRefresh: () => void;
+}): JSX.Element {
+  return (
+    <section
+      aria-label="今日待办"
+      data-testid="home-all-healthy"
+      className="rounded-xl border bg-card p-6"
+    >
+      <div className="flex items-start gap-3">
+        <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+        <div className="space-y-1">
+          <h2 className="text-14 font-semibold">全部健康</h2>
+          <p className="text-12 text-muted-foreground">
+            {computedAt === null
+              ? '还没有体检记录，运行一次体检确认现状。'
+              : `最近一次体检：${formatHomeTimestamp(computedAt)}`}
+          </p>
+        </div>
+      </div>
+      <Button variant="outline" size="sm" className="mt-4" onClick={onRefresh} disabled={isRefreshing}>
+        <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+        {isRefreshing ? '体检中…' : '重新体检'}
+      </Button>
+    </section>
+  );
+}
+
+/** 待办不可用态：显示原因与重试，不得显示「全部健康」（Scenario 3.3） */
+function IssuesUnavailable({ onRetry }: { onRetry: () => void }): JSX.Element {
+  return (
+    <section
+      aria-label="今日待办"
+      data-testid="home-issues-unavailable"
+      className="rounded-xl border bg-card p-6"
+    >
+      <div className="flex items-start gap-3">
+        <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
+        <div className="space-y-1">
+          <h2 className="text-14 font-semibold">待办暂不可用</h2>
+          <p className="text-12 text-muted-foreground">
+            资产快照读取失败，这次算不出待办；资产文件本身不受影响。
+          </p>
+        </div>
+      </div>
+      <Button variant="outline" size="sm" className="mt-4" onClick={onRetry}>
+        重试
+      </Button>
+    </section>
+  );
+}
+
+/** 接口整体失败：给出连接提示与重试，不白屏（Scenario 7.2） */
+function ServiceUnavailable({ onRetry }: { onRetry: () => void }): JSX.Element {
+  return (
+    <div className="flex min-h-[60vh] flex-col items-center justify-center text-center">
+      <AlertTriangle className="mb-4 h-12 w-12 text-destructive" />
+      <h2 className="mb-2 text-18 font-semibold">无法连接到 AssetPlex 服务</h2>
+      <p className="mb-4 text-13 text-muted-foreground">请确认服务正在运行，然后重试。</p>
+      <Button onClick={onRetry} size="sm">
+        <RefreshCw className="mr-1.5 h-4 w-4" />
+        重试
+      </Button>
+    </div>
+  );
+}
+
+/** 首次加载骨架：四块各自占位，不显示未经返回的 0 或示例待办（Scenario 7.1） */
 function HomeSkeleton(): JSX.Element {
   return (
     <div className="space-y-4">
-      {/* Hero */}
-      <div className="rounded-lg border p-6">
-        <div className="flex items-center gap-4">
-          <Skeleton className="h-12 w-12 rounded-full" />
-          <div className="flex-1 space-y-2">
-            <Skeleton className="h-5 w-32" />
-            <Skeleton className="h-4 w-48" />
-          </div>
-          <Skeleton className="h-10 w-12" />
-        </div>
-      </div>
-
-      {/* Asset Snapshot */}
-      <div className="rounded-lg border p-4">
-        <Skeleton className="h-4 w-20 mb-4" />
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-3">
-          {ASSET_CATEGORIES.map((cat) => (
-            <Skeleton key={cat.code} className="h-20 rounded-lg" />
-          ))}
-        </div>
-      </div>
-
-      {/* Connections */}
-      <div className="rounded-lg border p-4">
-        <Skeleton className="h-4 w-20 mb-4" />
-        <div className="grid grid-cols-2 gap-2">
+      <div className="rounded-xl border bg-card px-4 py-3">
+        <div className="flex flex-wrap gap-10">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-12 rounded-md" />
+            <div key={i} className="space-y-1">
+              <Skeleton className="h-3 w-12" />
+              <Skeleton className="h-5 w-16" />
+            </div>
           ))}
         </div>
       </div>
 
-      {/* Quick Actions + Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="rounded-lg border p-4">
-          <Skeleton className="h-4 w-16 mb-4" />
-          <div className="space-y-2">
-            <Skeleton className="h-9 rounded-md" />
-            <Skeleton className="h-9 rounded-md" />
-            <Skeleton className="h-9 rounded-md" />
-          </div>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(300px,380px)]">
+        <div className="space-y-2 rounded-xl border bg-card p-4">
+          <Skeleton className="h-4 w-20" />
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-10 rounded-md" />
+          ))}
         </div>
-        <div className="lg:col-span-2 rounded-lg border p-4">
-          <Skeleton className="h-4 w-20 mb-4" />
-          <div className="space-y-3">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-12 rounded-md" />
-            ))}
-          </div>
+        <div className="space-y-2 rounded-xl border bg-card p-4">
+          <Skeleton className="h-4 w-24" />
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-10 rounded-md" />
+          ))}
         </div>
+      </div>
+
+      <div className="space-y-2 rounded-xl border bg-card p-4">
+        <Skeleton className="h-4 w-20" />
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="h-6 rounded-md" />
+        ))}
       </div>
     </div>
   );
