@@ -1,8 +1,8 @@
 /**
- * swap 单资产范围执行测试（add-asset-doctor F3）
+ * 资产写入引擎单资产范围执行测试（add-asset-doctor F3）
  *
- * spec: fix-and-distribute.spec.md「分发」定义——医生复用 swap 通道而不自建；
- * SwapExecuteRequest.onlyHubRelativePaths 提供单资产粒度：命中的写入单元整单元执行
+ * spec: fix-and-distribute.spec.md「分发」定义——医生复用资产写入通道而不自建；
+ * AssetWriteExecuteRequest.onlyHubRelativePaths 提供单资产粒度：命中的写入单元整单元执行
  * （技能目录含全部子文件），范围外单元完全不碰。回滚/备份语义与全量执行一致。
  */
 
@@ -15,9 +15,9 @@ import type { HubConfig } from '../../../src/core/config.js';
 import { HubConfigSchema } from '../../../src/core/config.js';
 import type { HubItem, SyncStrategy, SyncTarget } from '../../../src/core/types.js';
 import { AssetWriteEngine } from '../../../src/core/asset-write.js';
-import type { SwapCategory } from '../../../src/core/asset-write.js';
+import type { AssetWriteCategory } from '../../../src/core/asset-write.js';
 
-const FAKE_LAYOUT: Record<SwapCategory, { rel: string; target: string; strategy: SyncStrategy; isDir: boolean }> = {
+const FAKE_LAYOUT: Record<AssetWriteCategory, { rel: string; target: string; strategy: SyncStrategy; isDir: boolean }> = {
   identity: { rel: 'identity/profile.md', target: 'IDENTITY.md', strategy: 'symlink', isDir: false },
   rule: { rel: 'rules', target: 'rules', strategy: 'symlink', isDir: true },
   skill: { rel: 'skills', target: 'skills', strategy: 'symlink', isDir: true },
@@ -35,7 +35,7 @@ class FakeToolAdapter extends BaseAdapter {
 
   constructor(
     private readonly dir: string,
-    private readonly categories: SwapCategory[],
+    private readonly categories: AssetWriteCategory[],
   ) {
     super();
   }
@@ -71,7 +71,7 @@ class FakeToolAdapter extends BaseAdapter {
   }
 }
 
-describe('swap 单资产范围执行（doctor F3）', () => {
+describe('资产写入引擎单资产范围执行（doctor F3）', () => {
   let hubDir: string;
   let toolDir: string;
   let originalAssetPlexDir: string | undefined;
@@ -97,7 +97,7 @@ describe('swap 单资产范围执行（doctor F3）', () => {
     writeFileSync(abs, content, 'utf-8');
   }
 
-  function engineWith(categories: SwapCategory[]): AssetWriteEngine {
+  function engineWith(categories: AssetWriteCategory[]): AssetWriteEngine {
     return new AssetWriteEngine(HubConfigSchema.parse({}), [new FakeToolAdapter(toolDir, categories)]);
   }
 

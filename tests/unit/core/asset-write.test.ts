@@ -1,7 +1,7 @@
 /**
- * swap 核心引擎单元测试
+ * 资产写入引擎单元测试
  *
- * spec: enable-tool-hot-swap T3-T6 —— 切换包组装/预览/执行/备份/验证/回滚/历史
+ * spec: remove-tool-swap B21 —— 写入包组装/预览/执行/备份/验证/回滚/历史（行为不变）
  * 说明:用 FakeToolAdapter 定向到临时目录，避免污染真实 ~/.workbuddy。
  */
 
@@ -13,11 +13,11 @@ import { BaseAdapter } from '../../../src/core/adapters/base.js';
 import type { HubConfig } from '../../../src/core/config.js';
 import { HubConfigSchema } from '../../../src/core/config.js';
 import type { HubItem, SyncStrategy, SyncTarget } from '../../../src/core/types.js';
-import { AssetWriteEngine, SWAP_CATEGORIES } from '../../../src/core/asset-write.js';
-import type { SwapCategory, SwapPreview } from '../../../src/core/asset-write.js';
+import { AssetWriteEngine, ASSET_WRITE_CATEGORIES } from '../../../src/core/asset-write.js';
+import type { AssetWriteCategory, AssetWritePreview } from '../../../src/core/asset-write.js';
 
 /** 六类各备一份库内资产(相对 Hub 根 posix 路径) */
-const CATEGORY_HUB_FILE: Record<SwapCategory, string> = {
+const CATEGORY_HUB_FILE: Record<AssetWriteCategory, string> = {
   identity: 'identity/profile.md',
   rule: 'rules/global.md',
   skill: 'skills/demo/SKILL.md',
@@ -27,7 +27,7 @@ const CATEGORY_HUB_FILE: Record<SwapCategory, string> = {
 };
 
 /** 每类在 Hub 的文件数(用于计数断言) */
-const CATEGORY_HUB_COUNT: Record<SwapCategory, number> = {
+const CATEGORY_HUB_COUNT: Record<AssetWriteCategory, number> = {
   identity: 1,
   rule: 1,
   skill: 1,
@@ -36,7 +36,7 @@ const CATEGORY_HUB_COUNT: Record<SwapCategory, number> = {
   agent: 1,
 };
 
-const FAKE_LAYOUT: Record<SwapCategory, { rel: string; target: string; strategy: SyncStrategy; isDir: boolean }> = {
+const FAKE_LAYOUT: Record<AssetWriteCategory, { rel: string; target: string; strategy: SyncStrategy; isDir: boolean }> = {
   identity: { rel: 'identity/profile.md', target: 'IDENTITY.md', strategy: 'symlink', isDir: false },
   rule: { rel: 'rules', target: 'rules', strategy: 'symlink', isDir: true },
   skill: { rel: 'skills', target: 'skills', strategy: 'symlink', isDir: true },
@@ -55,7 +55,7 @@ class FakeToolAdapter extends BaseAdapter {
 
   constructor(
     private readonly dir: string,
-    private readonly categories: SwapCategory[],
+    private readonly categories: AssetWriteCategory[],
     /**
      * 强制目标策略(默认沿用 FAKE_LAYOUT)。
      * symlink 真生效时目标即 Hub 文件本身，改库后内容自动跟随、永远不会 differs；
@@ -98,14 +98,14 @@ class FakeToolAdapter extends BaseAdapter {
   }
 }
 
-describe('swap 核心引擎(enable-tool-hot-swap T3-T6)', () => {
+describe('资产写入引擎（remove-tool-swap B21）', () => {
   let hubDir: string;
   let toolDir: string;
   let originalAssetPlexDir: string | undefined;
 
   beforeEach(() => {
-    hubDir = mkdtempSync(join(tmpdir(), 'assetplex-swap-hub-'));
-    toolDir = mkdtempSync(join(tmpdir(), 'assetplex-swap-tool-'));
+    hubDir = mkdtempSync(join(tmpdir(), 'assetplex-write-hub-'));
+    toolDir = mkdtempSync(join(tmpdir(), 'assetplex-write-tool-'));
     writeFileSync(join(toolDir, 'sig.txt'), 'sig');
     originalAssetPlexDir = process.env.ASSETPLEX_DIR;
     process.env.ASSETPLEX_DIR = hubDir;
@@ -132,33 +132,33 @@ describe('swap 核心引擎(enable-tool-hot-swap T3-T6)', () => {
     }
   }
 
-  function engineWith(categories: SwapCategory[], strategy?: 'symlink' | 'copy'): AssetWriteEngine {
+  function engineWith(categories: AssetWriteCategory[], strategy?: 'symlink' | 'copy'): AssetWriteEngine {
     const adapter = new FakeToolAdapter(toolDir, categories, strategy);
     return new AssetWriteEngine(HubConfigSchema.parse({}), [adapter]);
   }
 
-  function groupOf(preview: SwapPreview, cat: SwapCategory) {
+  function groupOf(preview: AssetWritePreview, cat: AssetWriteCategory) {
     const g = preview.groups.find((x) => x.category === cat);
     expect(g, `分组 ${cat} 应存在`).toBeDefined();
     return g!;
   }
 
   describe('Bundle 组装与预览(T3)', () => {
-    it('SWAP_CATEGORIES 恰好为六类(不含 preference)', () => {
-      expect([...SWAP_CATEGORIES].sort()).toEqual(
+    it('ASSET_WRITE_CATEGORIES 恰好为六类(不含 preference)', () => {
+      expect([...ASSET_WRITE_CATEGORIES].sort()).toEqual(
         ['agent', 'identity', 'mcp', 'memory', 'rule', 'skill'].sort(),
       );
     });
 
     it('全支持工具预览六类齐全，每类含资产项与 targetPath', async () => {
       seedAllCategories();
-      const engine = engineWith([...SWAP_CATEGORIES]);
+      const engine = engineWith([...ASSET_WRITE_CATEGORIES]);
       const preview = await engine.preview('faketool');
 
       expect(preview.tool).toBe('faketool');
       expect(preview.toolInstalled).toBe(true);
       expect(preview.groups).toHaveLength(6);
-      for (const cat of SWAP_CATEGORIES) {
+      for (const cat of ASSET_WRITE_CATEGORIES) {
         const g = groupOf(preview, cat);
         expect(g.support.supported).toBe(true);
         expect(g.items.length).toBe(CATEGORY_HUB_COUNT[cat]);
@@ -172,7 +172,7 @@ describe('swap 核心引擎(enable-tool-hot-swap T3-T6)', () => {
       const engine = engineWith(['identity', 'rule', 'skill', 'mcp']);
       const preview = await engine.preview('faketool');
 
-      for (const cat of ['memory', 'agent'] as SwapCategory[]) {
+      for (const cat of ['memory', 'agent'] as AssetWriteCategory[]) {
         const g = groupOf(preview, cat);
         expect(g.support.supported).toBe(false);
         if (!g.support.supported) {
@@ -225,7 +225,7 @@ describe('swap 核心引擎(enable-tool-hot-swap T3-T6)', () => {
 
     it('generatedAt 为有效 ISO 时间戳', async () => {
       seedAllCategories();
-      const engine = engineWith([...SWAP_CATEGORIES]);
+      const engine = engineWith([...ASSET_WRITE_CATEGORIES]);
       const preview = await engine.preview('faketool');
 
       expect(typeof preview.generatedAt).toBe('string');
@@ -524,7 +524,7 @@ describe('swap 核心引擎(enable-tool-hot-swap T3-T6)', () => {
       return readdirSync(root, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name);
     }
 
-    /** 拉开时间戳，保证 swapId 可排序 */
+    /** 拉开时间戳，保证写入批次 id 可排序 */
     async function sleep(ms: number): Promise<void> {
       await new Promise((r) => setTimeout(r, ms));
     }
@@ -589,7 +589,7 @@ describe('swap 核心引擎(enable-tool-hot-swap T3-T6)', () => {
       expect(entry?.rolledBack).toBe(true);
     });
 
-    it('回滚幂等:重复回滚不报错；未知 swapId 明确失败', async () => {
+    it('回滚幂等:重复回滚不报错；未知写入批次 id 明确失败', async () => {
       writeHub('identity/profile.md', '# Hub Identity');
       writeFileSync(resolve(toolDir, 'IDENTITY.md'), '# Tool Own', 'utf-8');
 
@@ -607,7 +607,7 @@ describe('swap 核心引擎(enable-tool-hot-swap T3-T6)', () => {
       expect(second.success).toBe(true);
       expect(readFileSync(resolve(toolDir, 'IDENTITY.md'), 'utf-8')).toBe('# Tool Own');
 
-      const unknown = await engine.rollback('no-such-swap-id');
+      const unknown = await engine.rollback('no-such-write-id');
       expect(unknown.success).toBe(false);
       expect(unknown.error).toContain('不存在');
     });
@@ -642,7 +642,7 @@ describe('swap 核心引擎(enable-tool-hot-swap T3-T6)', () => {
       writeHub('identity/profile.md', '# V1');
       const engine = engineWith(['identity'], 'copy');
 
-      const swapIds: string[] = [];
+      const writeIds: string[] = [];
       for (let i = 1; i <= 4; i++) {
         const preview = await engine.preview('faketool');
         const result = await engine.execute({
@@ -650,7 +650,7 @@ describe('swap 核心引擎(enable-tool-hot-swap T3-T6)', () => {
           previewGeneratedAt: preview.generatedAt,
           overwriteDecisions: i === 1 ? [] : [{ hubRelativePath: 'identity/profile.md', overwrite: true }],
         });
-        swapIds.push(result.swapId);
+        writeIds.push(result.swapId);
         await sleep(5);
         if (i < 4) {
           // 下轮制造新差异，保证每轮都产生备份
@@ -661,13 +661,13 @@ describe('swap 核心引擎(enable-tool-hot-swap T3-T6)', () => {
 
       // 仅保留最近 3 次备份目录
       expect(backupDirNames()).toHaveLength(3);
-      expect(backupDirNames()).not.toContain(swapIds[0]);
+      expect(backupDirNames()).not.toContain(writeIds[0]);
       // 工具资产目录未被清理波及
       expect(readFileSync(resolve(toolDir, 'IDENTITY.md'), 'utf-8')).toBe('# V4');
       // 最早的切换历史不可再回滚，最近的可回滚
       const hist = engine.history();
       expect(hist).toHaveLength(4);
-      expect(hist[hist.length - 1].swapId).toBe(swapIds[0]);
+      expect(hist[hist.length - 1].swapId).toBe(writeIds[0]);
       expect(hist[hist.length - 1].rollbackAvailable).toBe(false);
       expect(hist[0].rollbackAvailable).toBe(true);
     });

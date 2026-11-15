@@ -4,7 +4,7 @@
  * GET  /api/distributions/tools   —— 候选工具 + 六类支持矩阵
  * POST /api/remediations/rollback —— 回滚一次分发（覆盖项恢复 + 新增项移除）
  *
- * 原 /api/swap/tools 与 /api/swap/rollback 已归位，旧路径不再挂载（断言 404）。
+ * 原切换工具矩阵与回滚端点已归位，旧路径不再挂载（断言 404）。
  * 通过工厂注入临时 Hub + FakeToolAdapter，不依赖真实工具目录。
  */
 
@@ -19,13 +19,13 @@ import type { HubConfig } from '../../../src/core/config.js';
 import { HubConfigSchema } from '../../../src/core/config.js';
 import type { HubItem, SyncStrategy, SyncTarget } from '../../../src/core/types.js';
 import { AssetWriteEngine } from '../../../src/core/asset-write.js';
-import type { SwapCategory } from '../../../src/core/asset-write.js';
+import type { AssetWriteCategory } from '../../../src/core/asset-write.js';
 import { distributionToolsRoutesFactory } from '../../../src/server/routes/distribution-tools.js';
 import { remediationRollbackRoutesFactory } from '../../../src/server/routes/remediation-rollback.js';
 
-const ALL_CATEGORIES: SwapCategory[] = ['identity', 'rule', 'skill', 'mcp', 'memory', 'agent'];
+const ALL_CATEGORIES: AssetWriteCategory[] = ['identity', 'rule', 'skill', 'mcp', 'memory', 'agent'];
 
-const CATEGORY_HUB_FILE: Record<SwapCategory, string> = {
+const CATEGORY_HUB_FILE: Record<AssetWriteCategory, string> = {
   identity: 'identity/profile.md',
   rule: 'rules/global.md',
   skill: 'skills/demo/SKILL.md',
@@ -34,7 +34,7 @@ const CATEGORY_HUB_FILE: Record<SwapCategory, string> = {
   agent: 'agents/researcher.md',
 };
 
-const FAKE_LAYOUT: Record<SwapCategory, { rel: string; target: string; strategy: SyncStrategy; isDir: boolean }> = {
+const FAKE_LAYOUT: Record<AssetWriteCategory, { rel: string; target: string; strategy: SyncStrategy; isDir: boolean }> = {
   identity: { rel: 'identity/profile.md', target: 'IDENTITY.md', strategy: 'symlink', isDir: false },
   rule: { rel: 'rules', target: 'rules', strategy: 'symlink', isDir: true },
   skill: { rel: 'skills', target: 'skills', strategy: 'symlink', isDir: true },
@@ -52,7 +52,7 @@ class FakeToolAdapter extends BaseAdapter {
 
   constructor(
     private readonly dir: string,
-    private readonly categories: SwapCategory[],
+    private readonly categories: AssetWriteCategory[],
   ) {
     super();
   }

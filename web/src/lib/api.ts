@@ -62,8 +62,8 @@ import type {
   ProjectOpenTarget,
   WorkspacesResponse,
   UpdateWorkspacesInput,
-  SwapToolCandidate,
-  SwapRollbackResult,
+  AssetWriteToolCandidate,
+  AssetWriteRollbackResult,
   GithubDiscoverResult,
   GithubSkillPreview,
   GithubCurateItemInput,
@@ -440,11 +440,11 @@ export const api = {
     }>(`/tools/${encodeURIComponent(toolName)}/detail`),
 
   // 类别支持矩阵与分发回滚（资产医生修复分发、资产分发对话框共用）
-  getDistributionTools: () => request<{ tools: SwapToolCandidate[] }>('/distributions/tools'),
-  rollbackRemediation: (swapId: string) =>
-    request<SwapRollbackResult>('/remediations/rollback', {
+  getDistributionTools: () => request<{ tools: AssetWriteToolCandidate[] }>('/distributions/tools'),
+  rollbackRemediation: (writeId: string) =>
+    request<AssetWriteRollbackResult>('/remediations/rollback', {
       method: 'POST',
-      body: JSON.stringify({ swapId }),
+      body: JSON.stringify({ swapId: writeId }),
     }),
 
   // GitHub 技能发现（add-github-skill-source：发现/预览/入库/打标，均显式手动触发）

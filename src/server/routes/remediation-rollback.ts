@@ -2,7 +2,7 @@
  * 分发回滚路由（remove-tool-swap B21）
  *
  * POST /api/remediations/rollback：按本次分发 id 撤销写入（覆盖项恢复 + 新增项移除）。
- * 原 POST /api/swap/rollback 归位——用户可见的「切换工具」流程已删除，
+ * 原切换回滚端点归位——用户可见的「切换工具」流程已删除，
  * 该端点仅服务资产医生修复结果页的「回滚本次分发」。
  */
 
@@ -36,5 +36,5 @@ export function remediationRollbackRoutesFactory(deps: RemediationRollbackDeps):
 
 /** 默认路由实例（hubContext 单例依赖） */
 export const remediationRollbackRoutes = remediationRollbackRoutesFactory({
-  getEngine: () => hubContext.getSwapEngine(),
+  getEngine: () => hubContext.getAssetWriteEngine(),
 });

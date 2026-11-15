@@ -1,5 +1,5 @@
 /**
- * swap 文件系统辅助
+ * 资产写入文件系统辅助
  *
  * 资产写入专用的文件枚举、备份清单与历史记录读写封装，供 core/asset-write.ts 使用。
  * 不反向依赖 cli/server/web；仅本机文件操作，零数据上传。
@@ -9,10 +9,10 @@ import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from '
 import type { Dirent } from 'node:fs';
 import { join } from 'node:path';
 import { copyRecursive, ensureDir, isSymlink, safeRemove } from '../utils/fs.js';
-import type { SwapHistoryEntry } from './asset-write-types.js';
+import type { AssetWriteHistoryEntry } from './asset-write-types.js';
 
 /** 备份清单单条：记录覆盖前状态，回滚的唯一依据 */
-export interface SwapBackupEntry {
+export interface AssetWriteBackupEntry {
   /** 工具侧目标绝对路径 */
   targetPath: string;
   kind: 'file' | 'dir';
@@ -23,11 +23,11 @@ export interface SwapBackupEntry {
 }
 
 /** 一次切换的备份清单 */
-export interface SwapBackupManifest {
+export interface AssetWriteBackupManifest {
   swapId: string;
   tool: string;
   createdAt: string;
-  entries: SwapBackupEntry[];
+  entries: AssetWriteBackupEntry[];
 }
 
 /**
@@ -65,7 +65,7 @@ function walk(currentDir: string, out: string[]): void {
 }
 
 /** 生成可排序的切换 id（时间戳前缀 + 随机后缀） */
-export function makeSwapId(): string {
+export function makeAssetWriteId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
@@ -86,7 +86,7 @@ export function backupTarget(targetPath: string, backupDir: string, index: numbe
  * - 有备份 → 恢复覆盖前内容(目标是符号链接时先移除链接)
  * - 本次新增(无备份) → 移除目标
  */
-export function restoreTarget(entry: SwapBackupEntry, backupDir: string): void {
+export function restoreTarget(entry: AssetWriteBackupEntry, backupDir: string): void {
   if (entry.backupKey !== undefined) {
     const src = join(backupDir, 'files', entry.backupKey);
     if (!existsSync(src)) {
@@ -107,24 +107,24 @@ export function hasBackup(backupRoot: string, swapId: string): boolean {
 }
 
 /** 写入备份清单 */
-export function writeBackupManifest(backupDir: string, manifest: SwapBackupManifest): void {
+export function writeBackupManifest(backupDir: string, manifest: AssetWriteBackupManifest): void {
   ensureDir(backupDir);
   writeFileSync(join(backupDir, 'manifest.json'), JSON.stringify(manifest, null, 2), 'utf-8');
 }
 
 /** 读取备份清单；不存在或损坏返回 null */
-export function readBackupManifest(backupDir: string): SwapBackupManifest | null {
+export function readBackupManifest(backupDir: string): AssetWriteBackupManifest | null {
   const file = join(backupDir, 'manifest.json');
   if (!existsSync(file)) return null;
   try {
-    return JSON.parse(readFileSync(file, 'utf-8')) as SwapBackupManifest;
+    return JSON.parse(readFileSync(file, 'utf-8')) as AssetWriteBackupManifest;
   } catch {
     return null;
   }
 }
 
 /** 列出备份根下所有 <swapId> 目录名，按 id(时间戳前缀)倒序 */
-export function listSwapBackupDirs(backupRoot: string): string[] {
+export function listAssetWriteBackupDirs(backupRoot: string): string[] {
   if (!existsSync(backupRoot)) return [];
   try {
     return readdirSync(backupRoot, { withFileTypes: true })
@@ -140,8 +140,8 @@ export function listSwapBackupDirs(backupRoot: string): string[] {
  * 保留策略：仅保留最近 retain 次备份目录，更早的删除。
  * 只清理备份目录内的 <swapId> 子目录，绝不触碰工具资产目录。
  */
-export function pruneSwapBackups(backupRoot: string, retain: number): void {
-  const dirs = listSwapBackupDirs(backupRoot);
+export function pruneAssetWriteBackups(backupRoot: string, retain: number): void {
+  const dirs = listAssetWriteBackupDirs(backupRoot);
   for (const name of dirs.slice(Math.max(retain, 1))) {
     safeRemove(join(backupRoot, name));
   }
@@ -153,19 +153,19 @@ function historyFile(backupRoot: string): string {
 }
 
 /** 读取切换历史(原始存储顺序) */
-export function readHistory(backupRoot: string): SwapHistoryEntry[] {
+export function readHistory(backupRoot: string): AssetWriteHistoryEntry[] {
   const file = historyFile(backupRoot);
   if (!existsSync(file)) return [];
   try {
     const parsed = JSON.parse(readFileSync(file, 'utf-8')) as unknown;
-    return Array.isArray(parsed) ? (parsed as SwapHistoryEntry[]) : [];
+    return Array.isArray(parsed) ? (parsed as AssetWriteHistoryEntry[]) : [];
   } catch {
     return [];
   }
 }
 
 /** 追加一条切换历史(仅本机存储) */
-export function appendHistory(backupRoot: string, entry: SwapHistoryEntry): void {
+export function appendHistory(backupRoot: string, entry: AssetWriteHistoryEntry): void {
   const list = readHistory(backupRoot);
   list.push(entry);
   ensureDir(backupRoot);
@@ -176,7 +176,7 @@ export function appendHistory(backupRoot: string, entry: SwapHistoryEntry): void
 export function updateHistory(
   backupRoot: string,
   swapId: string,
-  patch: Partial<Pick<SwapHistoryEntry, 'rolledBack' | 'rollbackAvailable'>>,
+  patch: Partial<Pick<AssetWriteHistoryEntry, 'rolledBack' | 'rollbackAvailable'>>,
 ): void {
   const list = readHistory(backupRoot);
   const target = list.find((e) => e.swapId === swapId);

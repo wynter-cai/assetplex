@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { api } from '@/lib/api';
-import type { DiagnosisReport, DoctorApplyResponse, FixDraftResponse, SwapToolCandidate } from '@/types/api';
+import type { DiagnosisReport, DoctorApplyResponse, FixDraftResponse, AssetWriteToolCandidate } from '@/types/api';
 
 export type FixFlowIssueEntry = { issue: DiagnosisReport['issues'][number]; index: number };
 
@@ -104,7 +104,7 @@ export function DraftView(props: {
 
 export function ConfirmView(props: {
   originalPath: string;
-  toolCandidates: SwapToolCandidate[];
+  toolCandidates: AssetWriteToolCandidate[];
   toolNames: string[];
   onToggleTool: (name: string) => void;
   onSubmit: () => void;
@@ -151,9 +151,9 @@ export function ConfirmView(props: {
 
 export function ResultView(props: {
   apply: DoctorApplyResponse;
-  toolCandidates: SwapToolCandidate[];
+  toolCandidates: AssetWriteToolCandidate[];
   onUndo: () => void;
-  onRollback: (swapId: string) => void;
+  onRollback: (writeId: string) => void;
 }): JSX.Element {
   const displayName = (tool: string): string =>
     props.toolCandidates.find((t) => t.name === tool)?.displayName ?? tool;

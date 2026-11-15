@@ -3,7 +3,7 @@
  *
  * 一次用户确认（fix spec Scenario 2 / proposal D4）后的执行序：备份 → 写库 → 逐工具分发。
  * 信任红线（D2）：本模块只被 apply 路由在用户显式确认后调用，模型永不触达这里；
- * 分发不自建通道——端口实现层复用 swap 单资产预览-执行链路（onlyHubRelativePaths）。
+ * 分发不自建通道——端口实现层复用资产写入引擎的单资产预览-执行链路（onlyHubRelativePaths）。
  * 备份/写库/分发全部注入端口，core 不碰 fs（同诊断惯例，Node 实现在 server 层）。
  *
  * spec: 设计文档/changes/add-asset-doctor/specs/fix-and-distribute.spec.md
@@ -53,9 +53,9 @@ export interface DoctorApplyPorts {
   backup(hubRelativePath: string): string;
   /** 写库（含 Hub 越界守卫，走各类别既有写库路径） */
   write(hubRelativePath: string, content: string): void;
-  /** 解析「已安装该资产的工具」（基于 swap 支持矩阵与预览判定） */
+  /** 解析「已安装该资产的工具」（基于分发支持矩阵与预览判定） */
   defaultTargets(hubRelativePath: string): Promise<string[]>;
-  /** 单工具分发：swap 单资产预览-执行通道，失败可 throw（聚合为 failed 项） */
+  /** 单工具分发：资产写入引擎单资产预览-执行通道，失败可 throw（聚合为 failed 项） */
   dispatchTool(tool: string, hubRelativePath: string): Promise<DoctorDispatchItem>;
 }
 
@@ -111,7 +111,7 @@ export interface UndoApplyPorts {
 
 /**
  * 撤销本次修复：库内恢复旧版（Scenario 3）。
- * 分发侧回滚不在这里——那是 swap 既有 rollback（dispatch[].swapId 逐项可回）。
+ * 分发侧回滚不在这里——那是分发写入既有 rollback（dispatch[].swapId 逐项可回）。
  */
 export async function undoApplyFix(
   backupRef: string,

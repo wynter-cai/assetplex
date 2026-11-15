@@ -1,36 +1,36 @@
 /**
  * 医生分发端口 Node 实现（add-asset-doctor F3）
  *
- * 分发不自建通道（proposal D2）：逐工具走 swap 单资产预览-执行链路
+ * 分发不自建通道（proposal D2）：逐工具走资产写入引擎的单资产预览-执行链路
  * （onlyHubRelativePaths）。differs 项自动置 overwrite=true——用户在 apply
  * 一屏确认框（Scenario 2）已对该资产覆盖看过 diff，等价显式确认；范围外资产绝不置位。
  * 全程本机执行，零网络（Scenario 9）。
  */
 
-import type { AssetWriteEngine, SwapPreview } from '../../core/asset-write.js';
+import type { AssetWriteEngine, AssetWritePreview } from '../../core/asset-write.js';
 import type { DoctorDispatchItem } from '../../core/doctor-apply.js';
 
 export interface DispatchDeps {
-  getSwapEngine: () => AssetWriteEngine;
+  getAssetWriteEngine: () => AssetWriteEngine;
   /** 已安装工具名清单（adapter.detect 判定） */
   listInstalledTools: () => Promise<string[]>;
 }
 
 /** 单资产在预览中的文件级条目（路径精确匹配；技能子文件随单元执行，不在 overwrite 面扩大） */
-function itemsOfPath(preview: SwapPreview, hubRelativePath: string) {
+function itemsOfPath(preview: AssetWritePreview, hubRelativePath: string) {
   return preview.groups.flatMap((g) => g.items).filter((i) => i.hubRelativePath === hubRelativePath);
 }
 
 /**
  * 分发一个资产到单个工具：预览 → 单资产范围执行 → 聚合为一个 DoctorDispatchItem。
- * swap 抛错（staleness/未注册等）不在这里吞——由 applyAssetFix 统一 catch 成 failed 项。
+ * 引擎抛错（staleness/未注册等）不在这里吞——由 applyAssetFix 统一 catch 成 failed 项。
  */
-export async function dispatchToolViaSwap(
+export async function dispatchToolViaEngine(
   deps: DispatchDeps,
   tool: string,
   hubRelativePath: string,
 ): Promise<DoctorDispatchItem> {
-  const engine = deps.getSwapEngine();
+  const engine = deps.getAssetWriteEngine();
   const preview = await engine.preview(tool);
   if (!preview.toolInstalled) {
     return { tool, action: 'skipped', reason: '工具未安装' };
@@ -65,7 +65,7 @@ export async function dispatchToolViaSwap(
  * conflict=none（工具尚无此资产）不计入——新投放需用户在确认框里显式勾选。
  */
 export async function resolveDefaultTargets(deps: DispatchDeps, hubRelativePath: string): Promise<string[]> {
-  const engine = deps.getSwapEngine();
+  const engine = deps.getAssetWriteEngine();
   const out: string[] = [];
   for (const tool of await deps.listInstalledTools()) {
     try {

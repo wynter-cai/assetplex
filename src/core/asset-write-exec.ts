@@ -1,5 +1,5 @@
 /**
- * swap 执行编排（单元级落盘 + 覆盖前备份）
+ * 资产写入执行编排（单元级落盘 + 覆盖前备份）
  *
  * 写入粒度与适配器 resolveHubItems 的 (item, target) 单元对齐：
  * - 目标不存在 → 整单元走 adapter.apply(尊重 symlink/copy 策略)，计新增，不备份；
@@ -12,30 +12,30 @@ import { dirname } from 'node:path';
 import { copyRecursive, ensureDir, isSymlink, safeRemove } from '../utils/fs.js';
 import type { HubItem, SyncTarget } from './types.js';
 import type { ToolAdapter } from './adapters/base.js';
-import type { SwapItemResult, SwapPreviewItem } from './asset-write-types.js';
-import { backupTarget, type SwapBackupEntry } from './asset-write-fs.js';
+import type { AssetWriteItemResult, AssetWritePreviewItem } from './asset-write-types.js';
+import { backupTarget, type AssetWriteBackupEntry } from './asset-write-fs.js';
 
 /** 写入单元：一次 adapter.apply 或逐文件落盘的最小粒度 */
 export interface WriteUnit {
   item: HubItem;
   target: SyncTarget;
   /** 预览展开出的文件级条目 */
-  entries: Array<{ preview: SwapPreviewItem; sourcePath: string }>;
+  entries: Array<{ preview: AssetWritePreviewItem; sourcePath: string }>;
 }
 
 /** 一次 execute 的共享上下文 */
 export interface ExecContext {
   adapter: ToolAdapter;
-  /** 本次切换的备份目录 .swap-backup/<swapId>/ */
+  /** 本次写入的备份目录 .swap-backup/<swapId>/（数据目录名保持不变） */
   backupDir: string;
   /** hubRelativePath → 是否确认覆盖 */
   decisions: Map<string, boolean>;
   /** 备份清单条目(执行过程中追加) */
-  manifest: SwapBackupEntry[];
+  manifest: AssetWriteBackupEntry[];
   /** 本次执行新建的目录(已记入清单，去重用) */
   createdDirs: Set<string>;
   /** 逐资产结果 */
-  results: SwapItemResult[];
+  results: AssetWriteItemResult[];
   counts: { written: number; skipped: number; failed: number };
 }
 

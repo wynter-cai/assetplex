@@ -4,7 +4,7 @@
  * GET /api/asset-categories  资产类别声明源（唯一真相，proposal D5）
  * GET /api/distributions     分发状态索引（只读，30s 缓存，?refresh=1 强刷）
  *
- * 阶段 0 只读；写通道统一走 sync / swap / doctor。
+ * 阶段 0 只读；写通道统一走 sync / 分发写入 / doctor。
  */
 
 import { Hono } from 'hono';

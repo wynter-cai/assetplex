@@ -38,7 +38,7 @@ import { backupHubFileForDoctor, readDoctorBackup } from '../../core/doctor-back
 import { writeHubFile } from '../../core/hub-files.js';
 import { invalidateDistributionIndex } from '../../core/distribution-index.js';
 import { hubContext } from '../lib/hub-context.js';
-import { dispatchToolViaSwap, resolveDefaultTargets } from '../lib/doctor-dispatch.js';
+import { dispatchToolViaEngine, resolveDefaultTargets } from '../lib/doctor-dispatch.js';
 import { nodeAiConfigStore, nodeDoctorCacheStore, nodeFixDraftCacheStore } from '../lib/node-ai-classify-store.js';
 import { createOpenAiLlmClient } from '../lib/openai-llm-client.js';
 import { parseDiagnoseBody } from './doctor.js';
@@ -53,7 +53,7 @@ export interface DoctorFixRouteDeps {
   fixCache?: FixDraftCacheStore;
   llmClient?: LlmClient;
   aiConfigStore?: AiConfigStore;
-  /** 写库+分发端口（缺省 Node 实现：doctor-backup + hub-files + swap 单资产通道） */
+  /** 写库+分发端口（缺省 Node 实现：doctor-backup + hub-files + 资产写入引擎单资产通道） */
   apply?: DoctorApplyPorts;
   /** 撤销端口 */
   undo?: UndoApplyPorts;
@@ -63,7 +63,7 @@ export interface DoctorFixRouteDeps {
 /** Node 分发端口依赖：hubContext 单例引擎 + 安装检测（懒调用，测试注入不触达） */
 function nodeDispatchDeps() {
   return {
-    getSwapEngine: () => hubContext.getSwapEngine(),
+    getAssetWriteEngine: () => hubContext.getAssetWriteEngine(),
     listInstalledTools: async (): Promise<string[]> => {
       const out: string[] = [];
       for (const adapter of hubContext.getAllAdapters()) {
@@ -90,7 +90,7 @@ export const nodeApplyPorts: DoctorApplyPorts = {
   backup: (hubRelativePath) => backupHubFileForDoctor(hubRelativePath),
   write: (hubRelativePath, content) => writeHubFile(hubRelativePath, content),
   defaultTargets: (hubRelativePath) => resolveDefaultTargets(nodeDispatchDeps(), hubRelativePath),
-  dispatchTool: (tool, hubRelativePath) => dispatchToolViaSwap(nodeDispatchDeps(), tool, hubRelativePath),
+  dispatchTool: (tool, hubRelativePath) => dispatchToolViaEngine(nodeDispatchDeps(), tool, hubRelativePath),
 };
 
 export const nodeUndoPorts: UndoApplyPorts = {

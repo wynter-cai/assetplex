@@ -84,7 +84,7 @@ describe('listAssets', () => {
     expect(result.items).toHaveLength(9);
   });
 
-  it('memory 作为一等公民类别可被列出（enable-tool-hot-swap T1）', async () => {
+  it('memory 作为一等公民类别可被列出（资产分类）', async () => {
     const result = await listAssets({ category: 'memory' });
     // memory/ 下 2 个 + 历史 preferences/ 下 1 个（只读并入，proposal D2）
     expect(result.total).toBe(3);

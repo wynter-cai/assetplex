@@ -1,7 +1,7 @@
 /**
  * WorkBuddy / CodeBuddy 适配器测试
  *
- * spec: enable-tool-hot-swap T2 —— identity/memory 纳入分发面
+ * spec: 资产分发 —— identity/memory 纳入分发面
  * 说明:适配器 getConfigDir 硬编码 ~/.workbuddy|~/.codebuddy,测试通过替换实例方法定向到临时目录。
  */
 

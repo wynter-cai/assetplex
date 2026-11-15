@@ -2,20 +2,20 @@
  * 医生库内备份区（add-asset-doctor F3）
  *
  * 应用修复前的旧版快照：<Hub>/.doctor-backup/<backupId>/{meta.json, files/0}。
- * 备份与保留策略复用 swap 语义（backupTarget/pruneSwapBackups，保留 3 次），
- * 但独立目录、不写 swap 历史——医生撤销与工具切换回滚是两本账，互不污染。
+ * 备份与保留策略复用资产写入备份语义（backupTarget/pruneAssetWriteBackups，保留 3 次），
+ * 但独立目录、不写分发历史——医生撤销与分发回滚是两本账，互不污染。
  * 仅本机文件操作（宪法②）。
  */
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve, sep } from 'node:path';
 import { getHubRoot } from '../utils/paths.js';
-import { backupTarget, makeSwapId, pruneSwapBackups } from './asset-write-fs.js';
+import { backupTarget, makeAssetWriteId, pruneAssetWriteBackups } from './asset-write-fs.js';
 
-/** 备份保留次数（与 swap backupRetain 默认一致） */
+/** 备份保留次数（与资产写入 backupRetain 默认一致） */
 export const DOCTOR_BACKUP_RETAIN = 3;
 
-/** backupId 闭集形态：makeSwapId 的「时间戳-base36」，杜绝穿越类 ref */
+/** backupId 闭集形态：makeAssetWriteId 的「时间戳-base36」，杜绝穿越类 ref */
 const BACKUP_ID_PATTERN = /^[0-9]+-[a-z0-9]+$/i;
 
 interface DoctorBackupMeta {
@@ -46,12 +46,12 @@ export function backupHubFileForDoctor(hubRelativePath: string): string {
   if (!existsSync(full)) {
     throw new Error(`无法备份：文件不存在：${hubRelativePath}`);
   }
-  const backupId = makeSwapId();
+  const backupId = makeAssetWriteId();
   const backupDir = join(doctorBackupRoot(), backupId);
   backupTarget(full, backupDir, 0);
   const meta: DoctorBackupMeta = { hubRelativePath, createdAt: new Date().toISOString() };
   writeFileSync(join(backupDir, 'meta.json'), JSON.stringify(meta, null, 2), 'utf-8');
-  pruneSwapBackups(doctorBackupRoot(), DOCTOR_BACKUP_RETAIN);
+  pruneAssetWriteBackups(doctorBackupRoot(), DOCTOR_BACKUP_RETAIN);
   return backupId;
 }
 

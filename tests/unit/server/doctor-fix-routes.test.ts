@@ -95,7 +95,7 @@ function harness(
     defaultTargets: async () => ['toolA'],
     dispatchTool: async (tool, p) => {
       dispatchCalls.push({ tool, path: p });
-      return opts.dispatchResults?.[tool] ?? { tool, action: 'written', swapId: `swap-${tool}` };
+      return opts.dispatchResults?.[tool] ?? { tool, action: 'written', swapId: `write-${tool}` };
     },
   };
   const undoPorts: UndoApplyPorts = {
@@ -194,7 +194,7 @@ describe('POST /api/doctor/apply', () => {
   it('分发聚合（Scenario 4）：逐工具结果与 swapId 透传，rollbackAvailable 判定', async () => {
     const h = harness({
       dispatchResults: {
-        toolA: { tool: 'toolA', action: 'written', swapId: 'swap-A' },
+        toolA: { tool: 'toolA', action: 'written', swapId: 'write-A' },
         toolB: { tool: 'toolB', action: 'failed', reason: '写入失败' },
       },
     });
@@ -208,7 +208,7 @@ describe('POST /api/doctor/apply', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.dispatch).toEqual([
-      { tool: 'toolA', action: 'written', swapId: 'swap-A' },
+      { tool: 'toolA', action: 'written', swapId: 'write-A' },
       { tool: 'toolB', action: 'failed', reason: '写入失败' },
     ]);
     expect(body.rollbackAvailable).toBe(true);

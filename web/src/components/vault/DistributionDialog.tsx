@@ -10,7 +10,7 @@ import { toast } from '@/lib/toast-store';
 import { pickCategory, useAssetCategories } from '@/lib/use-asset-categories';
 import { TOOL_DISPLAY_NAME } from '@/components/connections/tool-display';
 import { DISTRIBUTION_STATUS } from './DistributionBadge';
-import type { Asset, AssetDistributionInfo, AssetSyncStatus, SwapCategorySupport } from '@/types/api';
+import type { Asset, AssetDistributionInfo, AssetSyncStatus, AssetWriteCategorySupport } from '@/types/api';
 
 interface DistributionDialogProps {
   asset: Asset | null;
@@ -46,7 +46,7 @@ export function DistributionDialog({
     enabled: open,
   });
 
-  // 类别支持矩阵真值（与切换页同一份，后端按适配器 resolveHubItems 派生）：
+  // 类别支持矩阵真值（与医生分发表单同一份，后端按适配器 resolveHubItems 派生）：
   // 不支持的类别必须说出原因并禁用，不静默跳过（memory-visible Scenario 6、D6）
   const { data: distributionToolsData } = useQuery({
     queryKey: ['distribution-tools'],
@@ -57,9 +57,9 @@ export function DistributionDialog({
   const categoryLabel = asset ? pickCategory(categories, asset.category)?.label ?? asset.category : '';
   // 矩阵拿不到（接口失败/未落地）时不编造「不支持」，只按安装状态处理
   const supportByTool = useMemo(() => {
-    const map = new Map<string, Record<string, SwapCategorySupport>>();
+    const map = new Map<string, Record<string, AssetWriteCategorySupport>>();
     for (const candidate of distributionToolsData?.tools ?? []) {
-      map.set(candidate.name, candidate.supportMatrix as Record<string, SwapCategorySupport>);
+      map.set(candidate.name, candidate.supportMatrix as Record<string, AssetWriteCategorySupport>);
     }
     return map;
   }, [distributionToolsData]);

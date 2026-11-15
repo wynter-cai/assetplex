@@ -103,7 +103,7 @@ export const HubConfigSchema = z.object({
       cacheTtlHours: z.number().int().positive().default(24),
     })
     .default({}),
-  /** 工具热切换(enable-tool-hot-swap) */
+  /** 资产写入备份（remove-tool-swap B21；键名保留以兼容既有配置） */
   swap: z
     .object({
       /** 切换备份保留次数 */

@@ -48,7 +48,7 @@ function ports(opts: {
       calls.push({ name: `dispatch:${tool}`, arg: path });
       const preset = opts.dispatchResults?.[tool];
       if (preset instanceof Error) throw preset;
-      return preset ?? { tool, action: 'written', swapId: `swap-${tool}` };
+      return preset ?? { tool, action: 'written', swapId: `write-${tool}` };
     },
   };
   return { p, calls };
@@ -80,8 +80,8 @@ describe('applyAssetFix', () => {
     const { p, calls } = ports();
     const result = await applyAssetFix(input({ distribute: true, targets: ['toolA', 'toolB'] }), p);
     expect(result.dispatch).toEqual([
-      { tool: 'toolA', action: 'written', swapId: 'swap-toolA' },
-      { tool: 'toolB', action: 'written', swapId: 'swap-toolB' },
+      { tool: 'toolA', action: 'written', swapId: 'write-toolA' },
+      { tool: 'toolB', action: 'written', swapId: 'write-toolB' },
     ]);
     expect(result.rollbackAvailable).toBe(true);
     expect(calls.some((c) => c.name === 'defaultTargets')).toBe(false);
@@ -99,13 +99,13 @@ describe('applyAssetFix', () => {
   it('某工具分发抛错不影响其他工具：失败项如实回报（Scenario 4/5）', async () => {
     const { p } = ports({
       dispatchResults: {
-        toolA: { tool: 'toolA', action: 'written', swapId: 'swap-A' },
+        toolA: { tool: 'toolA', action: 'written', swapId: 'write-A' },
         toolB: new Error('目标工具目录已变化，请重新预览后再执行'),
       },
     });
     const result = await applyAssetFix(input({ distribute: true, targets: ['toolA', 'toolB'] }), p);
     expect(result.dispatch).toEqual([
-      { tool: 'toolA', action: 'written', swapId: 'swap-A' },
+      { tool: 'toolA', action: 'written', swapId: 'write-A' },
       { tool: 'toolB', action: 'failed', reason: '目标工具目录已变化，请重新预览后再执行' },
     ]);
     // 库内本体不受分发失败影响（写库在分发前已完成且独立）

@@ -2,8 +2,8 @@
  * 医生库内备份区测试（add-asset-doctor F3）
  *
  * spec: fix-and-distribute.spec.md Scenario 3（覆盖前旧版入备份区、撤销依据）；
- * 备份语义与保留策略复用 swap（backupTarget/pruneSwapBackups），但独立目录 .doctor-backup/
- * 不混入 swap 历史。临时 ASSETPLEX_DIR 驱动，同 swap 测试惯例。
+ * 备份语义与保留策略复用资产写入（backupTarget/pruneAssetWriteBackups），但独立目录 .doctor-backup/
+ * 不混入分发历史。临时 ASSETPLEX_DIR 驱动。
  */
 
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
@@ -54,7 +54,7 @@ describe('doctor-backup（.doctor-backup 备份区）', () => {
     expect(readDoctorBackup(backupId)!.content).toBe('旧规则\n');
   });
 
-  it('保留策略：超出 3 次只留最近 3 份（复用 swap 语义）', () => {
+  it('保留策略：超出 3 次只留最近 3 份（复用资产写入语义）', () => {
     writeHub('identity/profile.md', 'v1\n');
     const ids: string[] = [];
     for (let i = 0; i < DOCTOR_BACKUP_RETAIN + 1; i += 1) {

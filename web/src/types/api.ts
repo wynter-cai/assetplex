@@ -687,19 +687,19 @@ export interface DiscoveredFiles {
 // ========== 工具类别支持矩阵与分发回滚 ==========
 
 /** 资产类别（不含 preference） */
-export type SwapCategory = 'identity' | 'rule' | 'skill' | 'mcp' | 'memory' | 'agent';
+export type AssetWriteCategory = 'identity' | 'rule' | 'skill' | 'mcp' | 'memory' | 'agent';
 
 /** 目标工具对某类别的支持情况 */
-export type SwapCategorySupport =
+export type AssetWriteCategorySupport =
   | { supported: true }
   | { supported: false; reason: string };
 
 /** 候选目标（资产医生分发确认、资产分发对话框共用） */
-export interface SwapToolCandidate {
+export interface AssetWriteToolCandidate {
   name: string;
   displayName: string;
   installed: boolean;
-  supportMatrix: Record<SwapCategory, SwapCategorySupport>;
+  supportMatrix: Record<AssetWriteCategory, AssetWriteCategorySupport>;
   /** 项目级工具（syncStrategy='per-project'），前端据此渲染能力说明而非类别徽章（D3/I7） */
   projectLevel: boolean;
   /** 项目级工具的已配置项目数；非项目级工具不填（K3） */
@@ -707,7 +707,7 @@ export interface SwapToolCandidate {
 }
 
 /** 回滚一次分发的结果 */
-export interface SwapRollbackResult {
+export interface AssetWriteRollbackResult {
   swapId: string;
   restored: number;
   removed: number;

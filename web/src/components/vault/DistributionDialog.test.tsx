@@ -5,7 +5,7 @@ import { DistributionDialog } from './DistributionDialog';
 import { makeDistributionEntry } from '@/lib/test-factories';
 import { api } from '@/lib/api';
 import { useToastStore } from '@/lib/toast-store';
-import type { Asset, AssetDistributionInfo, SwapCategorySupport, SwapToolCandidate, ToolStatus } from '@/types/api';
+import type { Asset, AssetDistributionInfo, AssetWriteCategorySupport, AssetWriteToolCandidate, ToolStatus } from '@/types/api';
 
 /**
  * 分发管理弹窗的状态来源
@@ -32,8 +32,8 @@ function tool(name: string, installed: boolean): ToolStatus {
 }
 
 /** 六类支持矩阵：memory 之外的类别一律支持，memory 由参数决定 */
-function candidate(name: string, memory: SwapCategorySupport): SwapToolCandidate {
-  const supported: SwapCategorySupport = { supported: true };
+function candidate(name: string, memory: AssetWriteCategorySupport): AssetWriteToolCandidate {
+  const supported: AssetWriteCategorySupport = { supported: true };
   return {
     name,
     displayName: name,
@@ -53,7 +53,7 @@ function candidate(name: string, memory: SwapCategorySupport): SwapToolCandidate
 interface DialogOptions {
   asset?: Asset;
   /** 支持矩阵候选；不传 = 矩阵拿不到（接口失败/未落地） */
-  swapTools?: SwapToolCandidate[];
+  distributionTools?: AssetWriteToolCandidate[];
   onSync?: () => void;
 }
 
@@ -61,7 +61,7 @@ function renderDialog(distributions: AssetDistributionInfo[], options: DialogOpt
   vi.spyOn(api, 'getTools').mockResolvedValue({
     tools: [tool('trae-cn', true), tool('codex', true), tool('ghost', false)],
   });
-  vi.spyOn(api, 'getDistributionTools').mockResolvedValue({ tools: options.swapTools ?? [] });
+  vi.spyOn(api, 'getDistributionTools').mockResolvedValue({ tools: options.distributionTools ?? [] });
   vi.spyOn(api, 'getAssetCategories').mockResolvedValue({ categories: [], declaredAt: '2026-10-29' });
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
@@ -128,7 +128,7 @@ describe('DistributionDialog 类别支持矩阵', () => {
   it('不支持记忆的工具：该行说明具体原因并禁用开关', async () => {
     renderDialog([], {
       asset: memoryAsset,
-      swapTools: [
+      distributionTools: [
         candidate('trae-cn', { supported: true }),
         candidate('codex', { supported: false, reason: '此工具不支持memory类别，已跳过' }),
       ],
@@ -142,7 +142,7 @@ describe('DistributionDialog 类别支持矩阵', () => {
   });
 
   it('矩阵拿不到时不编造「不支持」，只按安装状态禁用', async () => {
-    renderDialog([], { asset: memoryAsset, swapTools: [] });
+    renderDialog([], { asset: memoryAsset, distributionTools: [] });
 
     await screen.findByText('会话记忆');
     expect(screen.queryByText(/不支持记忆类别/)).not.toBeInTheDocument();
@@ -212,7 +212,7 @@ describe('DistributionDialog 立即同步', () => {
       ],
       {
         asset: { ...asset, id: 'memory/session.md', name: '会话记忆', category: 'memory', hubPath: 'memory/session.md' },
-        swapTools: [
+        distributionTools: [
           candidate('trae-cn', { supported: true }),
           candidate('codex', { supported: false, reason: '此工具不支持memory类别，已跳过' }),
         ],

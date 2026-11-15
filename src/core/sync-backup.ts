@@ -1,18 +1,18 @@
 /**
  * 分发前备份（add-zero-config-onboarding T6）
  *
- * 复用 swap-fs 的备份语义：覆盖前把工具侧原文件复制到
+ * 复用资产写入备份语义（asset-write-fs）：覆盖前把工具侧原文件复制到
  * <Hub>/.backups/onboarding/<swapId>/files/<index>，写 manifest.json 可追溯，
- * 保留最近 3 批（与 swap backupRetain 默认一致）。
+ * 保留最近 3 批（与资产写入 backupRetain 默认一致）。
  * 没有需要备份的目标时返回 null，绝不创建空目录（取消零改动的前提）。
  */
 
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { backupTarget, makeSwapId, pruneSwapBackups } from './asset-write-fs.js';
+import { backupTarget, makeAssetWriteId, pruneAssetWriteBackups } from './asset-write-fs.js';
 import type { SyncPlan } from './types.js';
 
-/** 备份保留批次数（与 swap/doctor 的 backupRetain 默认一致） */
+/** 备份保留批次数（与资产写入/doctor 的 backupRetain 默认一致） */
 const BACKUP_RETAIN = 3;
 
 /** 备份清单条目（manifest.json 内） */
@@ -47,7 +47,7 @@ export function backupSyncTargets(plans: SyncPlan[], backupRoot: string): SyncBa
   }
   if (candidates.length === 0) return null;
 
-  const swapId = makeSwapId();
+  const swapId = makeAssetWriteId();
   const backupDir = join(backupRoot, swapId);
   const entries: SyncBackupEntry[] = [];
   const warnings: string[] = [];
@@ -84,7 +84,7 @@ export function backupSyncTargets(plans: SyncPlan[], backupRoot: string): SyncBa
   }
 
   try {
-    pruneSwapBackups(backupRoot, BACKUP_RETAIN);
+    pruneAssetWriteBackups(backupRoot, BACKUP_RETAIN);
   } catch {
     // 清理失败不影响本次备份
   }

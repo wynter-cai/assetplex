@@ -105,7 +105,7 @@ export async function buildDistributionIndex(deps: DistributionIndexDeps): Promi
 
 let cache: { at: number; payload: DistributionIndexPayload } | null = null;
 
-/** 失效缓存（sync / swap / doctor apply 成功后调用） */
+/** 失效缓存（sync / 分发写入 / doctor apply 成功后调用） */
 export function invalidateDistributionIndex(): void {
   cache = null;
 }

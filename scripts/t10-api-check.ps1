@@ -1,6 +1,6 @@
-# T10 API check via Invoke-WebRequest (status codes + body previews)
+# Asset distribution API check via Invoke-WebRequest (status codes + body previews)
 $ErrorActionPreference = 'Continue'
-$base = 'http://127.0.0.1:17521/api/swap'
+$base = 'http://127.0.0.1:17521/api'
 
 function Show($label, $block) {
   try {
@@ -21,11 +21,6 @@ function Show($label, $block) {
   }
 }
 
-Show 'GET /tools' { Invoke-WebRequest -Uri "$base/tools" -UseBasicParsing }
-Show 'POST /preview (no body)' { Invoke-WebRequest -Uri "$base/preview" -Method Post -Body '{}' -ContentType 'application/json' -UseBasicParsing }
-Show 'POST /preview (unknown tool)' { Invoke-WebRequest -Uri "$base/preview" -Method Post -Body '{"tool":"nope-tool"}' -ContentType 'application/json' -UseBasicParsing }
-Show 'POST /preview (workbuddy)' { Invoke-WebRequest -Uri "$base/preview" -Method Post -Body '{"tool":"workbuddy"}' -ContentType 'application/json' -UseBasicParsing }
-Show 'POST /execute (stale token)' { Invoke-WebRequest -Uri "$base/execute" -Method Post -Body '{"tool":"workbuddy","previewGeneratedAt":"2000-01-01T00:00:00.000Z","overwriteDecisions":[]}' -ContentType 'application/json' -UseBasicParsing }
-Show 'POST /rollback (missing id)' { Invoke-WebRequest -Uri "$base/rollback" -Method Post -Body '{}' -ContentType 'application/json' -UseBasicParsing }
-Show 'POST /rollback (unknown id)' { Invoke-WebRequest -Uri "$base/rollback" -Method Post -Body '{"swapId":"not-exist"}' -ContentType 'application/json' -UseBasicParsing }
-Show 'GET /history' { Invoke-WebRequest -Uri "$base/history" -UseBasicParsing }
+Show 'GET /distributions/tools' { Invoke-WebRequest -Uri "$base/distributions/tools" -UseBasicParsing }
+Show 'POST /remediations/rollback (missing id)' { Invoke-WebRequest -Uri "$base/remediations/rollback" -Method Post -Body '{}' -ContentType 'application/json' -UseBasicParsing }
+Show 'POST /remediations/rollback (unknown id)' { Invoke-WebRequest -Uri "$base/remediations/rollback" -Method Post -Body '{"swapId":"not-exist"}' -ContentType 'application/json' -UseBasicParsing }

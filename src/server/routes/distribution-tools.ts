@@ -2,15 +2,15 @@
  * 工具类别支持矩阵路由（remove-tool-swap B21）
  *
  * GET /api/distributions/tools：候选工具 + 六类支持矩阵。
- * 原 GET /api/swap/tools 归位——用户可见的「切换工具」流程已删除，
+ * 原切换工具矩阵端点归位——用户可见的「切换工具」流程已删除，
  * 该端点仅服务资产医生分发表单与资产分发对话框。
  */
 
 import { Hono } from 'hono';
 import type { HubConfig } from '../../core/config.js';
 import type { ToolAdapter } from '../../core/adapters/base.js';
-import type { CategorySupport, SwapCategory, SwapToolCandidate } from '../../core/asset-write.js';
-import { SWAP_CATEGORIES } from '../../core/asset-write.js';
+import type { CategorySupport, AssetWriteCategory, AssetWriteToolCandidate } from '../../core/asset-write.js';
+import { ASSET_WRITE_CATEGORIES } from '../../core/asset-write.js';
 import { getHubRoot } from '../../utils/paths.js';
 import { hubContext } from '../lib/hub-context.js';
 
@@ -21,10 +21,10 @@ export interface DistributionToolDeps {
 }
 
 /** 由适配器 resolveHubItems 推导六类支持矩阵 */
-function buildSupportMatrix(adapter: ToolAdapter, config: HubConfig): Record<SwapCategory, CategorySupport> {
+function buildSupportMatrix(adapter: ToolAdapter, config: HubConfig): Record<AssetWriteCategory, CategorySupport> {
   const types = new Set(adapter.resolveHubItems(config, getHubRoot()).map((r) => r.item.type as string));
-  const matrix = {} as Record<SwapCategory, CategorySupport>;
-  for (const category of SWAP_CATEGORIES) {
+  const matrix = {} as Record<AssetWriteCategory, CategorySupport>;
+  for (const category of ASSET_WRITE_CATEGORIES) {
     matrix[category] = types.has(category)
       ? { supported: true }
       : { supported: false, reason: `此工具不支持${category}类别，已跳过` };
@@ -52,7 +52,7 @@ export function distributionToolsRoutesFactory(deps: DistributionToolDeps): Hono
   /** 候选工具 + 六类支持矩阵 */
   routes.get('/tools', async (c) => {
     const config = deps.getHubConfig();
-    const tools: SwapToolCandidate[] = [];
+    const tools: AssetWriteToolCandidate[] = [];
     for (const adapter of deps.listAdapters()) {
       let installed = false;
       try {

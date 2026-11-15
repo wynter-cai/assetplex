@@ -26,7 +26,7 @@ export interface BackupStatus {
 
 /** 一个备份根目录的读取描述 */
 export interface BackupRootSpec {
-  /** 备份来源标识（doctor / swap / onboarding） */
+  /** 备份来源标识（doctor / asset-write / onboarding） */
   id: string;
   /** Hub 相对路径（POSIX 风格） */
   relativeRoot: string;
@@ -34,10 +34,10 @@ export interface BackupRootSpec {
   metadataFile: string;
 }
 
-/** 三个备份根目录（与 doctor-backup / swap / sync-backup 的实现目录一致） */
+/** 三个备份根目录（与 doctor-backup / asset-write / sync-backup 的实现目录一致） */
 export const BACKUP_ROOTS: readonly BackupRootSpec[] = [
   { id: 'doctor', relativeRoot: '.doctor-backup', metadataFile: 'meta.json' },
-  { id: 'swap', relativeRoot: '.swap-backup', metadataFile: 'manifest.json' },
+  { id: 'asset-write', relativeRoot: '.swap-backup', metadataFile: 'manifest.json' },
   { id: 'onboarding', relativeRoot: '.backups/onboarding', metadataFile: 'manifest.json' },
 ];
 
@@ -49,7 +49,7 @@ export interface BackupFsPort {
   readMetadata(relativeRoot: string, backupId: string, fileName: string): string | null;
 }
 
-/** 备份目录名闭集：makeSwapId 的「时间戳-base36」形态 */
+/** 备份目录名闭集：makeAssetWriteId 的「时间戳-base36」形态 */
 const BACKUP_ID_PATTERN = /^(\d{10,})(?:-[a-z0-9]+)?$/i;
 
 /** 从备份目录名提取时间戳（毫秒）；无法识别返回 null（不猜） */

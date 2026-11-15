@@ -17,7 +17,7 @@ import type { ToolAdapter } from '../../core/adapters/base.js';
 class HubContext {
   private config: HubConfig | null = null;
   private engine: SyncEngine | null = null;
-  private swapEngine: AssetWriteEngine | null = null;
+  private assetWriteEngine: AssetWriteEngine | null = null;
   private adaptersRegistered = false;
 
   /** 获取当前 Hub 配置（懒加载） */
@@ -45,15 +45,15 @@ class HubContext {
     return this.engine;
   }
 
-  /** 获取 SwapEngine 实例（懒加载，备份保留次数读自 swap.backupRetain） */
-  getSwapEngine(): AssetWriteEngine {
-    if (!this.swapEngine) {
+  /** 获取 AssetWriteEngine 实例（懒加载，备份保留次数读自 swap.backupRetain） */
+  getAssetWriteEngine(): AssetWriteEngine {
+    if (!this.assetWriteEngine) {
       const config = this.getConfig();
-      this.swapEngine = new AssetWriteEngine(config, this.getAllAdapters(), {
+      this.assetWriteEngine = new AssetWriteEngine(config, this.getAllAdapters(), {
         backupRetain: config.swap?.backupRetain,
       });
     }
-    return this.swapEngine;
+    return this.assetWriteEngine;
   }
 
   /** 获取所有已注册的适配器 */
@@ -71,7 +71,7 @@ class HubContext {
   reloadConfig(): void {
     this.config = null;
     this.engine = null;
-    this.swapEngine = null;
+    this.assetWriteEngine = null;
   }
 
   /** 保存新配置并刷新缓存 */
@@ -79,7 +79,7 @@ class HubContext {
     saveHubConfig(config);
     this.config = config;
     this.engine = null; // 引擎依赖配置，需重建
-    this.swapEngine = null;
+    this.assetWriteEngine = null;
   }
 }
 

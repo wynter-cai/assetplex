@@ -5,7 +5,7 @@
  * - 数据源与 HUB（server 层 hubContext）完全同一份，不另建索引（Scenario 9）
  * - 只读工具零模型调用；仅 useAi=true 的诊断会走用户自配端点（Scenario 7/8）
  *
- * 说明：为复用既有 Node 端口（swap 分发、AI 客户端、分发索引），
+ * 说明：为复用既有 Node 端口（分发写入、AI 客户端、分发索引），
  * 本文件单向依赖 server/lib；server 不反向依赖 mcp，无循环。
  */
 
@@ -34,7 +34,7 @@ import { McpToolError } from '../core/mcp-errors.js';
 import type { DoctorDispatchItem, McpAssetSummary, McpHealthSource, McpToolDeps } from '../core/mcp-types.js';
 import { hubContext } from '../server/lib/hub-context.js';
 import { getDistributions } from '../server/lib/distribution-context.js';
-import { dispatchToolViaSwap, resolveDefaultTargets, type DispatchDeps } from '../server/lib/doctor-dispatch.js';
+import { dispatchToolViaEngine, resolveDefaultTargets, type DispatchDeps } from '../server/lib/doctor-dispatch.js';
 import { nodeAiConfigStore, nodeDoctorCacheStore } from '../server/lib/node-ai-classify-store.js';
 import { createOpenAiLlmClient } from '../server/lib/openai-llm-client.js';
 
@@ -122,7 +122,7 @@ function createNodePendingStore() {
 
 function dispatchDeps(): DispatchDeps {
   return {
-    getSwapEngine: () => hubContext.getSwapEngine(),
+    getAssetWriteEngine: () => hubContext.getAssetWriteEngine(),
     listInstalledTools: async () => {
       const out: string[] = [];
       for (const adapter of hubContext.getAllAdapters()) {
@@ -145,7 +145,7 @@ async function distribute(hubRelativePath: string, targets?: string[]): Promise<
   const out: DoctorDispatchItem[] = [];
   for (const tool of tools) {
     try {
-      out.push(await dispatchToolViaSwap(deps, tool, hubRelativePath));
+      out.push(await dispatchToolViaEngine(deps, tool, hubRelativePath));
     } catch (err) {
       out.push({ tool, action: 'failed', reason: err instanceof Error ? err.message : String(err) });
     }

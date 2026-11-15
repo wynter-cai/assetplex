@@ -14,7 +14,7 @@ import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
 import { ConfirmView, DraftView, ResultView, SelectView } from './FixFlowViews';
-import type { DiagnosisReport, DoctorApplyResponse, DoctorAssetKind, FixDraftResponse, SwapToolCandidate } from '@/types/api';
+import type { DiagnosisReport, DoctorApplyResponse, DoctorAssetKind, FixDraftResponse, AssetWriteToolCandidate } from '@/types/api';
 
 export interface FixFlowProps {
   kind: DoctorAssetKind;
@@ -42,11 +42,11 @@ export function FixFlow(props: FixFlowProps): JSX.Element {
   const [draftText, setDraftText] = useState('');
   const [lastDraft, setLastDraft] = useState<FixDraftResponse | null>(null);
   const [toolNames, setToolNames] = useState<string[]>([]);
-  const [toolCandidates, setToolCandidates] = useState<SwapToolCandidate[]>([]);
+  const [toolCandidates, setToolCandidates] = useState<AssetWriteToolCandidate[]>([]);
   const [undoMessage, setUndoMessage] = useState('');
 
-  // 医生类别是切换类别子集（command 除外，适配器矩阵暂无该键）
-  const supportsKind = (tool: SwapToolCandidate): boolean => {
+  // 医生类别是分发类别子集（command 除外，适配器矩阵暂无该键）
+  const supportsKind = (tool: AssetWriteToolCandidate): boolean => {
     if (props.kind === 'command') return true;
     return tool.supportMatrix[props.kind].supported === true;
   };
@@ -113,9 +113,9 @@ export function FixFlow(props: FixFlowProps): JSX.Element {
       );
   };
 
-  const rollbackDispatch = (swapId: string): void => {
+  const rollbackDispatch = (writeId: string): void => {
     api
-      .rollbackRemediation(swapId)
+      .rollbackRemediation(writeId)
       .then(() => setUndoMessage('已回滚本次分发（工具文件已恢复到分发前）'))
       .catch((err: unknown) =>
         setUndoMessage(err instanceof Error ? err.message : String(err)),

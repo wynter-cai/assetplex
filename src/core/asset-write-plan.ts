@@ -1,5 +1,5 @@
 /**
- * swap 预览展开辅助
+ * 资产写入预览展开辅助
  *
  * 把 SyncEngine.plan 的 (item, target) 单元展开为文件级预览条目，
  * 并做冲突判定与指纹计算。纯函数，供 core/asset-write.ts 编排使用。
@@ -15,16 +15,16 @@ import { listFilesRecursive } from './asset-write-fs.js';
 import type { WriteUnit } from './asset-write-exec.js';
 import type {
   CategorySupport,
-  SwapCategory,
-  SwapCategoryGroup,
-  SwapConflictStatus,
-  SwapPreview,
-  SwapPreviewItem,
+  AssetWriteCategory,
+  AssetWriteCategoryGroup,
+  AssetWriteConflictStatus,
+  AssetWritePreview,
+  AssetWritePreviewItem,
 } from './asset-write-types.js';
-import { SWAP_CATEGORIES } from './asset-write-types.js';
+import { ASSET_WRITE_CATEGORIES } from './asset-write-types.js';
 
 /** 类别 → Hub 内目录名(单复数与 hub-files 布局一致) */
-export const CATEGORY_HUB_DIR: Record<SwapCategory, string> = {
+export const CATEGORY_HUB_DIR: Record<AssetWriteCategory, string> = {
   identity: 'identity',
   rule: 'rules',
   skill: 'skills',
@@ -34,8 +34,8 @@ export const CATEGORY_HUB_DIR: Record<SwapCategory, string> = {
 };
 
 /** HubItemType 是否属于切换六类 */
-export function asSwapCategory(type: HubItemType): SwapCategory | null {
-  return (SWAP_CATEGORIES as readonly string[]).includes(type) ? (type as SwapCategory) : null;
+export function asAssetWriteCategory(type: HubItemType): AssetWriteCategory | null {
+  return (ASSET_WRITE_CATEGORIES as readonly string[]).includes(type) ? (type as AssetWriteCategory) : null;
 }
 
 /** 把路径统一为 Hub 根相对的 posix 风格 */
@@ -44,7 +44,7 @@ export function hubRelativeOf(absPath: string): string {
 }
 
 /** 目标策略归一化:hybrid 在预览中按 copy 呈现 */
-export function toPreviewStrategy(strategy: SyncStrategy): SwapPreviewItem['strategy'] {
+export function toPreviewStrategy(strategy: SyncStrategy): AssetWritePreviewItem['strategy'] {
   if (strategy === 'hybrid') return 'copy';
   return strategy;
 }
@@ -62,7 +62,7 @@ export function expectedBuffer(sourcePath: string): Buffer {
 }
 
 /** 冲突判定:目标不存在→none；字节一致→exists；不同→differs */
-export function computeConflict(sourcePath: string, targetPath: string): SwapConflictStatus {
+export function computeConflict(sourcePath: string, targetPath: string): AssetWriteConflictStatus {
   if (!existsSync(targetPath)) return 'none';
   try {
     return readFileSync(targetPath).equals(expectedBuffer(sourcePath)) ? 'exists' : 'differs';
@@ -82,13 +82,13 @@ export function configWithToolEnabled(config: HubConfig, tool: string): HubConfi
 /** 把一个计划项(文件或目录)展开为文件级条目 */
 export function expandPlanItem(
   planItem: SyncPlanItem,
-  category: SwapCategory,
+  category: AssetWriteCategory,
   support: CategorySupport,
 ): WriteUnit['entries'] {
   const { item, target } = planItem;
   const out: WriteUnit['entries'] = [];
 
-  const makePreview = (hubRelativePath: string, sourcePath: string, targetPath: string): SwapPreviewItem => {
+  const makePreview = (hubRelativePath: string, sourcePath: string, targetPath: string): AssetWritePreviewItem => {
     const conflict = computeConflict(sourcePath, targetPath);
     return {
       category,
@@ -119,7 +119,7 @@ export function expandPlanItem(
 }
 
 /** 预览指纹:路径集合+冲突状态，任一变即视为过期 */
-export function fingerprintOf(preview: SwapPreview): string {
+export function fingerprintOf(preview: AssetWritePreview): string {
   return JSON.stringify(
     preview.groups.map((g) => ({
       c: g.category,
@@ -130,7 +130,7 @@ export function fingerprintOf(preview: SwapPreview): string {
 }
 
 /** 不支持类别的分组占位:整组标 skip，库内文件数计入 skipped */
-export function unsupportedGroup(category: SwapCategory, fileCount: number): SwapCategoryGroup {
+export function unsupportedGroup(category: AssetWriteCategory, fileCount: number): AssetWriteCategoryGroup {
   const support: CategorySupport = { supported: false, reason: `此工具不支持${category}类别，已跳过` };
   return {
     category,

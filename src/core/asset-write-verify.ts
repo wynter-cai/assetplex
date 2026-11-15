@@ -1,12 +1,12 @@
 /**
- * swap 回读验证
+ * 资产写入回读验证
  *
  * 诚实边界:仅断言"已写入并校验"——目标存在 + 按其类型可解析 + 与源一致，
  * 不代表工具已加载生效。md/纯文本直读；json/toml 复用既有 transforms 校验语法。
  */
 
 import { existsSync, readFileSync } from 'node:fs';
-import type { SwapVerifyResult } from './asset-write-types.js';
+import type { AssetWriteVerifyResult } from './asset-write-types.js';
 import { expectedBuffer } from './asset-write-plan.js';
 import { isValidJson, isValidToml } from '../transforms/json-toml.js';
 
@@ -22,7 +22,7 @@ export function verifyTarget(
   sourcePath: string,
   targetPath: string,
   hubRelativePath: string,
-): SwapVerifyResult {
+): AssetWriteVerifyResult {
   const base = { hubRelativePath, targetPath };
   if (!existsSync(targetPath)) {
     return { ...base, exists: false, parseable: false, matchesSource: false, passed: false, failure: `目标文件不存在: ${targetPath}` };

@@ -102,7 +102,7 @@ describe('getOverview', () => {
     expect(result.assetStats.agent).toBe(4);
   });
 
-  it('assetStats 纳入 memory 计数（enable-tool-hot-swap T1）', async () => {
+  it('assetStats 纳入 memory 计数（资产分类）', async () => {
     vi.mocked(checkHubHealth).mockReturnValue(
       makeHealth({
         fileCountByCategory: { identity: 1, skills: 3, rules: 5, mcp: 2, preferences: 0, commands: 0, agents: 4, memory: 2 },

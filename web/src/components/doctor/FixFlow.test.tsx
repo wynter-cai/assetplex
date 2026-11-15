@@ -10,7 +10,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { FixFlow } from './FixFlow';
 import { api } from '@/lib/api';
-import type { DiagnosisReport, FixDraftResponse, SwapToolCandidate } from '@/types/api';
+import type { DiagnosisReport, FixDraftResponse, AssetWriteToolCandidate } from '@/types/api';
 
 vi.mock('@/lib/api', async () => {
   const actual = await vi.importActual<typeof import('@/lib/api')>('@/lib/api');
@@ -52,7 +52,7 @@ const draftResponse: FixDraftResponse = {
   model: 'demo-model',
 };
 
-const supportAll: SwapToolCandidate['supportMatrix'] = {
+const supportAll: AssetWriteToolCandidate['supportMatrix'] = {
   identity: { supported: true },
   rule: { supported: true },
   skill: { supported: true },
@@ -96,7 +96,7 @@ beforeEach(() => {
   vi.mocked(api.doctorApply).mockResolvedValue({
     saved: true,
     backupRef: 'backup-1',
-    dispatch: [{ tool: 'trae', action: 'written', swapId: 'swap-1' }],
+    dispatch: [{ tool: 'trae', action: 'written', swapId: 'write-1' }],
     rollbackAvailable: true,
   });
   vi.mocked(api.doctorUndo).mockResolvedValue({ restored: true, hubRelativePath: report.hubRelativePath });
@@ -191,7 +191,7 @@ describe('FixFlow 结果与撤销（Scenario 3/4）', () => {
       saved: true,
       backupRef: 'backup-1',
       dispatch: [
-        { tool: 'trae', action: 'written', swapId: 'swap-1' },
+        { tool: 'trae', action: 'written', swapId: 'write-1' },
         { tool: 'qoder', action: 'failed', reason: '目标目录已变化' },
       ],
       rollbackAvailable: true,
@@ -205,8 +205,8 @@ describe('FixFlow 结果与撤销（Scenario 3/4）', () => {
     fireEvent.click(screen.getByRole('button', { name: /撤销本次修复/ }));
     await waitFor(() => expect(api.doctorUndo).toHaveBeenCalledWith('backup-1'));
 
-    vi.mocked(api.rollbackRemediation).mockResolvedValue({ swapId: 'swap-1', restored: 1, removed: 0, success: true });
+    vi.mocked(api.rollbackRemediation).mockResolvedValue({ swapId: 'write-1', restored: 1, removed: 0, success: true });
     fireEvent.click(screen.getByRole('button', { name: /回滚同步/ }));
-    await waitFor(() => expect(api.rollbackRemediation).toHaveBeenCalledWith('swap-1'));
+    await waitFor(() => expect(api.rollbackRemediation).toHaveBeenCalledWith('write-1'));
   });
 });

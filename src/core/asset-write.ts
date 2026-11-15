@@ -3,7 +3,7 @@
  *
  * 纯逻辑层：组装切换包 → 冲突预览 → 执行(覆盖前备份) → 回读验证 → 回滚/历史。
  * 复用 SyncEngine.plan 的目标解析与 skip 逻辑，不改动既有 /sync 契约。
- * 诚实边界：验证仅表"已写入并校验"，不代表工具已加载(spec: swap-verify-rollback)。
+ * 诚实边界：验证仅表"已写入并校验"，不代表工具已加载(spec: enable-tool-hot-swap 验证边界)。
  * 全流程仅本机文件读写，零数据上传(宪法②)。
  */
 
@@ -23,14 +23,14 @@ import {
   appendHistory,
   updateHistory,
   readHistory,
-  pruneSwapBackups,
-  type SwapBackupEntry,
-  type SwapBackupManifest,
+  pruneAssetWriteBackups,
+  type AssetWriteBackupEntry,
+  type AssetWriteBackupManifest,
 } from './asset-write-fs.js';
 import { executeUnit, type ExecContext, type WriteUnit } from './asset-write-exec.js';
 import {
   CATEGORY_HUB_DIR,
-  asSwapCategory,
+  asAssetWriteCategory,
   configWithToolEnabled,
   expandPlanItem,
   fingerprintOf,
@@ -40,23 +40,23 @@ import {
 import { verifyTarget } from './asset-write-verify.js';
 import type {
   CategorySupport,
-  SwapBundle,
-  SwapBundleCategory,
-  SwapCategory,
-  SwapExecuteRequest,
-  SwapExecuteResult,
-  SwapHistoryEntry,
-  SwapPreview,
-  SwapRollbackResult,
-  SwapVerifyResult,
+  AssetWriteBundle,
+  AssetWriteBundleCategory,
+  AssetWriteCategory,
+  AssetWriteExecuteRequest,
+  AssetWriteExecuteResult,
+  AssetWriteHistoryEntry,
+  AssetWritePreview,
+  AssetWriteRollbackResult,
+  AssetWriteVerifyResult,
 } from './asset-write-types.js';
-import { SWAP_CATEGORIES } from './asset-write-types.js';
+import { ASSET_WRITE_CATEGORIES } from './asset-write-types.js';
 
 export * from './asset-write-types.js';
 
 /** 预览快照(执行时做 staleness 校验) */
 interface PreviewSnapshot {
-  preview: SwapPreview;
+  preview: AssetWritePreview;
   units: WriteUnit[];
   fingerprint: string;
 }
@@ -99,7 +99,7 @@ export class AssetWriteEngine {
   }
 
   /** 某类别在 Hub 内的资产文件(相对根 posix 路径) */
-  private hubFilesOfCategory(category: SwapCategory): string[] {
+  private hubFilesOfCategory(category: AssetWriteCategory): string[] {
     const dir = resolve(getHubRoot(), CATEGORY_HUB_DIR[category]);
     if (!existsSync(dir)) return [];
     return listFilesRecursive(dir).map(hubRelativeOf);
@@ -115,13 +115,13 @@ export class AssetWriteEngine {
    * 组装切换包:六类 HubItem 汇总 + 目标工具支持矩阵。
    * 不支持的类别也列出库内资产(仅供展示"已跳过"，不参与执行)。
    */
-  buildBundle(tool: string): SwapBundle {
+  buildBundle(tool: string): AssetWriteBundle {
     const adapter = this.requireAdapter(tool);
     const supported = this.supportedTypesOf(adapter);
     return {
       tool,
       generatedAt: new Date().toISOString(),
-      categories: SWAP_CATEGORIES.map((category): SwapBundleCategory => {
+      categories: ASSET_WRITE_CATEGORIES.map((category): AssetWriteBundleCategory => {
         const support: CategorySupport = supported.has(category)
           ? { supported: true }
           : { supported: false, reason: `此工具不支持${category}类别，已跳过` };
@@ -139,25 +139,25 @@ export class AssetWriteEngine {
    * 冲突预览:复用 SyncEngine.plan 解析目标，展开为文件级条目并判定冲突。
    * differs 项 defaultOverwrite=false；不支持类别整组标 skip。
    */
-  async preview(tool: string): Promise<SwapPreview> {
+  async preview(tool: string): Promise<AssetWritePreview> {
     const adapter = this.requireAdapter(tool);
     const engine = new SyncEngine(configWithToolEnabled(this.hubConfig, tool), [adapter]);
     const plans = await engine.plan({ tool });
     const plan = plans.find((p) => p.tool === tool);
     const supported = this.supportedTypesOf(adapter);
 
-    const groups: SwapPreview['groups'] = [];
+    const groups: AssetWritePreview['groups'] = [];
     const units: WriteUnit[] = [];
 
-    for (const category of SWAP_CATEGORIES) {
+    for (const category of ASSET_WRITE_CATEGORIES) {
       if (!supported.has(category)) {
         groups.push(unsupportedGroup(category, this.hubFilesOfCategory(category).length));
         continue;
       }
 
       const support: CategorySupport = { supported: true };
-      const items: SwapPreview['groups'][number]['items'] = [];
-      const planItems = (plan?.items ?? []).filter((pi) => asSwapCategory(pi.item.type) === category);
+      const items: AssetWritePreview['groups'][number]['items'] = [];
+      const planItems = (plan?.items ?? []).filter((pi) => asAssetWriteCategory(pi.item.type) === category);
       for (const planItem of planItems) {
         // 源不存在而 skip 的项不进入预览；其余 skip(如已是正确链接)仍展开做内容比对
         if (planItem.action === 'skip' && planItem.reason?.includes('Hub 源不存在')) continue;
@@ -181,7 +181,7 @@ export class AssetWriteEngine {
       });
     }
 
-    const preview: SwapPreview = {
+    const preview: AssetWritePreview = {
       tool,
       toolInstalled: plan?.toolInstalled ?? false,
       groups,
@@ -196,7 +196,7 @@ export class AssetWriteEngine {
   }
 
   /** 执行 staleness 校验:快照存在且与当前目录状态指纹一致才放行 */
-  private async requireFreshSnapshot(req: SwapExecuteRequest): Promise<PreviewSnapshot> {
+  private async requireFreshSnapshot(req: AssetWriteExecuteRequest): Promise<PreviewSnapshot> {
     const key = `${req.tool}::${req.previewGeneratedAt}`;
     const snapshot = this.snapshots.get(key);
     if (!snapshot) {
@@ -218,7 +218,7 @@ export class AssetWriteEngine {
   /**
    * 执行切换:staleness 校验 → 逐单元落盘(覆盖前备份) → 回读验证 → 写清单 → 记历史 → 保留策略清理。
    */
-  async execute(req: SwapExecuteRequest): Promise<SwapExecuteResult> {
+  async execute(req: AssetWriteExecuteRequest): Promise<AssetWriteExecuteResult> {
     const adapter = this.requireAdapter(req.tool);
     const snapshot = await this.requireFreshSnapshot(req);
     const swapId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -242,10 +242,10 @@ export class AssetWriteEngine {
     this.attachVerifyResults(ctx, scopedUnits);
 
     if (ctx.manifest.length > 0) {
-      const manifest: SwapBackupManifest = { swapId, tool: req.tool, createdAt, entries: ctx.manifest };
+      const manifest: AssetWriteBackupManifest = { swapId, tool: req.tool, createdAt, entries: ctx.manifest };
       writeBackupManifest(backupDir, manifest);
     }
-    const result: SwapExecuteResult = {
+    const result: AssetWriteExecuteResult = {
       tool: req.tool,
       swapId,
       success: ctx.counts.failed === 0,
@@ -262,7 +262,7 @@ export class AssetWriteEngine {
       rolledBack: false,
       rollbackAvailable: ctx.manifest.length > 0,
     });
-    pruneSwapBackups(this.backupRoot, this.backupRetain);
+    pruneAssetWriteBackups(this.backupRoot, this.backupRetain);
     return result;
   }
 
@@ -270,7 +270,7 @@ export class AssetWriteEngine {
    * 回读验证(诚实边界):仅断言"已写入并校验"——存在 + 可解析 + 与源一致，
    * 不代表工具已加载。md 直读；json/toml 用既有 transforms 校验语法。
    */
-  verify(sourcePath: string, targetPath: string, hubRelativePath: string): SwapVerifyResult {
+  verify(sourcePath: string, targetPath: string, hubRelativePath: string): AssetWriteVerifyResult {
     return verifyTarget(sourcePath, targetPath, hubRelativePath);
   }
 
@@ -301,7 +301,7 @@ export class AssetWriteEngine {
    * 回滚本次切换:覆盖项从备份恢复、本次新增项移除。
    * 原子性:先预检所有备份文件齐全，再执行恢复；要么完整，要么明确报失败。
    */
-  async rollback(swapId: string): Promise<SwapRollbackResult> {
+  async rollback(swapId: string): Promise<AssetWriteRollbackResult> {
     const backupDir = join(this.backupRoot, swapId);
     const manifest = readBackupManifest(backupDir);
     if (!manifest) {
@@ -335,7 +335,7 @@ export class AssetWriteEngine {
   }
 
   /** 切换历史(最新在前，仅本机)；rollbackAvailable 以备份目录实际存在为准 */
-  history(): SwapHistoryEntry[] {
+  history(): AssetWriteHistoryEntry[] {
     return readHistory(this.backupRoot)
       .map((e) => ({ ...e, rollbackAvailable: e.rollbackAvailable && hasBackup(this.backupRoot, e.swapId) }))
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.swapId.localeCompare(a.swapId, 'en'));
@@ -343,4 +343,4 @@ export class AssetWriteEngine {
 }
 
 /** 供执行层引用的清单条目类型(re-export 方便路由层标注) */
-export type { SwapBackupEntry };
+export type { AssetWriteBackupEntry };
