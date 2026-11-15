@@ -48,9 +48,9 @@ export function DistributionDialog({
 
   // 类别支持矩阵真值（与切换页同一份，后端按适配器 resolveHubItems 派生）：
   // 不支持的类别必须说出原因并禁用，不静默跳过（memory-visible Scenario 6、D6）
-  const { data: swapData } = useQuery({
-    queryKey: ['swap-tools'],
-    queryFn: api.getSwapTools,
+  const { data: distributionToolsData } = useQuery({
+    queryKey: ['distribution-tools'],
+    queryFn: api.getDistributionTools,
     enabled: open,
   });
   const { categories } = useAssetCategories();
@@ -58,11 +58,11 @@ export function DistributionDialog({
   // 矩阵拿不到（接口失败/未落地）时不编造「不支持」，只按安装状态处理
   const supportByTool = useMemo(() => {
     const map = new Map<string, Record<string, SwapCategorySupport>>();
-    for (const candidate of swapData?.tools ?? []) {
+    for (const candidate of distributionToolsData?.tools ?? []) {
       map.set(candidate.name, candidate.supportMatrix as Record<string, SwapCategorySupport>);
     }
     return map;
-  }, [swapData]);
+  }, [distributionToolsData]);
 
   // 本地维护哪些工具启用了同步（Phase 1 不持久化，Phase 2 实现）
   const [enabledTools, setEnabledTools] = useState<Record<string, boolean>>({});

@@ -61,7 +61,7 @@ function renderDialog(distributions: AssetDistributionInfo[], options: DialogOpt
   vi.spyOn(api, 'getTools').mockResolvedValue({
     tools: [tool('trae-cn', true), tool('codex', true), tool('ghost', false)],
   });
-  vi.spyOn(api, 'getSwapTools').mockResolvedValue({ tools: options.swapTools ?? [] });
+  vi.spyOn(api, 'getDistributionTools').mockResolvedValue({ tools: options.swapTools ?? [] });
   vi.spyOn(api, 'getAssetCategories').mockResolvedValue({ categories: [], declaredAt: '2026-10-29' });
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(

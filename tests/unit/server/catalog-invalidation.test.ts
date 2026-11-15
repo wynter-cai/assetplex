@@ -4,7 +4,7 @@
  * spec: asset-distribution-truth（Scenario 7 写入后状态即时刷新）
  * 关联: fix-trust-and-consistency tasks H5
  *
- * 重点：写通道（swap 执行/回滚）必须让 30 秒缓存失效，
+ * 重点：写通道（分发回滚）必须让 30 秒缓存失效，
  * 否则用户切完工具仍看到「未分发」，等于又一次撒谎。
  */
 
@@ -19,7 +19,7 @@ import {
 import { HubConfigSchema } from '../../../src/core/config.js';
 import type { ToolAdapter } from '../../../src/core/adapters/base.js';
 import type { AssetWriteEngine } from '../../../src/core/asset-write.js';
-import { swapRoutesFactory } from '../../../src/server/routes/swap.js';
+import { remediationRollbackRoutesFactory } from '../../../src/server/routes/remediation-rollback.js';
 
 /** 未安装适配器：索引可算且不触达文件系统 */
 function makeOfflineAdapter(): ToolAdapter {
@@ -68,28 +68,19 @@ function countingLoader(): { load: () => Promise<DistributionIndexDeps>; count: 
   };
 }
 
-/** 最小假引擎：只实现路由会调用的三个方法 */
+/** 最小假引擎：只实现回滚路由会调用的方法 */
 function fakeEngine(): AssetWriteEngine {
   const engine = {
-    async execute() {
-      return { swapId: 'swap-demo', tool: 'faketool', success: true, counts: { written: 1 } };
-    },
     async rollback() {
       return { success: true, restored: 1 };
-    },
-    history() {
-      return [];
     },
   };
   return engine as unknown as AssetWriteEngine;
 }
 
-function buildSwapApp(): Hono {
+function buildRemediationApp(): Hono {
   const app = new Hono();
-  app.route(
-    '/api/swap',
-    swapRoutesFactory({ getEngine: fakeEngine, listAdapters: () => [], getHubConfig: () => deps.hubConfig }),
-  );
+  app.route('/api/remediations', remediationRollbackRoutesFactory({ getEngine: fakeEngine }));
   return app;
 }
 
@@ -116,27 +107,13 @@ describe('分发索引缓存失效（H5）', () => {
     expect(loader.count()).toBe(2);
   });
 
-  it('swap 执行成功后缓存失效（切完工具立刻能看到新状态）', async () => {
+  it('分发回滚成功后缓存失效（撤销后立刻能看到恢复后的状态）', async () => {
     const loader = countingLoader();
     await getDistributionIndex({}, loader.load);
-    const app = buildSwapApp();
-    const res = await app.request('/api/swap/execute', {
+    const app = buildRemediationApp();
+    const res = await app.request('/api/remediations/rollback', {
       method: 'POST',
-      body: JSON.stringify({ tool: 'faketool', previewGeneratedAt: '2026-10-25T00:00:00.000Z' }),
-    });
-    expect(res.status).toBe(200);
-    const after = await getDistributionIndex({}, loader.load);
-    expect(after.cached).toBe(false);
-    expect(loader.count()).toBe(2);
-  });
-
-  it('swap 回滚成功后缓存失效', async () => {
-    const loader = countingLoader();
-    await getDistributionIndex({}, loader.load);
-    const app = buildSwapApp();
-    const res = await app.request('/api/swap/rollback', {
-      method: 'POST',
-      body: JSON.stringify({ swapId: 'swap-demo' }),
+      body: JSON.stringify({ swapId: 'write-demo' }),
     });
     expect(res.status).toBe(200);
     const after = await getDistributionIndex({}, loader.load);

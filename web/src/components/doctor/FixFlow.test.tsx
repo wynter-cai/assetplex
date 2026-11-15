@@ -18,11 +18,11 @@ vi.mock('@/lib/api', async () => {
     api: {
       ...actual.api,
       readFile: vi.fn(),
-      getSwapTools: vi.fn(),
+      getDistributionTools: vi.fn(),
       doctorFixDraft: vi.fn(),
       doctorApply: vi.fn(),
       doctorUndo: vi.fn(),
-      swapRollback: vi.fn(),
+      rollbackRemediation: vi.fn(),
     },
   };
 });
@@ -85,7 +85,7 @@ beforeEach(() => {
     size: 10,
     modified: '2026-10-18T00:00:00.000Z',
   });
-  vi.mocked(api.getSwapTools).mockResolvedValue({
+  vi.mocked(api.getDistributionTools).mockResolvedValue({
     tools: [
       { name: 'trae', displayName: 'TRAE', installed: true, projectLevel: false, supportMatrix: supportAll },
       { name: 'qoder', displayName: 'Qoder', installed: true, projectLevel: false, supportMatrix: supportAll },
@@ -205,8 +205,8 @@ describe('FixFlow 结果与撤销（Scenario 3/4）', () => {
     fireEvent.click(screen.getByRole('button', { name: /撤销本次修复/ }));
     await waitFor(() => expect(api.doctorUndo).toHaveBeenCalledWith('backup-1'));
 
-    vi.mocked(api.swapRollback).mockResolvedValue({ swapId: 'swap-1', restored: 1, removed: 0, success: true });
+    vi.mocked(api.rollbackRemediation).mockResolvedValue({ swapId: 'swap-1', restored: 1, removed: 0, success: true });
     fireEvent.click(screen.getByRole('button', { name: /回滚同步/ }));
-    await waitFor(() => expect(api.swapRollback).toHaveBeenCalledWith('swap-1'));
+    await waitFor(() => expect(api.rollbackRemediation).toHaveBeenCalledWith('swap-1'));
   });
 });

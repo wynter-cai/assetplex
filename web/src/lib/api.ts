@@ -341,7 +341,7 @@ export const api = {
   doctorEstimate: (category: DoctorAssetKind) =>
     request<DiagnoseEstimate>(`/doctor/estimate?category=${encodeURIComponent(category)}`),
 
-  // 医生修复链（Phase F）：草案零写库；落盘唯一入口 apply 携带用户确认内容；撤销走备份区不进 swap
+  // 医生修复链（Phase F）：草案零写库；落盘唯一入口 apply 携带用户确认内容；撤销走备份区不走分发回滚
   doctorFixDraft: (body: { kind: DoctorAssetKind; hubRelativePath: string; issueIndexes: number[] }) =>
     request<FixDraftResponse>('/doctor/fix-draft', { method: 'POST', body: JSON.stringify(body) }),
   doctorApply: (body: DoctorApplyRequest) =>
@@ -440,9 +440,9 @@ export const api = {
     }>(`/tools/${encodeURIComponent(toolName)}/detail`),
 
   // 类别支持矩阵与分发回滚（资产医生修复分发、资产分发对话框共用）
-  getSwapTools: () => request<{ tools: SwapToolCandidate[] }>('/swap/tools'),
-  swapRollback: (swapId: string) =>
-    request<SwapRollbackResult>('/swap/rollback', {
+  getDistributionTools: () => request<{ tools: SwapToolCandidate[] }>('/distributions/tools'),
+  rollbackRemediation: (swapId: string) =>
+    request<SwapRollbackResult>('/remediations/rollback', {
       method: 'POST',
       body: JSON.stringify({ swapId }),
     }),

@@ -56,7 +56,7 @@ export function FixFlow(props: FixFlowProps): JSX.Element {
     if (view.kind !== 'confirm' && view.kind !== 'result') return;
     if (toolCandidates.length > 0) return;
     api
-      .getSwapTools()
+      .getDistributionTools()
       .then((res) => {
         const installed = res.tools.filter((t) => t.installed && supportsKind(t));
         setToolCandidates(installed);
@@ -115,8 +115,8 @@ export function FixFlow(props: FixFlowProps): JSX.Element {
 
   const rollbackDispatch = (swapId: string): void => {
     api
-      .swapRollback(swapId)
-      .then(() => setUndoMessage('已回滚本次同步（swap 历史恢复）'))
+      .rollbackRemediation(swapId)
+      .then(() => setUndoMessage('已回滚本次分发（工具文件已恢复到分发前）'))
       .catch((err: unknown) =>
         setUndoMessage(err instanceof Error ? err.message : String(err)),
       );

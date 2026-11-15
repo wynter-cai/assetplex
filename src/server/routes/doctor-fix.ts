@@ -3,7 +3,7 @@
  *
  * POST /api/doctor/fix-draft  生成改写草案（Scenario 1：此阶段零写库，只回文本）
  * POST /api/doctor/apply      用户一屏确认后：备份 → 写库 → 可选分发（Scenario 2-6）
- * POST /api/doctor/undo       按 backupRef 撤销库内修复（Scenario 3；分发侧回滚走 /api/swap/rollback）
+ * POST /api/doctor/undo       按 backupRef 撤销库内修复（Scenario 3；分发侧回滚走 /api/remediations/rollback）
  *
  * 信任红线（proposal D2/D4）：模型只产草案，落盘唯一入口是 apply 且必须携带用户确认的最终内容。
  * spec: 设计文档/changes/add-asset-doctor/specs/fix-and-distribute.spec.md
@@ -215,7 +215,7 @@ export function createDoctorFixRoutes(deps: DoctorFixRouteDeps = {}): Hono {
     }
   });
 
-  /** 撤销本次修复：按 backupRef 恢复库内旧版（Scenario 3；分发回滚走 swap 既有入口） */
+  /** 撤销本次修复：按 backupRef 恢复库内旧版（Scenario 3；分发回滚走 /api/remediations/rollback） */
   routes.post('/undo', async (c) => {
     let body: unknown;
     try {
