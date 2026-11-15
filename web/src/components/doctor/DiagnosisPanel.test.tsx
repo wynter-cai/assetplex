@@ -141,8 +141,24 @@ describe('DiagnosisPanel', () => {
     expect(screen.getByText(/2 条准则未参与本次诊断/)).toBeInTheDocument();
   });
 
-  it('AI 未配置机械降级：展示配置引导与入口（Scenario 7 / T11 不再指向技能页）', async () => {
-    vi.mocked(api.getDoctorSummary).mockResolvedValue({
+  it('语义评估超时降级：如实标注，静态结论仍展示（Scenario 7.2）', async () => {
+    vi.mocked(api.doctorDiagnose).mockResolvedValue(
+      baseReport({
+        aiEvaluated: false,
+        coverage: {
+          evaluatedRules: 15,
+          skippedRules: 7,
+          skippedReasons: [{ mode: 'llm', reason: 'timeout', count: 7 }],
+        },
+      }),
+    );
+    renderPanel();
+    fireEvent.click(screen.getByRole('button', { name: '开始诊断' }));
+    expect(await screen.findByText(/本轮语义评估未完成（超时或网络失败）/)).toBeInTheDocument();
+    expect(screen.getAllByText('description 为空').length).toBeGreaterThan(0);
+  });
+
+  it('AI 未配置机械降级：展示配置引导与入口（Scenario 7 / T11 不再指向技能页）', async () => {    vi.mocked(api.getDoctorSummary).mockResolvedValue({
       kind: 'skill',
       hubRelativePath: 'skills/demo-skill/SKILL.md',
       available: true,

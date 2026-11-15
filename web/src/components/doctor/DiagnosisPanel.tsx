@@ -234,6 +234,11 @@ export function ReportView({
   onRestore?: (finding: RuleFinding) => void;
 }): JSX.Element {
   const modelLabel = !report.mechanicalOnly && report.model !== '' ? report.model : null;
+  // 语义未评估的原因（无 AI 配置由 mechanicalOnly 单独引导，这里只展示超时 / 超预算）
+  const degradedReason =
+    report.coverage?.skippedReasons.find(
+      (item) => item.reason === 'timeout' || item.reason === 'budget',
+    )?.reason ?? null;
   return (
     <div role="region" aria-label="体检报告" className="rounded border bg-muted/30 p-3 space-y-2">
       <div className="flex flex-wrap items-center gap-2">
@@ -247,6 +252,12 @@ export function ReportView({
         {...(onIgnore === undefined ? {} : { onIgnore })}
         {...(onRestore === undefined ? {} : { onRestore })}
       />
+
+      {degradedReason !== null && (
+        <p className="text-xs text-muted-foreground">
+          本轮语义评估未完成（{degradedReason === 'budget' ? '超出预算' : '超时或网络失败'}），静态结论仍完整
+        </p>
+      )}
 
       {report.mechanicalOnly && (
         <p className="text-xs text-muted-foreground">

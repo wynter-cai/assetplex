@@ -34,6 +34,8 @@ export function buildCoverage(
   kind: DoctorAssetKind,
   staticEvaluated: number,
   aiEvaluated: boolean,
+  /** 语义未评估的原因（Scenario 7：无配置 / 超预算 / 超时），默认无配置 */
+  skipReason: 'no-ai-config' | 'budget' | 'timeout' = 'no-ai-config',
 ): DiagnosisCoverage {
   if (ruleSet === null) return { evaluatedRules: 0, skippedRules: 0, skippedReasons: [] };
   const llmApplicable = ruleSet.rules.filter((rule) => rule.mode === 'llm' && ruleAppliesToKind(rule, kind)).length;
@@ -41,7 +43,7 @@ export function buildCoverage(
     evaluatedRules: staticEvaluated + (aiEvaluated ? llmApplicable : 0),
     skippedRules: aiEvaluated ? 0 : llmApplicable,
     skippedReasons:
-      !aiEvaluated && llmApplicable > 0 ? [{ mode: 'llm', reason: 'no-ai-config', count: llmApplicable }] : [],
+      !aiEvaluated && llmApplicable > 0 ? [{ mode: 'llm', reason: skipReason, count: llmApplicable }] : [],
   };
 }
 

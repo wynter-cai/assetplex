@@ -178,13 +178,14 @@ export interface DiagnoseDeps {
   now?: () => string;
 }
 
-function mechanicalOnlyReport(
+function staticOnlyReport(
   input: DiagnoseInput,
   mechanical: DiagnosisIssue[],
   findings: RuleFinding[],
   coverage: DiagnosisCoverage,
   rulesVersion: string,
   now: string,
+  options: { mechanicalOnly: boolean; model: string },
 ): DiagnosisReport {
   // 被忽略项不参与计分（Scenario 4.2 / 4.3：忽略不等于修好，但也不该继续扣分）
   const visible = findings.filter((f) => !f.ignored);
@@ -201,10 +202,10 @@ function mechanicalOnlyReport(
     criteriaUsed: [],
     criteriaSkipped: 0,
     cached: false,
-    mechanicalOnly: true,
+    mechanicalOnly: options.mechanicalOnly,
     aiEvaluated: false,
     rejected: 0,
-    model: '',
+    model: options.model,
     generatedAt: now,
   };
 }
@@ -236,13 +237,14 @@ export async function diagnoseAsset(
   );
   const config = deps.config;
   if (config === null || !isAiConfigComplete(config)) {
-    const report = mechanicalOnlyReport(
+    const report = staticOnlyReport(
       input,
       mechanical,
       findings,
       buildCoverage(ruleSet, input.kind, staticResult.evaluatedRuleIds.length, false),
       rulesVersion,
       now,
+      { mechanicalOnly: true, model: '' },
     );
     persistDoctorLastRun(deps, input, report, content, null, now);
     return report;
@@ -269,7 +271,23 @@ export async function diagnoseAsset(
       criteriaBlock: block,
       mechanicalFindings: mechanical.map((i) => i.finding),
     });
-    const output = await deps.llm.chat({ system: prompt.system, user: prompt.user });
+    const output = await deps.llm
+      .chat({ system: prompt.system, user: prompt.user })
+      .catch(() => null);
+    // 超时 / 网络失败：保留静态结论并标注语义未完成，不落缓存，下次可重试（Scenario 7.2）
+    if (output === null) {
+      const degraded = staticOnlyReport(
+        input,
+        mechanical,
+        findings,
+        buildCoverage(ruleSet, input.kind, staticResult.evaluatedRuleIds.length, false, 'timeout'),
+        rulesVersion,
+        now,
+        { mechanicalOnly: false, model: config.model },
+      );
+      persistDoctorLastRun(deps, input, degraded, content, criteriaHash, now);
+      return degraded;
+    }
     const parsed = parseDiagnosisOutput(output);
     modelPart = {
       overall: parsed.overall,
