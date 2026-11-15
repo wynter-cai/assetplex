@@ -11,12 +11,16 @@ import type {
   SkillFunction,
   SkillFunctionSource,
   SkillInfo,
+  SkillSources,
 } from '../../core/skills-inventory.js';
 import {
   deriveInLibrary,
   deriveProvenance,
   type SkillProvenance,
 } from '../../core/skill-provenance.js';
+import { catalogFieldsOf } from '../../core/skill-catalog.js';
+import type { SkillCatalogEntryFields } from '../../core/skill-catalog-types.js';
+import type { SkillDiagnosisSummaryView } from '../../core/skill-diagnosis-summary.js';
 
 /** 技能条目 API 对外语义（api-contract.ts 的 SkillInfo） */
 export interface SkillApiInfo {
@@ -41,6 +45,13 @@ export interface SkillApiInfo {
   source?: string;
   functionSource: SkillFunctionSource;
   version?: string;
+  /** 主副本最后修改时间（ISO）；读不到为 null */
+  lastModifiedAt: string | null;
+}
+
+/** 看板条目 = 既有条目光段 + 分类增量字段 + 上次体检摘要投影 */
+export interface SkillApiCatalogInfo extends SkillApiInfo, SkillCatalogEntryFields {
+  diagnosis?: SkillDiagnosisSummaryView;
 }
 
 /** 内部盘点条目 → API 对外条目（不透传 origin/sourcePath/variants 数组） */
@@ -57,9 +68,21 @@ export function toApiSkill(skill: SkillInfo): SkillApiInfo {
     variants: skill.variants.length,
     functionSource: skill.functionSource,
     version: skill.version,
+    lastModifiedAt: skill.lastModifiedAt,
   };
   if (skill.workspaceName !== undefined) api.workspaceName = skill.workspaceName;
   if (skill.workspacePath !== undefined) api.workspacePath = skill.workspacePath;
   if (skill.source !== undefined) api.source = skill.source;
+  return api;
+}
+
+/** 内部盘点条目 → 看板条目（分类依据 + 三分组 + 上次体检摘要投影） */
+export function toApiCatalogSkill(
+  skill: SkillInfo,
+  sources: SkillSources,
+  diagnosis?: SkillDiagnosisSummaryView,
+): SkillApiCatalogInfo {
+  const api: SkillApiCatalogInfo = { ...toApiSkill(skill), ...catalogFieldsOf(skill, sources) };
+  if (diagnosis !== undefined) api.diagnosis = diagnosis;
   return api;
 }

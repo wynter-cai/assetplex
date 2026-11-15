@@ -59,6 +59,8 @@ export interface SkillInfo {
   workspacePath?: string;
   /** 其他副本 SKILL.md 绝对路径 */
   variants: string[];
+  /** 主副本最后修改时间（ISO）；经注入的 SkillFs.dirMtime 读取，读不到为 null（不伪造当前时间） */
+  lastModifiedAt: string | null;
 }
 
 /** 文件系统抽象（只读，与 AgentFs 结构兼容） */
@@ -137,6 +139,8 @@ interface RawSkill {
   raw: string;
   /** frontmatter 之后的正文，用于兜底分类 */
   body: string;
+  /** 该副本 SKILL.md 的最后修改时间（ISO）；读不到为 null */
+  mtime: string | null;
 }
 
 // ============ 常量（规则与代码分离） ============
@@ -311,6 +315,7 @@ function scanSkillDir(
       workspacePath: workspace?.workspacePath,
       raw,
       body,
+      mtime: fs.dirMtime(skillMd),
     });
   }
   return result;
@@ -495,6 +500,7 @@ export function dedupeSkills(
       workspaceName: primary.origin === 'project' ? primary.workspaceName : undefined,
       workspacePath: primary.origin === 'project' ? primary.workspacePath : undefined,
       variants,
+      lastModifiedAt: primary.mtime,
     });
   }
 
