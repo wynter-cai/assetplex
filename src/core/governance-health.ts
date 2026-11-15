@@ -9,7 +9,13 @@
  * Scenario 1/2/4、边界（零资产 / 数据缺失）
  */
 
-import type { DiagnosisIssue, DiagnosisSeverity, DoctorAssetKind, FindingSource } from './types.js';
+import type {
+  DiagnosisIssue,
+  DiagnosisSeverity,
+  DoctorAssetKind,
+  FindingSource,
+  RuleFinding,
+} from './types.js';
 import type { AssetDistributionInfo, DistributionStatus } from './distribution-status.js';
 
 // ============ 契约类型（对应 api-contract.ts） ============
@@ -82,6 +88,11 @@ export interface GovernanceAssetInput {
   mechanicalIssues: DiagnosisIssue[];
   /** AI 语义项（不含 mechanical: 前缀项） */
   semanticIssues: DiagnosisIssue[];
+  /**
+   * 规则化 findings（add-diagnosis-rules T6）：提供时规范性维度只认它，
+   * 不再叠加 mechanicalIssues / semanticIssues，避免同一问题双扣。
+   */
+  findings?: RuleFinding[];
   /** 该资产语义质量是否已评估 */
   semanticEvaluated: boolean;
   /** 分发条目；not_enabled / not_installed 不计入分发一致性 */
@@ -144,6 +155,48 @@ export function isCompletenessCriterion(criterion: string): boolean {
 
 /** 重复类型对唯一性的扣分权重 */
 const DUPLICATE_WEIGHT: Record<HealthDuplicateGroup['kind'], number> = { exact: 1, near: 0.6, gray: 0.3 };
+
+/**
+ * 规范性维度排除的规则：DUP-01（重复）由唯一性维度扣分，
+ * 两维都扣会把同一问题算两次（add-diagnosis-rules T6 / proposal 风险表）。
+ */
+export const NORMATIVE_EXCLUDED_RULE_IDS: readonly string[] = ['DUP-01'];
+
+interface QualityIssue {
+  issue: DiagnosisIssue;
+  source: FindingSource;
+}
+
+/**
+ * 规范性维度的条目来源：
+ * - 有 findings → 只认 findings；忽略项、证据不足项与 DUP-01 不参与计分；
+ * - 无 findings → 回退旧口径（机械项 + 语义项），保证既有调用零改动。
+ */
+function qualityIssues(asset: GovernanceAssetInput): QualityIssue[] {
+  if (asset.findings === undefined) {
+    return [
+      ...asset.mechanicalIssues.map((issue) => ({ issue, source: 'rule' as const })),
+      ...asset.semanticIssues.map((issue) => ({ issue, source: 'llm' as const })),
+    ];
+  }
+  return asset.findings
+    .filter(
+      (finding) =>
+        !finding.ignored &&
+        !finding.insufficientEvidence &&
+        !NORMATIVE_EXCLUDED_RULE_IDS.includes(finding.ruleId),
+    )
+    .map((finding) => ({
+      issue: {
+        severity: finding.severity,
+        criterion: finding.ruleId,
+        finding: finding.title !== '' ? finding.title : finding.finding,
+        suggestion: finding.suggestion,
+        fixable: finding.fixable,
+      },
+      source: finding.source,
+    }));
+}
 
 /** 无身份资产时的完整性缺口扣分（身份是管家层的地基） */
 const IDENTITY_GAP_PENALTY = 15;
@@ -229,13 +282,10 @@ export function collectDimensionIssues(
       }
       return issues;
     }
-    // 规范性 = 机械 + 语义：逐批标注来源，供质量中心聚类如实展示
+    // 规范性 = findings（无 findings 时回退机械 + 语义）：逐条标注来源，供质量中心聚类如实展示
     for (const asset of assets) {
-      asset.mechanicalIssues.forEach((issue, index) =>
-        issues.push(toIssueRef(dimension, asset, issue, index, 'rule')),
-      );
-      asset.semanticIssues.forEach((issue, index) =>
-        issues.push(toIssueRef(dimension, asset, issue, index, 'llm')),
+      qualityIssues(asset).forEach(({ issue, source }, index) =>
+        issues.push(toIssueRef(dimension, asset, issue, index, source)),
       );
     }
     return issues;
@@ -380,8 +430,8 @@ export function computeGovernanceHealth(input: GovernanceHealthInput): Governanc
     completenessScore = Math.max(0, completenessScore - IDENTITY_GAP_PENALTY);
   }
 
-  // ---- 规范性：全部机械项 + 语义项 ----
-  const qualityScore = ratioScore(penaltiesFor(pool, (a) => [...a.mechanicalIssues, ...a.semanticIssues]));
+  // ---- 规范性：规则化 findings（未评估的语义规则不按通过计分，由 qualityMode 披露） ----
+  const qualityScore = ratioScore(penaltiesFor(pool, (a) => qualityIssues(a).map((item) => item.issue)));
 
   // ---- 分发一致性：已启用工具中 pending/conflict 占比 ----
   let entries = 0;

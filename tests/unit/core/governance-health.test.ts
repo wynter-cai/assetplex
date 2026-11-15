@@ -14,7 +14,7 @@ import {
   type HealthDuplicateGroup,
 } from '../../../src/core/governance-health.js';
 import type { AssetDistributionInfo } from '../../../src/core/distribution-status.js';
-import type { DiagnosisIssue, DiagnosisSeverity, DoctorAssetKind } from '../../../src/core/types.js';
+import type { DiagnosisIssue, DiagnosisSeverity, DoctorAssetKind, RuleFinding } from '../../../src/core/types.js';
 
 function issue(severity: DiagnosisSeverity, criterion: string, fixable = true): DiagnosisIssue {
   return { severity, criterion, finding: `${criterion} 的发现`, suggestion: '按建议改', fixable };
@@ -33,6 +33,32 @@ interface AssetOverrides {
   semanticEvaluated?: boolean;
   distributions?: AssetDistributionInfo[];
   dataMissing?: boolean;
+  /** 规则化 findings：提供时规范性维度只认它（T6） */
+  findings?: RuleFinding[];
+}
+
+function finding(
+  ruleId: string,
+  severity: DiagnosisSeverity,
+  overrides: Partial<RuleFinding> = {},
+): RuleFinding {
+  return {
+    id: `${ruleId}:demo:1:0`,
+    ruleId,
+    category: 'skill',
+    severity,
+    confidence: 'high',
+    source: 'rule',
+    title: `${ruleId} 规则`,
+    finding: `${ruleId} 的发现`,
+    impact: '',
+    suggestion: '按建议改',
+    evidence: [],
+    insufficientEvidence: false,
+    fixable: false,
+    ignored: false,
+    ...overrides,
+  };
 }
 
 function asset(overrides: AssetOverrides = {}): GovernanceAssetInput {
@@ -47,6 +73,7 @@ function asset(overrides: AssetOverrides = {}): GovernanceAssetInput {
     semanticEvaluated: overrides.semanticEvaluated ?? true,
     distributions: overrides.distributions ?? [],
     dataMissing: overrides.dataMissing ?? false,
+    ...(overrides.findings === undefined ? {} : { findings: overrides.findings }),
   };
 }
 
@@ -293,5 +320,78 @@ describe('computeGovernanceHealth — 边界与降级', () => {
     expect(health.totalAssets).toBe(3);
     expect(health.score).toBe(100);
     expect(health.dimensions.find((d) => d.id === 'completeness')?.evaluatedAssets).toBe(2);
+  });
+});
+
+describe('computeGovernanceHealth — T6：规范性维度改用 findings', () => {
+  it('同一资产同时命中 DUP-01 与重复分组：规范性不扣，重复只由唯一性扣一次', () => {
+    const health = computeGovernanceHealth({
+      assets: [
+        asset({ kind: 'identity', hubRelativePath: 'identity/profile.md', name: 'profile' }),
+        asset({
+          hubRelativePath: 'skills/demo-skill-1/SKILL.md',
+          name: 'demo-skill-1',
+          findings: [finding('DUP-01', 'high')],
+        }),
+        goodSkill(2),
+      ],
+      duplicateGroups: exactGroup('dup-1', [
+        { path: 'skills/demo-skill-1/SKILL.md', name: 'demo-skill-1' },
+        { path: 'skills/demo-skill-2/SKILL.md', name: 'demo-skill-2' },
+      ]),
+      aiConfigured: true,
+    });
+    const quality = health.dimensions.find((d) => d.id === 'quality');
+    const uniqueness = health.dimensions.find((d) => d.id === 'uniqueness');
+
+    expect(quality?.score).toBe(100);
+    expect(quality?.issueCount).toBe(0);
+    expect(uniqueness?.score ?? 100).toBeLessThan(100);
+    expect(uniqueness?.issueCount).toBeGreaterThan(0);
+  });
+
+  it('已忽略与证据不足的 finding 不计分（Scenario 4.2 / 3.2）', () => {
+    const health = computeGovernanceHealth({
+      assets: [
+        asset({
+          findings: [
+            finding('SK-04', 'high', { ignored: true }),
+            finding('SK-05', 'high', { insufficientEvidence: true }),
+          ],
+        }),
+      ],
+      aiConfigured: true,
+    });
+    expect(health.dimensions.find((d) => d.id === 'quality')?.score).toBe(100);
+  });
+
+  it('提供 findings 时以 findings 为准，不再叠加机械项（避免双扣）', () => {
+    const health = computeGovernanceHealth({
+      assets: [
+        asset({
+          mechanicalIssues: [issue('high', 'mechanical:body-over-length')],
+          findings: [],
+        }),
+      ],
+      aiConfigured: true,
+    });
+    expect(health.dimensions.find((d) => d.id === 'quality')?.score).toBe(100);
+  });
+
+  it('AI 未配置：只按静态 findings 计分，qualityMode 如实标 mechanical-only', () => {
+    const health = computeGovernanceHealth({
+      assets: [
+        asset({
+          semanticEvaluated: false,
+          findings: [finding('SK-02', 'medium')],
+        }),
+      ],
+      aiConfigured: false,
+    });
+    const quality = health.dimensions.find((d) => d.id === 'quality');
+
+    expect(quality?.score).toBe(40);
+    expect(quality?.issueCount).toBe(1);
+    expect(health.qualityMode).toBe('mechanical-only');
   });
 });
