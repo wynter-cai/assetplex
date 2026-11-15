@@ -28,6 +28,7 @@ import { createArbitrationRoutes } from './routes/arbitration.js';
 import { createDoctorRoutes } from './routes/doctor.js';
 import { createDoctorFixRoutes } from './routes/doctor-fix.js';
 import { createGovernanceRoutes } from './routes/governance.js';
+import { createHomeRoutes } from './routes/home.js';
 import { createActivityRoutes } from './routes/activity.js';
 import { createOnboardingRoutes } from './routes/onboarding.js';
 import { errorHandler } from './middleware/error.js';
@@ -78,6 +79,7 @@ export async function startServer(options: ServerOptions = {}): Promise<void> {
   app.route('/api/doctor', createDoctorRoutes());
   app.route('/api/doctor', createDoctorFixRoutes());
   app.route('/api/governance', createGovernanceRoutes());
+  app.route('/api/home', createHomeRoutes());
   app.route('/api/activity', createActivityRoutes());
   app.route('/api/onboarding', createOnboardingRoutes());
 
