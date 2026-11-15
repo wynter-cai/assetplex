@@ -75,7 +75,8 @@ export interface StaticDiagnosisResult {
 
 const SEVERITY_RANK: Record<DiagnosisSeverity, number> = { high: 0, medium: 1, low: 2 };
 
-function appliesToKind(rule: DiagnosisRule, kind: RuleAssetCategory): boolean {
+/** 某条规则是否适用于该资产类别（覆盖度披露与静态执行共用同一判定） */
+export function ruleAppliesToKind(rule: DiagnosisRule, kind: RuleAssetCategory): boolean {
   const appliesTo = rule.appliesTo ?? (rule.category === 'cross' ? [] : [rule.category]);
   return appliesTo.includes(kind);
 }
@@ -135,7 +136,7 @@ export function runStaticChecks(input: StaticDiagnosisInput, ruleSet: DiagnosisR
   for (const check of ALL_STATIC_CHECKS) {
     const rule = rulesById.get(check.ruleId);
     if (rule === undefined || rule.mode !== 'static') continue;
-    if (!appliesToKind(rule, input.kind)) continue;
+    if (!ruleAppliesToKind(rule, input.kind)) continue;
     evaluatedRuleIds.push(rule.id);
     check
       .run(context)

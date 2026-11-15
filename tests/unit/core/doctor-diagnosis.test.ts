@@ -6,6 +6,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import { resolve } from 'node:path';
 import {
   buildDiagnosisPrompt,
   parseDiagnosisOutput,
@@ -18,6 +19,10 @@ import type { CriterionAsset } from '../../../src/core/criteria.js';
 import type { DoctorCacheStore } from '../../../src/core/doctor-cache.js';
 import type { AiClassifyConfig } from '../../../src/core/ai-config.js';
 import type { LlmClient } from '../../../src/core/skill-ai-classification.js';
+import { loadRuleRegistryFromFile, DEFAULT_RULES_RELATIVE_PATH } from '../../../src/core/diagnosis-rules.js';
+import type { DiagnosisRuleSet } from '../../../src/core/types.js';
+
+const RULE_SET = loadRuleRegistryFromFile(resolve(process.cwd(), DEFAULT_RULES_RELATIVE_PATH)).ruleSet;
 
 const demoCriterion: CriterionAsset = {
   slug: 'token-economy',
@@ -156,6 +161,7 @@ function harness(opts: {
   criteria?: CriterionAsset[];
   llmOutput?: string;
   cache?: DoctorCacheStore;
+  ruleSet?: DiagnosisRuleSet | null;
 } = {}): HarnessDeps {
   const calls: { system: string; user: string }[] = [];
   const content = opts.content ?? '---\nname: demo-skill\ndescription: 演示\n---\n正文内容\n';
@@ -174,6 +180,7 @@ function harness(opts: {
       cache: opts.cache ?? memoryCache(),
       llm,
       ...(config === null ? { config: null } : { config }),
+      ruleSet: opts.ruleSet ?? null,
       now: () => '2026-10-18T12:00:00.000Z',
     },
   };
@@ -254,5 +261,70 @@ describe('diagnoseAsset', () => {
     const report = await diagnoseAsset({ kind: 'skill', hubRelativePath: 'skills/demo-skill/SKILL.md' }, h.deps);
     expect(report.criteriaUsed).toEqual([]);
     expect(h.calls[0].system).not.toContain('裁决准则');
+  });
+});
+
+// ================= T3: 报告契约扩展（findings / coverage / rulesVersion） =================
+
+describe('diagnoseAsset 规则报告', () => {
+  const skillPath = 'skills/demo-skill/SKILL.md';
+
+  it('报告携带 findings / coverage / rulesVersion / aiEvaluated / rejected', async () => {
+    const h = harness({ ruleSet: RULE_SET });
+    const report = await diagnoseAsset({ kind: 'skill', hubRelativePath: skillPath }, h.deps);
+    expect(report.rulesVersion).toBe('1.0.0');
+    expect(report.findings.length).toBeGreaterThan(0);
+    expect(report.aiEvaluated).toBe(true);
+    expect(report.rejected).toBe(0);
+    expect(report.coverage.evaluatedRules).toBe(15 + 7);
+    expect(report.coverage.skippedReasons).toEqual([]);
+    expect(report.findings.every((finding) => finding.source === 'rule')).toBe(true);
+  });
+
+  it('AI 未配置：静态 findings 完整、语义规则计入 skippedReasons，aiEvaluated=false', async () => {
+    const h = harness({ config: null, ruleSet: RULE_SET });
+    const report = await diagnoseAsset({ kind: 'skill', hubRelativePath: skillPath }, h.deps);
+    expect(report.aiEvaluated).toBe(false);
+    expect(report.mechanicalOnly).toBe(true);
+    expect(report.findings.length).toBeGreaterThan(0);
+    expect(report.coverage.evaluatedRules).toBe(15);
+    expect(report.coverage.skippedReasons).toEqual([{ mode: 'llm', reason: 'no-ai-config', count: 7 }]);
+    expect(h.calls).toHaveLength(0);
+  });
+
+  it('有证据的规则命中投影进旧 issues（criterion=ruleId），旧字段不缺失', async () => {
+    const content = '---\nname: Demo_Skill\ndescription: Use when 用户要导出 CSV。\n---\n正文\n';
+    const h = harness({ ruleSet: RULE_SET, content });
+    const report = await diagnoseAsset({ kind: 'skill', hubRelativePath: skillPath }, h.deps);
+    expect(report.issues.some((issue) => issue.criterion === 'SK-02')).toBe(true);
+    expect(report.issues.some((issue) => issue.criterion === 'token-economy')).toBe(true);
+  });
+
+  it('无证据的缺失类结论不进旧 issues，且标 insufficientEvidence、不可修复（Scenario 3.2）', async () => {
+    const content = '---\nname: demo-memory\ndescription: 演示\n---\n记忆正文\n';
+    const h = harness({ ruleSet: RULE_SET, content, config: null });
+    const report = await diagnoseAsset({ kind: 'memory', hubRelativePath: 'memory/demo.md' }, h.deps);
+    const ownerFinding = report.findings.find((finding) => finding.ruleId === 'MEM-04');
+    expect(ownerFinding).toBeDefined();
+    expect(ownerFinding?.insufficientEvidence).toBe(true);
+    expect(ownerFinding?.evidence).toEqual([]);
+    expect(ownerFinding?.fixable).toBe(false);
+    expect(report.issues.some((issue) => issue.criterion === 'MEM-04')).toBe(false);
+  });
+
+  it('静态 high 命中不被模型 healthy 覆盖（Scenario 2.3）', async () => {
+    const h = harness({ ruleSet: RULE_SET, content: '无 frontmatter 的技能正文\n', llmOutput: '{"overall":"healthy","issues":[]}' });
+    const report = await diagnoseAsset({ kind: 'skill', hubRelativePath: skillPath }, h.deps);
+    expect(report.findings.some((finding) => finding.severity === 'high')).toBe(true);
+    expect(report.overall).not.toBe('healthy');
+  });
+
+  it('规则集未加载：findings 为空、rulesVersion 空串、coverage 全零，旧链路照常可用', async () => {
+    const h = harness();
+    const report = await diagnoseAsset({ kind: 'skill', hubRelativePath: skillPath }, h.deps);
+    expect(report.findings).toEqual([]);
+    expect(report.rulesVersion).toBe('');
+    expect(report.coverage).toEqual({ evaluatedRules: 0, skippedRules: 0, skippedReasons: [] });
+    expect(report.issues.some((issue) => issue.criterion === 'token-economy')).toBe(true);
   });
 });

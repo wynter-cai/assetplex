@@ -12,6 +12,7 @@ import { computeDoctorCacheKey, type DoctorCacheEntry, type DoctorCacheStore } f
 import { hashCriteria, type CriterionAsset } from '../../../src/core/criteria.js';
 import type { AiConfigStore, AiClassifyConfig } from '../../../src/core/ai-config.js';
 import type { LlmClient } from '../../../src/core/skill-ai-classification.js';
+import type { DiagnosisRuleSet } from '../../../src/core/types.js';
 
 const demoCriterion: CriterionAsset = {
   slug: 'token-economy',
@@ -50,6 +51,7 @@ function harness(opts: {
   assets?: string[];
   llmOutput?: string;
   seedEntries?: Record<string, DoctorCacheEntry>;
+  ruleSet?: DiagnosisRuleSet | null;
 } = {}): Harness {
   let calls = 0;
   const files = opts.files ?? { 'skills/demo-skill/SKILL.md': SKILL_CONTENT };
@@ -80,6 +82,7 @@ function harness(opts: {
     cache,
     llmClient: llm,
     aiConfigStore,
+    ...(opts.ruleSet === undefined ? {} : { ruleSet: opts.ruleSet }),
     now: () => '2026-10-18T00:00:00.000Z',
   });
   const post = async (body: unknown) => {
@@ -177,8 +180,48 @@ describe('POST /api/doctor/diagnose', () => {
   });
 });
 
-describe('GET /api/doctor/estimate', () => {
-  const assets = ['skills/a/SKILL.md', 'skills/b/SKILL.md', 'skills/c/SKILL.md'];
+// ================= T3: 报告契约扩展 =================
+
+describe('诊断报告新字段（add-diagnosis-rules T3）', () => {
+  it('响应含 findings / coverage / rulesVersion / aiEvaluated / rejected，旧 issues 不缺失', async () => {
+    const h = harness();
+    const body = await (await h.post(validBody)).json();
+    const findings = body.findings as Array<{ ruleId: string; evidence: unknown[] }>;
+    expect(body.rulesVersion).toBe('1.0.0');
+    expect(findings.length).toBeGreaterThan(0);
+    expect(findings.every((finding) => typeof finding.ruleId === 'string')).toBe(true);
+    expect(body.coverage).toEqual({ evaluatedRules: 22, skippedRules: 0, skippedReasons: [] });
+    expect(body.aiEvaluated).toBe(true);
+    expect(body.rejected).toBe(0);
+    expect(Array.isArray(body.issues)).toBe(true);
+    expect(body.mechanicalOnly).toBe(false);
+  });
+
+  it('AI 未配置：静态 findings 完整可用，语义规则计入 no-ai-config，机械项仍有值', async () => {
+    const h = harness({ config: null, files: { 'skills/demo-skill/SKILL.md': '无 frontmatter 的坏技能\n' } });
+    const body = await (await h.post(validBody)).json();
+    expect(body.aiEvaluated).toBe(false);
+    expect((body.findings as unknown[]).length).toBeGreaterThan(0);
+    expect(body.coverage).toEqual({
+      evaluatedRules: 15,
+      skippedRules: 7,
+      skippedReasons: [{ mode: 'llm', reason: 'no-ai-config', count: 7 }],
+    });
+    const issues = body.issues as Array<{ criterion: string }>;
+    expect(issues.some((issue) => issue.criterion === 'mechanical:frontmatter-missing-field')).toBe(true);
+  });
+
+  it('注入自定义规则集时版本与覆盖度随响应透出', async () => {
+    const custom: DiagnosisRuleSet = { version: '0.0.1-demo', updatedAt: '2026-11-15', rules: [] };
+    const h = harness({ ruleSet: custom });
+    const body = await (await h.post(validBody)).json();
+    expect(body.rulesVersion).toBe('0.0.1-demo');
+    expect(body.findings).toEqual([]);
+    expect(body.coverage).toEqual({ evaluatedRules: 0, skippedRules: 0, skippedReasons: [] });
+  });
+});
+
+describe('GET /api/doctor/estimate', () => {  const assets = ['skills/a/SKILL.md', 'skills/b/SKILL.md', 'skills/c/SKILL.md'];
   const files: Record<string, string> = {};
   // 内容必须互异：缓存 key 按内容哈希，同内容共享同一条目
   assets.forEach((p, i) => {

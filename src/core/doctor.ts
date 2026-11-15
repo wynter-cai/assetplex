@@ -28,10 +28,15 @@ import {
   type DoctorCacheStore,
 } from './doctor-cache.js';
 import {
+  type DiagnosisCoverage,
   type DiagnosisIssue,
   type DiagnosisOverall,
+  type DiagnosisRuleSet,
   type DoctorAssetKind,
+  type RuleFinding,
 } from './types.js';
+import { runStaticChecks } from './diagnosis-static.js';
+import { buildCoverage, mergeOverall, projectFindingsToIssues } from './diagnosis-report.js';
 
 /** 资产正文进 prompt 的截断上限（超长部分不参与诊断，与仲裁单侧上限同值不同义） */
 export const DIAGNOSIS_CONTENT_LIMIT = 6000;
@@ -53,13 +58,23 @@ export interface DiagnosisReport {
   kind: DoctorAssetKind;
   hubRelativePath: string;
   overall: DiagnosisOverall;
+  /** 新链路主结果：规则命中的 findings（含被忽略项，T5 起填充 ignored） */
+  findings: RuleFinding[];
+  /** 兼容字段：由 findings 投影出的旧结构（无证据项不进入此列表） */
   issues: DiagnosisIssue[];
+  /** 规则集版本，用于跨版本对比；规则集未加载时为空串 */
+  rulesVersion: string;
+  coverage: DiagnosisCoverage;
   criteriaUsed: string[];
   criteriaSkipped: number;
   /** 模型部分来自缓存（机械项每次都重跑，确定性结果不变） */
   cached: boolean;
-  /** AI 未配置：仅含机械 issues，前端展示配置引导（Scenario 7） */
+  /** AI 未配置：只含静态与机械结论，前端展示配置引导（Scenario 7） */
   mechanicalOnly: boolean;
+  /** AI 是否实际参与本轮（区别于「配置了但失败」） */
+  aiEvaluated: boolean;
+  /** 被丢弃的模型条目数（规则编号非法 / 证据不可定位 / 结构缺失；T4 起填充） */
+  rejected: number;
   model: string;
   generatedAt: string;
 }
@@ -149,40 +164,35 @@ export interface DiagnoseDeps {
   llm: LlmClient;
   /** null/不完整 = 未配置 AI：只出机械报告（Scenario 7），不抛错 */
   config: AiClassifyConfig | null;
+  /** 规则集：null/缺省 = 规则集未加载，本轮无规则结论（findings 为空，coverage 全零） */
+  ruleSet?: DiagnosisRuleSet | null;
   now?: () => string;
-}
-
-const OVERALL_RANK: Record<DiagnosisOverall, number> = {
-  healthy: 0,
-  'needs-attention': 1,
-  'at-risk': 2,
-};
-
-/** 机械 high 项不允许被模型 healthy 覆盖：结论取两侧较重者 */
-function mergeOverall(modelOverall: DiagnosisOverall, mechanical: DiagnosisIssue[]): DiagnosisOverall {
-  if (!mechanical.some((i) => i.severity === 'high')) return modelOverall;
-  return OVERALL_RANK[modelOverall] >= OVERALL_RANK['needs-attention'] ? modelOverall : 'needs-attention';
 }
 
 function mechanicalOnlyReport(
   input: DiagnoseInput,
   mechanical: DiagnosisIssue[],
+  findings: RuleFinding[],
+  coverage: DiagnosisCoverage,
+  rulesVersion: string,
   now: string,
 ): DiagnosisReport {
-  const worst: DiagnosisOverall = mechanical.some((i) => i.severity === 'high')
-    ? 'at-risk'
-    : mechanical.length > 0
-      ? 'needs-attention'
-      : 'healthy';
+  const hasHigh = mechanical.some((i) => i.severity === 'high') || findings.some((f) => f.severity === 'high');
+  const worst: DiagnosisOverall = hasHigh ? 'at-risk' : mechanical.length + findings.length > 0 ? 'needs-attention' : 'healthy';
   return {
     kind: input.kind,
     hubRelativePath: input.hubRelativePath,
     overall: worst,
-    issues: mechanical,
+    findings,
+    issues: projectFindingsToIssues(mechanical, [], findings),
+    rulesVersion,
+    coverage,
     criteriaUsed: [],
     criteriaSkipped: 0,
     cached: false,
     mechanicalOnly: true,
+    aiEvaluated: false,
+    rejected: 0,
     model: '',
     generatedAt: now,
   };
@@ -200,10 +210,24 @@ export async function diagnoseAsset(
   const content = deps.fs.read(input.hubRelativePath);
   if (content === null) throw new DiagnosisAssetError(input.hubRelativePath);
 
+  const ruleSet = deps.ruleSet ?? null;
+  const rulesVersion = ruleSet === null ? '' : ruleSet.version;
   const mechanical = runMechanicalChecks(input.kind, content);
+  const staticResult = runStaticChecks(
+    { kind: input.kind, hubRelativePath: input.hubRelativePath, content },
+    ruleSet,
+  );
+  const findings = staticResult.findings;
   const config = deps.config;
   if (config === null || !isAiConfigComplete(config)) {
-    return mechanicalOnlyReport(input, mechanical, now);
+    return mechanicalOnlyReport(
+      input,
+      mechanical,
+      findings,
+      buildCoverage(ruleSet, input.kind, staticResult.evaluatedRuleIds.length, false),
+      rulesVersion,
+      now,
+    );
   }
 
   const criteria = deps.getCriteria();
@@ -241,15 +265,21 @@ export async function diagnoseAsset(
     deps.cache.save(entries);
   }
 
+  const hasHigh = mechanical.some((issue) => issue.severity === 'high') || findings.some((finding) => finding.severity === 'high');
   return {
     kind: input.kind,
     hubRelativePath: input.hubRelativePath,
-    overall: mergeOverall(modelPart.overall, mechanical),
-    issues: [...mechanical, ...modelPart.issues],
+    overall: mergeOverall(modelPart.overall, hasHigh),
+    findings,
+    issues: projectFindingsToIssues(mechanical, modelPart.issues, findings),
+    rulesVersion,
+    coverage: buildCoverage(ruleSet, input.kind, staticResult.evaluatedRuleIds.length, true),
     criteriaUsed: modelPart.criteriaUsed,
     criteriaSkipped: modelPart.criteriaSkipped,
     cached: hit !== null,
     mechanicalOnly: false,
+    aiEvaluated: true,
+    rejected: 0,
     model: modelPart.model,
     generatedAt: modelPart.generatedAt,
   };

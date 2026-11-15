@@ -19,7 +19,12 @@ import { computeDoctorCacheKey, sanitizeDoctorEntries, type DoctorCacheStore } f
 import { hashCriteria, listCriteria, type CriterionAsset } from '../../core/criteria.js';
 import { loadAiClassifyConfig, isAiConfigComplete, type AiConfigStore } from '../../core/ai-config.js';
 import type { LlmClient } from '../../core/skill-ai-classification.js';
-import { DOCTOR_ASSET_KINDS, type DoctorAssetKind } from '../../core/types.js';
+import { DOCTOR_ASSET_KINDS, type DiagnosisRuleSet, type DoctorAssetKind } from '../../core/types.js';
+import {
+  RuleSetError,
+  loadRuleRegistryFromFile,
+  resolveRuleSetFile,
+} from '../../core/diagnosis-rules.js';
 import { listHubFiles, type HubFileCategory } from '../../core/hub-files.js';
 import { nodeAiConfigStore, nodeDoctorCacheStore } from '../lib/node-ai-classify-store.js';
 import { createOpenAiLlmClient } from '../lib/openai-llm-client.js';
@@ -33,7 +38,30 @@ export interface DoctorRouteDeps {
   cache?: DoctorCacheStore;
   llmClient?: LlmClient;
   aiConfigStore?: AiConfigStore;
+  /** 规则集：缺省按构建产物 / 仓库定义位置加载；显式传 null 表示本轮不跑规则 */
+  ruleSet?: DiagnosisRuleSet | null;
   now?: () => string;
+}
+
+interface RuleSetRegistry {
+  ruleSet: DiagnosisRuleSet | null;
+  /** 规则集致命错误（版本缺失 / 全部规则非法）→ 诊断请求 422 */
+  error: RuleSetError | null;
+}
+
+/** 加载规则集：坏规则只打告警日志，致命错误留给请求层映射 422 */
+function loadRouteRuleSet(explicit?: DiagnosisRuleSet | null): RuleSetRegistry {
+  if (explicit !== undefined) return { ruleSet: explicit, error: null };
+  try {
+    const file = resolveRuleSetFile();
+    if (file === null) return { ruleSet: null, error: null };
+    const loaded = loadRuleRegistryFromFile(file);
+    for (const warning of loaded.warnings) console.warn(`[diagnosis] ${warning}`);
+    return { ruleSet: loaded.ruleSet, error: null };
+  } catch (err) {
+    if (err instanceof RuleSetError) return { ruleSet: null, error: err };
+    return { ruleSet: null, error: null };
+  }
 }
 
 /** 医生类别 → Hub 目录（hub-files HubFileCategory 的单值映射） */
@@ -110,6 +138,7 @@ export function createDoctorRoutes(deps: DoctorRouteDeps = {}): Hono {
   const routes = new Hono();
   const fs = deps.fs ?? nodeRead;
   const listAssets = deps.listAssets ?? nodeListAssets;
+  const registry = loadRouteRuleSet(deps.ruleSet);
 
   routes.post('/diagnose', async (c) => {
     let body: unknown;
@@ -122,6 +151,9 @@ export function createDoctorRoutes(deps: DoctorRouteDeps = {}): Hono {
     if (parsed.input === undefined) {
       return c.json({ error: parsed.error ?? '请求体不合法' }, parsed.status ?? 400);
     }
+    if (registry.error !== null) {
+      return c.json({ error: registry.error.message }, 422);
+    }
 
     const config = loadAiClassifyConfig(deps.aiConfigStore ?? nodeAiConfigStore);
     const llm = deps.llmClient ?? createOpenAiLlmClient(config);
@@ -133,6 +165,7 @@ export function createDoctorRoutes(deps: DoctorRouteDeps = {}): Hono {
         cache: deps.cache ?? nodeDoctorCacheStore,
         llm,
         config,
+        ruleSet: registry.ruleSet,
         ...(deps.now === undefined ? {} : { now: deps.now }),
       });
       return c.json(report);
