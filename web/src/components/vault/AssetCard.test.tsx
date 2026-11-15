@@ -1,7 +1,8 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { AssetCard } from './AssetCard';
 import { makeDistributionEntry } from '@/lib/test-factories';
+import { useToastStore } from '@/lib/toast-store';
 import type { Asset } from '@/types/api';
 
 /**
@@ -101,6 +102,10 @@ describe('AssetCard 旧目录标记', () => {
     );
 
     expect(screen.getByText('旧目录')).toBeInTheDocument();
+    expect(screen.getByText('旧目录')).toHaveAttribute(
+      'title',
+      '该文件在历史目录 preferences/ 下，不参与分发；如需分发请先复制到 memory/',
+    );
   });
 
   it('memory/ 下的文件不标注旧目录', () => {
@@ -108,4 +113,47 @@ describe('AssetCard 旧目录标记', () => {
 
     expect(screen.queryByText('旧目录')).not.toBeInTheDocument();
   });
+
+  it('旧目录文件的「同步」只给说明，不打开分发弹窗', () => {
+    const onDistribute = vi.fn();
+    render(
+      <AssetCard
+        asset={{ ...memoryAsset, id: 'preferences/session_memory.md', hubPath: 'preferences/session_memory.md' }}
+        onView={noop}
+        onEdit={noop}
+        onDistribute={onDistribute}
+        distributions={[]}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('distribute-action'));
+
+    expect(onDistribute).not.toHaveBeenCalled();
+    const toast = useToastStore.getState().toasts[0];
+    expect(toast?.variant).toBe('info');
+    expect(toast?.title).toContain('preferences/');
+    expect(toast?.title).toContain('不参与分发');
+  });
+
+  it('memory/ 下的文件点「同步」照常打开分发弹窗', () => {
+    const onDistribute = vi.fn();
+    render(
+      <AssetCard
+        asset={memoryAsset}
+        onView={noop}
+        onEdit={noop}
+        onDistribute={onDistribute}
+        distributions={[]}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('distribute-action'));
+
+    expect(onDistribute).toHaveBeenCalledWith(memoryAsset);
+    expect(useToastStore.getState().toasts).toHaveLength(0);
+  });
+});
+
+afterEach(() => {
+  useToastStore.getState().reset();
 });

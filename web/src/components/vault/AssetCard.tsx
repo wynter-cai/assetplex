@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { getCategoryConfig } from '@/config/asset-categories';
 import { cn } from '@/lib/utils';
+import { toast } from '@/lib/toast-store';
 import { DistributionBadge } from './DistributionBadge';
 import type { Asset, AssetDistributionInfo } from '@/types/api';
 
@@ -109,7 +110,7 @@ export function AssetCard({
                 <Badge
                   variant="outline"
                   className="text-xs h-5 px-1 shrink-0"
-                  title="该文件仍在历史目录 preferences/ 下，不会自动搬进 memory/"
+                  title="该文件在历史目录 preferences/ 下，不参与分发；如需分发请先复制到 memory/"
                 >
                   旧目录
                 </Badge>
@@ -154,6 +155,11 @@ export function AssetCard({
             data-testid="distribute-action"
             onClick={(e) => {
               e.stopPropagation();
+              // 旧目录文件不参与分发：适配器只映射 memory/，开弹窗再点同步也不会生效
+              if (fromLegacyDir) {
+                toast.info('该文件在旧目录 preferences/ 下，不参与分发；如需分发请先复制到 memory/');
+                return;
+              }
               onDistribute(asset);
             }}
           >

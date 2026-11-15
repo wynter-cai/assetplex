@@ -4,9 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { toast } from '@/lib/toast-store';
 import { pickCategory, useAssetCategories } from '@/lib/use-asset-categories';
+import { TOOL_DISPLAY_NAME } from '@/components/connections/tool-display';
 import { DISTRIBUTION_STATUS } from './DistributionBadge';
 import type { Asset, AssetDistributionInfo, AssetSyncStatus, SwapCategorySupport } from '@/types/api';
 
@@ -64,6 +66,48 @@ export function DistributionDialog({
 
   // 本地维护哪些工具启用了同步（Phase 1 不持久化，Phase 2 实现）
   const [enabledTools, setEnabledTools] = useState<Record<string, boolean>>({});
+  const [syncing, setSyncing] = useState(false);
+  const queryClient = useQueryClient();
+
+  // 每个工具一行：状态/开关/类别支持算一次，渲染与同步目标共用，避免两处判断漂移
+  const rows = useMemo(() => {
+    const entries = distributions ?? asset?.distributions ?? [];
+    return (toolsData?.tools ?? []).map((tool) => {
+      const dist = entries.find((d) => d.toolId === tool.name);
+      const unsupported = supportByTool.get(tool.name)?.[asset?.category ?? '']?.supported === false;
+      const isEnabled = enabledTools[tool.name] ?? (dist?.status === 'synced' || tool.enabled === true);
+      return { tool, status: statusOf(dist?.status), unsupported, isEnabled };
+    });
+  }, [toolsData, distributions, asset, supportByTool, enabledTools]);
+
+  // 目标 = 开关开启 + 已安装 + 类别支持；空目标不发请求（无工具过滤等于全量分发）
+  const targets = rows.filter((row) => row.tool.installed && !row.unsupported && row.isEnabled).map((row) => row.tool.name);
+
+  const handleSync = async (): Promise<void> => {
+    if (syncing || targets.length === 0) return;
+    setSyncing(true);
+    try {
+      const result = await api.runSync(targets, false, { backup: true });
+      const failed = result.results.filter((r) => !r.success);
+      if (failed.length > 0) {
+        toast.error('同步未全部成功', {
+          details: failed.map((r) => `${TOOL_DISPLAY_NAME[r.tool] ?? r.tool}：${r.errors[0] ?? '未知原因'}`),
+        });
+      } else {
+        const written = result.results.reduce((sum, r) => sum + r.itemCount, 0);
+        toast.success('同步完成', {
+          description: `${result.results.length} 个工具，写入 ${written} 个文件`,
+        });
+      }
+      await queryClient.invalidateQueries({ queryKey: ['distributions'] });
+      await queryClient.invalidateQueries({ queryKey: ['assets'] });
+      onSync?.();
+    } catch (err) {
+      toast.error('同步失败', { description: err instanceof Error ? err.message : String(err) });
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   if (!asset) return <></>;
 
@@ -84,53 +128,51 @@ export function DistributionDialog({
               ))}
             </div>
           ) : (
-            toolsData?.tools.map((tool) => {
-              const dist = (distributions ?? asset.distributions).find((d) => d.toolId === tool.name);
-              const status = statusOf(dist?.status);
-              const isEnabled = enabledTools[tool.name] ?? (dist?.status === 'synced' || tool.enabled === true);
-              const support = supportByTool.get(tool.name)?.[asset.category];
-              const unsupported = support?.supported === false;
-              return (
-                <div
-                  key={tool.name}
-                  className="flex items-center justify-between rounded-md border p-3"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium">
-                      {tool.name === 'trae-cn' ? 'TRAE 中国版' : tool.name}
-                    </div>
-                    <div className={`text-xs ${unsupported ? 'text-warning' : status?.text ?? 'text-muted-foreground'}`}>
-                      {unsupported
-                        ? `此工具不支持${categoryLabel}类别，无法同步`
-                        : tool.installed
-                          ? status?.label ?? '状态未知'
-                          : '未安装'}
-                    </div>
+            rows.map(({ tool, status, unsupported, isEnabled }) => (
+              <div
+                key={tool.name}
+                className="flex items-center justify-between rounded-md border p-3"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium">
+                    {TOOL_DISPLAY_NAME[tool.name] ?? tool.name}
                   </div>
-                  <Switch
-                    checked={isEnabled && !unsupported}
-                    onCheckedChange={(v) => setEnabledTools((prev) => ({ ...prev, [tool.name]: v }))}
-                    disabled={!tool.installed || unsupported}
-                  />
+                  <div className={`text-xs ${unsupported ? 'text-warning' : status?.text ?? 'text-muted-foreground'}`}>
+                    {unsupported
+                      ? `此工具不支持${categoryLabel}类别，无法同步`
+                      : tool.installed
+                        ? status?.label ?? '状态未知'
+                        : '未安装'}
+                  </div>
                 </div>
-              );
-            })
+                <Switch
+                  checked={isEnabled && !unsupported}
+                  onCheckedChange={(v) => setEnabledTools((prev) => ({ ...prev, [tool.name]: v }))}
+                  disabled={!tool.installed || unsupported}
+                />
+              </div>
+            ))
           )}
         </div>
 
         <div className="flex items-center justify-end gap-2 pt-2">
+          {!isLoading && targets.length === 0 && (
+            <span className="mr-auto text-xs text-muted-foreground">
+              没有可同步的工具：需已安装、类别支持且开关已开启
+            </span>
+          )}
           <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
             关闭
           </Button>
           <Button
             size="sm"
+            disabled={targets.length === 0 || syncing}
             onClick={() => {
-              onSync?.();
-              onOpenChange(false);
+              void handleSync();
             }}
           >
             <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-            立即同步
+            {syncing ? '同步中…' : '立即同步'}
           </Button>
         </div>
       </DialogContent>

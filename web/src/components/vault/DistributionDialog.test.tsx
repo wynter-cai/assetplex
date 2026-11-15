@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { DistributionDialog } from './DistributionDialog';
 import { makeDistributionEntry } from '@/lib/test-factories';
 import { api } from '@/lib/api';
+import { useToastStore } from '@/lib/toast-store';
 import type { Asset, AssetDistributionInfo, SwapCategorySupport, SwapToolCandidate, ToolStatus } from '@/types/api';
 
 /**
@@ -53,9 +54,10 @@ interface DialogOptions {
   asset?: Asset;
   /** 支持矩阵候选；不传 = 矩阵拿不到（接口失败/未落地） */
   swapTools?: SwapToolCandidate[];
+  onSync?: () => void;
 }
 
-function renderDialog(distributions: AssetDistributionInfo[], options: DialogOptions = {}): void {
+function renderDialog(distributions: AssetDistributionInfo[], options: DialogOptions = {}): QueryClient {
   vi.spyOn(api, 'getTools').mockResolvedValue({
     tools: [tool('trae-cn', true), tool('codex', true), tool('ghost', false)],
   });
@@ -69,13 +71,16 @@ function renderDialog(distributions: AssetDistributionInfo[], options: DialogOpt
         open
         onOpenChange={vi.fn()}
         distributions={distributions}
+        onSync={options.onSync}
       />
     </QueryClientProvider>,
   );
+  return queryClient;
 }
 
 afterEach(() => {
   vi.restoreAllMocks();
+  useToastStore.getState().reset();
 });
 
 describe('DistributionDialog 状态来源', () => {
@@ -144,5 +149,104 @@ describe('DistributionDialog 类别支持矩阵', () => {
     const switches = await screen.findAllByRole('switch');
     expect(switches[0]).not.toBeDisabled();
     expect(switches[1]).not.toBeDisabled();
+  });
+});
+
+/**
+ * 「立即同步」真正执行分发（B9 ②）
+ *
+ * 旧实现只关闭弹窗，开关状态与文案都停在原始工具 code 上。
+ */
+describe('DistributionDialog 立即同步', () => {
+  it('工具名用中文显示，未收录的保留原始 id', async () => {
+    renderDialog([]);
+
+    expect(await screen.findByText('TRAE 中国版')).toBeInTheDocument();
+    expect(screen.getByText('OpenAI Codex')).toBeInTheDocument();
+    expect(screen.getByText('ghost')).toBeInTheDocument();
+  });
+
+  it('只把开启且已安装的工具交给 runSync，并请求备份与刷新索引', async () => {
+    const onSync = vi.fn();
+    const runSync = vi.spyOn(api, 'runSync').mockResolvedValue({
+      results: [
+        { tool: 'trae-cn', success: true, itemCount: 2, skippedCount: 0, errors: [], warnings: [], durationMs: 3 },
+      ],
+    });
+    const queryClient = renderDialog(
+      [
+        makeDistributionEntry({ toolId: 'trae-cn', status: 'synced' }),
+        makeDistributionEntry({ toolId: 'codex', status: 'synced' }),
+        // 未安装的工具即便索引说已同步也不能进目标
+        makeDistributionEntry({ toolId: 'ghost', status: 'synced' }),
+      ],
+      { onSync },
+    );
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries');
+
+    // 工具行落地后再点：加载中目标未知，按钮按设计是禁用的
+    await screen.findByText('TRAE 中国版');
+    fireEvent.click(screen.getByRole('button', { name: /立即同步/ }));
+
+    await waitFor(() =>
+      expect(runSync).toHaveBeenCalledWith(['trae-cn', 'codex'], false, { backup: true }),
+    );
+    await waitFor(() =>
+      expect(invalidate).toHaveBeenCalledWith({ queryKey: ['distributions'] }),
+    );
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['assets'] });
+    expect(onSync).toHaveBeenCalled();
+
+    const toast = useToastStore.getState().toasts[0];
+    expect(toast?.variant).toBe('success');
+    expect(toast?.title).toBe('同步完成');
+    expect(toast?.description).toContain('2');
+  });
+
+  it('类别不支持的工具不进同步目标', async () => {
+    const runSync = vi.spyOn(api, 'runSync').mockResolvedValue({ results: [] });
+    renderDialog(
+      [
+        makeDistributionEntry({ toolId: 'trae-cn', status: 'synced' }),
+        makeDistributionEntry({ toolId: 'codex', status: 'synced' }),
+      ],
+      {
+        asset: { ...asset, id: 'memory/session.md', name: '会话记忆', category: 'memory', hubPath: 'memory/session.md' },
+        swapTools: [
+          candidate('trae-cn', { supported: true }),
+          candidate('codex', { supported: false, reason: '此工具不支持memory类别，已跳过' }),
+        ],
+      },
+    );
+
+    await screen.findByText('TRAE 中国版');
+    fireEvent.click(screen.getByRole('button', { name: /立即同步/ }));
+
+    await waitFor(() =>
+      expect(runSync).toHaveBeenCalledWith(['trae-cn'], false, { backup: true }),
+    );
+  });
+
+  it('没有可同步目标时禁用按钮，不发空请求', async () => {
+    const runSync = vi.spyOn(api, 'runSync').mockResolvedValue({ results: [] });
+    renderDialog([]);
+
+    expect(await screen.findByText(/没有可同步的工具/)).toBeInTheDocument();
+    const button = screen.getByRole('button', { name: /立即同步/ });
+    expect(button).toBeDisabled();
+
+    fireEvent.click(button);
+    expect(runSync).not.toHaveBeenCalled();
+  });
+
+  it('同步失败时提示具体原因', async () => {
+    vi.spyOn(api, 'runSync').mockRejectedValue(new Error('写入失败：目标目录不可写'));
+    renderDialog([makeDistributionEntry({ toolId: 'trae-cn', status: 'synced' })]);
+
+    await screen.findByText('TRAE 中国版');
+    fireEvent.click(screen.getByRole('button', { name: /立即同步/ }));
+
+    await waitFor(() => expect(useToastStore.getState().toasts[0]?.variant).toBe('error'));
+    expect(useToastStore.getState().toasts[0]?.description).toContain('目标目录不可写');
   });
 });
