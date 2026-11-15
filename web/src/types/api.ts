@@ -1015,6 +1015,89 @@ export interface GovernanceIssueQuery {
   offset?: number;
 }
 
+// ========== 首页行动面板（refactor-home-action-panel Phase 0） ==========
+
+/** 工具行状态（与后端 routes/home.ts 闭集一致） */
+export type HomeToolState =
+  /** 已启用，分发索引判定无 conflict / pending */
+  | 'synced'
+  /** 已启用，但存在 conflict 或 pending */
+  | 'drift'
+  /** 已安装，但 hub 配置未启用 */
+  | 'not_connected'
+  /** 未安装 */
+  | 'not_installed'
+  /** 该工具分发状态读取失败（partial） */
+  | 'unknown';
+
+/** 工具与同步矩阵的一行 */
+export interface HomeToolRow {
+  toolId: string;
+  toolName: string;
+  state: HomeToolState;
+  /** conflict + pending 的资产数；state='unknown' 时为 null（不填 0） */
+  driftAssetCount: number | null;
+  /** 最近一次同步时间；null = 尚无同步记录 */
+  lastSyncedAt: string | null;
+}
+
+/** 今日待办队列（已跨维度去重、按严重度降序） */
+export interface HomeIssueQueue {
+  /** false = 资产快照读取失败；此时 total/bySeverity 为 null、items 为空数组 */
+  available: boolean;
+  /** 去重后的待治理条目总数（= 状态条「待治理」） */
+  total: number | null;
+  /** available=false 时为 null */
+  bySeverity: Record<DiagnosisSeverity, number> | null;
+  /** 严重度降序前 issuesLimit 条 */
+  items: HealthIssueRef[];
+}
+
+/** 状态条四个数字（null 表示「暂不可用」，不得渲染为 0） */
+export interface HomeStatusNumbers {
+  /** null = 尚未算出或读取失败 */
+  healthScore: number | null;
+  /** 'empty' 表示库内无可评估资产（界面显示「待盘点」） */
+  healthGrade: HealthGrade | null;
+  totalAssets: number | null;
+  /** 分发一致性问题数（资产 × 工具）；null = 分发索引不可用或该维度数据缺失 */
+  unsyncedCount: number | null;
+  lastBackupAt: string | null;
+  backupState: 'recorded' | 'none' | 'unavailable';
+}
+
+/** GET /api/home/dashboard 响应 */
+export interface HomeDashboardResponse {
+  /** ISO 时间戳，本次聚合快照时间 */
+  generatedAt: string;
+  /** false = 库为空/未初始化：首页进入库为空态 */
+  hubInitialized: boolean;
+  status: HomeStatusNumbers;
+  issues: HomeIssueQueue;
+  /** 受支持工具全集（含未安装），未安装行置灰 */
+  tools: HomeToolRow[];
+  /** 最近变化，固定最多 5 条，时间倒序 */
+  recentActivity: ActivityEntry[];
+  /** 最近一次体检时间；null = 从未算过 */
+  healthComputedAt: string | null;
+  /** true = 至少一个工具读取失败 */
+  partial: boolean;
+  failedTools: string[];
+}
+
+/** 待办行「去资产库修改」路径（前端常量，非接口） */
+export type HomeFixTargetPath =
+  | '/vault/identity'
+  | '/vault/skill'
+  | '/vault/rule'
+  | '/vault/mcp'
+  | '/vault/agent'
+  | '/vault/memory'
+  | '/vault';
+
+/** kind → 路径；未建类别页的 kind 回退 /vault */
+export type HomeFixTargetResolver = (kind: DoctorAssetKind) => HomeFixTargetPath;
+
 // ========== 一键整改（add-asset-governance Phase I） ==========
 
 export interface RemediationPlanRequest {

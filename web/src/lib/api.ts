@@ -90,6 +90,7 @@ import type {
   DuplicateScanResponse,
   DuplicateUndoResponse,
   GovernanceSuggestionsResponse,
+  HomeDashboardResponse,
 } from '@/types/api';
 
 const BASE = '/api';
@@ -400,6 +401,15 @@ export const api = {
       body: JSON.stringify({ groupId }),
     }),
   getGovernanceSuggestions: () => request<GovernanceSuggestionsResponse>('/governance/suggestions'),
+
+  /** 首页行动面板聚合（只读；refresh=true 绕过服务端 30s 缓存，「重新体检」用） */
+  getHomeDashboard: (params?: { issuesLimit?: number; refresh?: boolean }) => {
+    const qs = new URLSearchParams();
+    if (params?.issuesLimit !== undefined) qs.set('issuesLimit', String(params.issuesLimit));
+    if (params?.refresh === true) qs.set('refresh', '1');
+    const q = qs.toString();
+    return request<HomeDashboardResponse>(`/home/dashboard${q ? `?${q}` : ''}`);
+  },
 
   // Workspaces（项目级技能工作区发现）
   getWorkspaces: () => request<WorkspacesResponse>('/workspaces'),
