@@ -12,6 +12,7 @@ import type { DoctorApplyPorts, DoctorDispatchItem, UndoApplyPorts } from '../..
 import type { FixDraftCacheEntry, FixDraftCacheStore } from '../../../src/core/doctor-fix.js';
 import type { DoctorCacheStore } from '../../../src/core/doctor-cache.js';
 import { type CriterionAsset } from '../../../src/core/criteria.js';
+import type { DiagnosisRuleSet } from '../../../src/core/types.js';
 import type { AiConfigStore, AiClassifyConfig } from '../../../src/core/ai-config.js';
 import type { LlmClient } from '../../../src/core/skill-ai-classification.js';
 
@@ -29,14 +30,37 @@ const demoCriterion: CriterionAsset = {
 const SKILL_CONTENT = '---\nname: demo-skill\ndescription: 演示\n---\n正文内容\n';
 const PATH = 'skills/demo-skill/SKILL.md';
 
-/** 诊断输出：1 条 fixable 模型 issue（frontmatter 完整 → 无机械项，index 0 即模型项） */
+/** 诊断输出：1 条可修复的语义增量（frontmatter 完整 → 无机械项，index 0 即该结论） */
 const diagOutput = JSON.stringify({
-  overall: 'needs-attention',
-  issues: [
-    { severity: 'medium', criterion: 'token-economy', finding: '正文有冗余', suggestion: '删除冗余段', fixable: true },
-    { severity: 'low', criterion: 'token-economy', finding: '命名可更清晰', suggestion: '仅建议', fixable: false },
+  findings: [
+    {
+      ruleId: 'SK-09',
+      severity: 'medium',
+      confidence: 'high',
+      finding: '正文有冗余',
+      impact: '',
+      suggestion: '删除冗余段',
+      evidence: [{ line: 5, snippet: '正文内容' }],
+    },
   ],
 });
+
+/** 诊断注入的最小规则集：只留一条语义规则，结论顺序稳定可断言 */
+const RULE_SET: DiagnosisRuleSet = {
+  version: '1.0.0',
+  updatedAt: '2026-01-01',
+  rules: [
+    {
+      id: 'SK-09',
+      category: 'skill',
+      severity: 'medium',
+      mode: 'llm',
+      signal: '演示语义信号',
+      recommendation: '演示改法',
+      source: '演示出处',
+    },
+  ],
+};
 const draftOutput = JSON.stringify({
   draftContent: '---\nname: demo-skill\ndescription: 演示\n---\n精简正文\n',
   changeNotes: [{ issueIndex: 0, note: '删除了冗余段' }],
@@ -108,6 +132,7 @@ function harness(
   const routes = createDoctorFixRoutes({
     fs: { read: (p: string) => files[p] ?? null },
     getCriteria: () => [demoCriterion],
+    ruleSet: RULE_SET,
     doctorCache,
     fixCache,
     llmClient: llm,
@@ -143,13 +168,10 @@ describe('POST /api/doctor/fix-draft', () => {
     expect(h.files[PATH]).toBe(SKILL_CONTENT);
   });
 
-  it('issueIndexes 为空 / 越界 / 指向不可修复项 → 400', async () => {
+  it('issueIndexes 为空 / 越界 → 400（规则结论均可修复，无不可修复项）', async () => {
     const h = harness();
     expect((await postJson(h.routes, '/fix-draft', { kind: 'skill', hubRelativePath: PATH, issueIndexes: [] })).status).toBe(400);
     expect((await postJson(h.routes, '/fix-draft', { kind: 'skill', hubRelativePath: PATH, issueIndexes: [9] })).status).toBe(400);
-    const res = await postJson(h.routes, '/fix-draft', { kind: 'skill', hubRelativePath: PATH, issueIndexes: [1] });
-    expect(res.status).toBe(400);
-    expect(((await res.json()).error as string)).toContain('不可修复');
   });
 
   it('路径越界 403 / 文件缺失 404', async () => {

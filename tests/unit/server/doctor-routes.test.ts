@@ -8,32 +8,54 @@
 
 import { describe, it, expect } from 'vitest';
 import { createDoctorRoutes } from '../../../src/server/routes/doctor.js';
-import { computeDoctorCacheKey, type DoctorCacheEntry, type DoctorCacheStore } from '../../../src/core/doctor-cache.js';
-import { hashCriteria, type CriterionAsset } from '../../../src/core/criteria.js';
+import {
+  computeDoctorCacheKey,
+  hashRuleSet,
+  type DoctorCacheEntry,
+  type DoctorCacheStore,
+} from '../../../src/core/doctor-cache.js';
 import type { AiConfigStore, AiClassifyConfig } from '../../../src/core/ai-config.js';
 import type { LlmClient } from '../../../src/core/skill-ai-classification.js';
 import type { DiagnosisRuleSet } from '../../../src/core/types.js';
 
-const demoCriterion: CriterionAsset = {
-  slug: 'token-economy',
-  relativePath: 'criteria/token-economy.md',
-  name: 'Token 效率',
-  description: '',
-  priority: 5,
-  enabled: true,
-  appliesTo: ['all'],
-  body: '只写模型不知道的',
+/** estimate 用：与路由注入同一份规则集，才能算出同一缓存 key */
+const DEMO_RULE_SET: DiagnosisRuleSet = {
+  version: '1.0.0',
+  updatedAt: '2026-01-01',
+  rules: [
+    {
+      id: 'SK-06',
+      category: 'skill',
+      severity: 'medium',
+      mode: 'llm',
+      signal: '演示语义信号',
+      recommendation: '演示改法',
+      source: '演示出处',
+    },
+  ],
 };
 
-const SKILL_CONTENT = '---\nname: demo-skill\ndescription: 演示\n---\n正文内容\n';
-const validModelOutput = JSON.stringify({ overall: 'needs-attention', issues: [] });
+const SKILL_CONTENT = '---\nname: demo-skill\ndescription: Use when 用户要导出 CSV。\n---\n正文内容\n';
+const validModelOutput = JSON.stringify({
+  findings: [
+    {
+      ruleId: 'SK-06',
+      severity: 'low',
+      confidence: 'medium',
+      finding: '正文含通用解释',
+      impact: '',
+      suggestion: '删掉',
+      evidence: [{ line: 5, snippet: '正文内容' }],
+    },
+  ],
+});
 
-/** 与路由默认注入相同准则集/模型时的缓存 key（estimate 用例 seed 用） */
+/** 与路由注入同一规则集时的缓存 key（estimate 用例 seed 用） */
 function seedKeyFor(content: string): string {
   return computeDoctorCacheKey({
     kind: 'skill',
     content,
-    criteriaHash: hashCriteria([demoCriterion]),
+    rulesHash: hashRuleSet(DEMO_RULE_SET),
     model: 'demo-model',
   });
 }
@@ -78,7 +100,6 @@ function harness(opts: {
   const routes = createDoctorRoutes({
     fs: { read: (p: string) => files[p] ?? null },
     listAssets: () => opts.assets ?? Object.keys(files),
-    getCriteria: () => [demoCriterion],
     cache,
     llmClient: llm,
     aiConfigStore,
@@ -112,7 +133,7 @@ function harness(opts: {
 const validBody = { kind: 'skill', hubRelativePath: 'skills/demo-skill/SKILL.md' };
 
 describe('POST /api/doctor/diagnose', () => {
-  it('成功诊断返回完整报告（200，模型项+机械项合并、准则披露）', async () => {
+  it('成功诊断返回完整报告（200，静态项+语义增量合并）', async () => {
     const h = harness();
     const res = await h.post(validBody);
     expect(res.status).toBe(200);
@@ -121,7 +142,7 @@ describe('POST /api/doctor/diagnose', () => {
     expect(body.mechanicalOnly).toBe(false);
     expect(body.cached).toBe(false);
     expect(body.model).toBe('demo-model');
-    expect(body.criteriaUsed).toEqual(['token-economy']);
+    expect((body.findings as Array<{ ruleId: string }>).some((f) => f.ruleId === 'SK-06')).toBe(true);
   });
 
   it('kind 不在医生类别闭集 → 400 且不调模型', async () => {
@@ -161,12 +182,13 @@ describe('POST /api/doctor/diagnose', () => {
     expect(issues.some((i) => i.criterion === 'mechanical:frontmatter-missing-field')).toBe(true);
   });
 
-  it('模型输出非法 → 422「诊断失败」，不落缓存（Scenario 8）', async () => {
+  it('模型输出不可用 → 200 保留静态结论、rejected 计数、不落缓存（下次重试）', async () => {
     const h = harness({ llmOutput: '看起来挺好的' });
     const res = await h.post(validBody);
-    expect(res.status).toBe(422);
+    expect(res.status).toBe(200);
     const body = await res.json();
-    expect(String(body.error)).toContain('诊断失败');
+    expect(body.rejected).toBe(1);
+    expect((body.findings as Array<{ source: string }>).every((f) => f.source === 'rule')).toBe(true);
     expect(Object.keys(h.cache.load())).toHaveLength(0);
   });
 
@@ -236,14 +258,19 @@ describe('GET /api/doctor/estimate', () => {  const assets = ['skills/a/SKILL.md
 
   it('3 个库内技能、1 个已缓存 → total=3 cacheHits=1 willCall=2（Scenario 5 预算护栏数据面）', async () => {
     const seeded: DoctorCacheEntry = {
-      overall: 'healthy',
-      issues: [],
+      findings: [],
+      rejected: 0,
+      candidateCount: 1,
       model: 'demo-model',
-      criteriaUsed: [],
-      criteriaSkipped: 0,
+      rulesVersion: '1.0.0',
       generatedAt: '2026-10-17T00:00:00.000Z',
     };
-    const h = harness({ assets, files, seedEntries: { [seedKeyFor(files[assets[0]])]: seeded } });
+    const h = harness({
+      assets,
+      files,
+      ruleSet: DEMO_RULE_SET,
+      seedEntries: { [seedKeyFor(files[assets[0]])]: seeded },
+    });
     const res = await h.get('/estimate?category=skill');
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ category: 'skill', total: 3, cacheHits: 1, willCall: 2 });

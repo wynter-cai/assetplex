@@ -17,8 +17,9 @@ import { backupHubFileForDoctor } from '../core/doctor-backup.js';
 import { invalidateDistributionIndex } from '../core/distribution-index.js';
 import { diagnoseAsset } from '../core/doctor.js';
 import { runMechanicalChecks } from '../core/doctor-mechanical.js';
-import { computeDoctorCacheKey, sanitizeDoctorEntries } from '../core/doctor-cache.js';
-import { hashCriteria, listCriteria } from '../core/criteria.js';
+import { computeDoctorCacheKey, hashRuleSet, sanitizeDoctorEntries } from '../core/doctor-cache.js';
+import { overallFromFindings, projectFindingsToIssues } from '../core/diagnosis-report.js';
+import { loadRouteRuleSet } from '../server/lib/rule-registry.js';
 import { loadAiClassifyConfig, isAiConfigComplete } from '../core/ai-config.js';
 import { assembleGovernanceHealth } from '../core/governance-assembly.js';
 import {
@@ -183,7 +184,7 @@ export function createNodeMcpDeps(options: McpNodeDepsOptions = {}): McpToolDeps
       const kinds: DoctorAssetKind[] = kind === undefined ? [...DOCTOR_ASSET_KINDS] : [kind];
       const configured = aiConfigured();
       const model = loadAiClassifyConfig(nodeAiConfigStore).model;
-      const criteriaHash = hashCriteria(listCriteria());
+      const rulesHash = hashRuleSet(loadRouteRuleSet(null).ruleSet);
       const cached = configured ? sanitizeDoctorEntries(nodeDoctorCacheStore.load()) : {};
       distributionCache ??= (await getDistributions()).index;
 
@@ -193,9 +194,9 @@ export function createNodeMcpDeps(options: McpNodeDepsOptions = {}): McpToolDeps
           const content = read(path);
           let overall: DiagnosisOverall | 'unknown' = 'unknown';
           if (configured && content !== null) {
-            const key = computeDoctorCacheKey({ kind: currentKind, content, criteriaHash, model });
+            const key = computeDoctorCacheKey({ kind: currentKind, content, rulesHash, model });
             const entry = cached[key];
-            if (entry !== undefined) overall = entry.overall;
+            if (entry !== undefined) overall = overallFromFindings([], entry.findings);
           }
           const distribution = distributionCache[path] ?? [];
           items.push({
@@ -215,15 +216,15 @@ export function createNodeMcpDeps(options: McpNodeDepsOptions = {}): McpToolDeps
     async health(): Promise<McpHealthSource> {
       const configured = aiConfigured();
       const config = loadAiClassifyConfig(nodeAiConfigStore);
-      const criteriaHash = hashCriteria(listCriteria());
+      const rulesHash = hashRuleSet(loadRouteRuleSet(null).ruleSet);
       distributionCache ??= (await getDistributions()).index;
       const semantic = configured
         ? ({ kind, content }: { kind: DoctorAssetKind; content: string }) => {
-            const key = computeDoctorCacheKey({ kind, content, criteriaHash, model: config.model });
+            const key = computeDoctorCacheKey({ kind, content, rulesHash, model: config.model });
             const entry = sanitizeDoctorEntries(nodeDoctorCacheStore.load())[key];
             return entry === undefined
               ? { semanticIssues: [], evaluated: false }
-              : { semanticIssues: entry.issues, evaluated: true };
+              : { semanticIssues: projectFindingsToIssues([], [], entry.findings), evaluated: true };
           }
         : undefined;
 
@@ -264,10 +265,10 @@ export function createNodeMcpDeps(options: McpNodeDepsOptions = {}): McpToolDeps
         { kind, hubRelativePath },
         {
           fs: { read },
-          getCriteria: listCriteria,
           cache: nodeDoctorCacheStore,
           llm: createOpenAiLlmClient(config),
           config,
+          ruleSet: loadRouteRuleSet(null).ruleSet,
         },
       );
       return { overall: report.overall, issues: report.issues, mechanicalOnly: report.mechanicalOnly, aiUsed: !report.mechanicalOnly };

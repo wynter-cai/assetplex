@@ -953,7 +953,7 @@ export interface DoctorSummaryResponse {
   state: 'never' | 'valid' | 'stale';
   lastRun: DoctorLastRunSummary | null;
   /** state='stale' 时的变化项 */
-  staleReasons: Array<'content' | 'criteria' | 'model'>;
+  staleReasons: Array<'content' | 'rules' | 'model'>;
   aiConfigured: boolean;
   /** 现在点「重新诊断」是否会产生模型调用（服务端判定，前端不得自行推断） */
   willCallModel: boolean;

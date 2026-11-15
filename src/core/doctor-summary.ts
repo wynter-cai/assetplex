@@ -1,7 +1,7 @@
 /**
  * 单资产诊断摘要（refactor-asset-pipeline T2）
  *
- * 只读：本机上次运行记录 + 当前三要素（正文 / 准则集 / 模型）→ never / valid / stale，
+ * 只读：本机上次运行记录 + 当前三要素（正文 / 规则集 / 模型）→ never / valid / stale，
  * 并回答「现在点一次重新诊断会不会调用模型」。零模型：不创建 LlmClient、不调 llm.chat、
  * 不跑机械检查（摘要只读上次结果）。
  *
@@ -10,12 +10,12 @@
  */
 
 import { isAiConfigComplete, type AiClassifyConfig } from './ai-config.js';
-import { hashCriteria, type CriterionAsset } from './criteria.js';
 import {
   computeDoctorCacheKey,
   doctorLastRunKey,
   diffLastRunInputs,
   hashDoctorContent,
+  hashRuleSet,
   sanitizeDoctorEntries,
   sanitizeDoctorLastRuns,
   toDoctorLastRunSummary,
@@ -23,7 +23,7 @@ import {
   type DoctorLastRunStore,
   type DoctorSummaryResponse,
 } from './doctor-cache.js';
-import type { DoctorAssetKind } from './types.js';
+import type { DiagnosisRuleSet, DoctorAssetKind } from './types.js';
 
 export interface DoctorSummaryInput {
   kind: DoctorAssetKind;
@@ -33,7 +33,8 @@ export interface DoctorSummaryInput {
 export interface DoctorSummaryDeps {
   /** 资产正文读取：读不到 = 不可用（不视为健康） */
   fs: { read(hubRelativePath: string): string | null };
-  getCriteria(): CriterionAsset[];
+  /** 规则集：与诊断侧同一份，用于判定「规则集是否已更新」 */
+  ruleSet: DiagnosisRuleSet | null;
   cache: DoctorCacheStore;
   lastRunStore: DoctorLastRunStore;
   config: AiClassifyConfig;
@@ -41,7 +42,7 @@ export interface DoctorSummaryDeps {
 
 export function readDoctorSummary(input: DoctorSummaryInput, deps: DoctorSummaryDeps): DoctorSummaryResponse {
   const aiConfigured = isAiConfigComplete(deps.config);
-  // 未配置 AI 时诊断只出机械结论（model 为空串），比对口径需与写入侧一致
+  // 未配置 AI 时诊断只出静态结论（model 为空串），比对口径需与写入侧一致
   const currentModel = aiConfigured ? deps.config.model : '';
   const record =
     sanitizeDoctorLastRuns(deps.lastRunStore.load())[doctorLastRunKey(input.kind, input.hubRelativePath)] ?? null;
@@ -50,12 +51,12 @@ export function readDoctorSummary(input: DoctorSummaryInput, deps: DoctorSummary
   if (content === null) {
     return { ...base, available: false, state: 'never', lastRun: null, staleReasons: [], willCallModel: aiConfigured };
   }
-  const criteriaHash = hashCriteria(deps.getCriteria());
-  const current = { contentHash: hashDoctorContent(content), criteriaHash, model: currentModel };
+  const rulesHash = hashRuleSet(deps.ruleSet);
+  const current = { contentHash: hashDoctorContent(content), rulesHash, model: currentModel };
   const cacheHit =
     aiConfigured &&
     sanitizeDoctorEntries(deps.cache.load())[
-      computeDoctorCacheKey({ kind: input.kind, content, criteriaHash, model: currentModel })
+      computeDoctorCacheKey({ kind: input.kind, content, rulesHash, model: currentModel })
     ] !== undefined;
   const willCallModel = aiConfigured && !cacheHit;
   if (record === null) {

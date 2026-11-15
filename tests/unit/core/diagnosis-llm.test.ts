@@ -15,7 +15,7 @@ import {
   INCREMENTAL_CHAR_BUDGET,
 } from '../../../src/core/diagnosis-llm.js';
 import { readDocument } from '../../../src/core/diagnosis-evidence.js';
-import { computeDoctorCacheKey } from '../../../src/core/doctor-cache.js';
+import { computeDoctorCacheKey, hashRuleSet } from '../../../src/core/doctor-cache.js';
 import type { LlmClient } from '../../../src/core/skill-ai-classification.js';
 import type { DiagnosisRuleSet, RuleFinding } from '../../../src/core/types.js';
 
@@ -259,11 +259,14 @@ describe('执行与降级（Scenario 7.2）', () => {
   });
 });
 
-describe('缓存 key 含 rulesVersion（Scenario 6.2）', () => {
-  const base = { kind: 'skill' as const, content: CONTENT, criteriaHash: 'c', model: 'demo' };
-  it('规则集版本变化 → key 变化，缓存自然失效', () => {
-    const v1 = computeDoctorCacheKey({ ...base, rulesVersion: '1.0.0' });
-    const v2 = computeDoctorCacheKey({ ...base, rulesVersion: '1.1.0' });
+describe('缓存 key 含规则集指纹（Scenario 6.2）', () => {
+  const base = { kind: 'skill' as const, content: CONTENT, model: 'demo' };
+  it('规则集版本变化 → 指纹与 key 都变，缓存自然失效', () => {
+    const setV1: DiagnosisRuleSet = { version: '1.0.0', updatedAt: '2026-01-01', rules: RULE_SET.rules };
+    const setV2: DiagnosisRuleSet = { ...setV1, version: '1.1.0' };
+    expect(hashRuleSet(setV1)).not.toBe(hashRuleSet(setV2));
+    const v1 = computeDoctorCacheKey({ ...base, rulesHash: hashRuleSet(setV1) });
+    const v2 = computeDoctorCacheKey({ ...base, rulesHash: hashRuleSet(setV2) });
     expect(v1).not.toBe(v2);
   });
 });

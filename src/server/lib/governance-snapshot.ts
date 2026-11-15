@@ -25,8 +25,9 @@ import type {
 } from '../../core/governance-health.js';
 import type { AssetDistributionInfo } from '../../core/distribution-status.js';
 import { loadAiClassifyConfig, isAiConfigComplete, type AiConfigStore } from '../../core/ai-config.js';
-import { computeDoctorCacheKey, sanitizeDoctorEntries, type DoctorCacheStore } from '../../core/doctor-cache.js';
-import { hashCriteria, listCriteria } from '../../core/criteria.js';
+import { computeDoctorCacheKey, hashRuleSet, sanitizeDoctorEntries, type DoctorCacheStore } from '../../core/doctor-cache.js';
+import { projectFindingsToIssues } from '../../core/diagnosis-report.js';
+import { loadRouteRuleSet } from './rule-registry.js';
 import { nodeAiConfigStore, nodeDoctorCacheStore } from './node-ai-classify-store.js';
 import { getDistributions } from './distribution-context.js';
 import { isHubInternalPath } from '../routes/doctor.js';
@@ -99,13 +100,12 @@ export function makeSemanticProvider(
   model: string,
   cache: DoctorCacheStore,
 ): NonNullable<GovernanceAssemblyDeps['semantic']> {
-  const criteria = listCriteria();
-  const criteriaHash = hashCriteria(criteria);
+  const rulesHash = hashRuleSet(loadRouteRuleSet(null).ruleSet);
   return ({ kind, content }) => {
-    const key = computeDoctorCacheKey({ kind, content, criteriaHash, model });
+    const key = computeDoctorCacheKey({ kind, content, rulesHash, model });
     const entry = sanitizeDoctorEntries(cache.load())[key];
     if (entry === undefined) return { semanticIssues: [], evaluated: false };
-    return { semanticIssues: entry.issues, evaluated: true };
+    return { semanticIssues: projectFindingsToIssues([], [], entry.findings), evaluated: true };
   };
 }
 

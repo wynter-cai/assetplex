@@ -5,10 +5,10 @@
  * 存储不可写时静默降级——摘要是辅助数据，不能反过来拖垮诊断主链路。
  */
 
-import { hashCriteria } from './criteria.js';
 import {
   doctorLastRunKey,
   hashDoctorContent,
+  hashRuleSet,
   sanitizeDoctorLastRuns,
   type DoctorLastRunRecord,
   type DoctorLastRunSummary,
@@ -38,14 +38,14 @@ function lastRunCounts(
 
 /**
  * 写入一条上次运行记录：key = kind + '\u0000' + hubRelativePath。
- * criteriaHash 由调用方传入（AI 路径已算过），null 时按当前准则集补算。
+ * rulesHash 由调用方传入（AI 路径已算过），null 时按当前规则集补算。
  */
 export function persistDoctorLastRun(
-  deps: Pick<DiagnoseDeps, 'lastRunStore' | 'getCriteria'>,
+  deps: Pick<DiagnoseDeps, 'lastRunStore' | 'ruleSet'>,
   input: DiagnoseInput,
   report: DiagnosisReport,
   content: string,
-  criteriaHash: string | null,
+  rulesHash: string | null,
   runAt: string,
 ): void {
   const store = deps.lastRunStore;
@@ -62,7 +62,7 @@ export function persistDoctorLastRun(
       generatedAt: runAt,
       inputs: {
         contentHash: hashDoctorContent(content),
-        criteriaHash: criteriaHash ?? hashCriteria(deps.getCriteria()),
+        rulesHash: rulesHash ?? hashRuleSet(deps.ruleSet ?? null),
         model: report.model,
       },
     };

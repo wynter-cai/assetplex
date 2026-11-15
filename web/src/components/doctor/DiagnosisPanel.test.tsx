@@ -133,12 +133,12 @@ describe('DiagnosisPanel', () => {
     expect(screen.getByText('未发现违反已启用准则的问题')).toBeInTheDocument();
   });
 
-  it('cached 与预算截断披露同仲裁机制（Scenario 4/5）', async () => {
-    vi.mocked(api.doctorDiagnose).mockResolvedValue(baseReport({ cached: true, criteriaSkipped: 2 }));
+  it('cached 与规则集版本披露（Scenario 4/5）', async () => {
+    vi.mocked(api.doctorDiagnose).mockResolvedValue(baseReport({ cached: true, rulesVersion: '1.0.0' }));
     renderPanel();
     fireEvent.click(screen.getByRole('button', { name: '开始诊断' }));
     expect(await screen.findByText('来自缓存')).toBeInTheDocument();
-    expect(screen.getByText(/2 条准则未参与本次诊断/)).toBeInTheDocument();
+    expect(screen.getByText(/诊断规则集 v1\.0\.0/)).toBeInTheDocument();
   });
 
   it('语义评估超时降级：如实标注，静态结论仍展示（Scenario 7.2）', async () => {

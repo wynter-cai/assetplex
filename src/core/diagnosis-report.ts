@@ -16,16 +16,16 @@ import {
   type RuleFinding,
 } from './types.js';
 
-const OVERALL_RANK: Record<DiagnosisOverall, number> = {
-  healthy: 0,
-  'needs-attention': 1,
-  'at-risk': 2,
-};
-
-/** 机械 / 静态 high 项不允许被模型 healthy 覆盖：结论取两侧较重者 */
-export function mergeOverall(modelOverall: DiagnosisOverall, hasHighFinding: boolean): DiagnosisOverall {
-  if (!hasHighFinding) return modelOverall;
-  return OVERALL_RANK[modelOverall] >= OVERALL_RANK['needs-attention'] ? modelOverall : 'needs-attention';
+/**
+ * 结论：有高严重度（未被忽略）→ at-risk；有任意可见问题 → needs-attention；否则 healthy。
+ * 语义结论只通过 findings 进入口径，不再有「模型 overall」这一层。
+ */
+export function overallFromFindings(mechanical: DiagnosisIssue[], findings: RuleFinding[]): DiagnosisOverall {
+  const visible = findings.filter((finding) => !finding.ignored);
+  if (mechanical.some((issue) => issue.severity === 'high') || visible.some((f) => f.severity === 'high')) {
+    return 'at-risk';
+  }
+  return mechanical.length + visible.length > 0 ? 'needs-attention' : 'healthy';
 }
 
 /** 覆盖度：静态由执行器给出实测条数，语义规则只在 AI 实际参与时计入已评估 */

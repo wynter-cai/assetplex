@@ -15,15 +15,17 @@ import { Hono } from 'hono';
 import { existsSync, readFileSync } from 'node:fs';
 import { isAbsolute, resolve, sep } from 'node:path';
 import { getHubRoot } from '../../utils/paths.js';
-import { diagnoseAsset, DiagnosisAssetError, DiagnosisOutputError } from '../../core/doctor.js';
+import { diagnoseAsset, DiagnosisAssetError } from '../../core/doctor.js';
 import {
   computeDoctorCacheKey,
+  hashRuleSet,
   sanitizeDoctorEntries,
   type DoctorCacheStore,
   type DoctorLastRunStore,
 } from '../../core/doctor-cache.js';
 import { readDoctorSummary } from '../../core/doctor-summary.js';
-import { hashCriteria, listCriteria, type CriterionAsset } from '../../core/criteria.js';
+
+
 import {
   loadAiClassifyConfig,
   isAiConfigComplete,
@@ -42,7 +44,6 @@ export interface DoctorRouteDeps {
   fs?: { read(hubRelativePath: string): string | null };
   /** 库内某类别资产的文件清单（Hub 相对路径）；缺省按 Hub 目录枚举 */
   listAssets?: (kind: DoctorAssetKind) => string[];
-  getCriteria?: () => CriterionAsset[];
   cache?: DoctorCacheStore;
   llmClient?: LlmClient;
   aiConfigStore?: AiConfigStore;
@@ -162,7 +163,6 @@ export function createDoctorRoutes(deps: DoctorRouteDeps = {}): Hono {
     try {
       const report = await diagnoseAsset(parsed.input, {
         fs,
-        getCriteria: deps.getCriteria ?? listCriteria,
         cache: deps.cache ?? nodeDoctorCacheStore,
         llm,
         config,
@@ -177,7 +177,6 @@ export function createDoctorRoutes(deps: DoctorRouteDeps = {}): Hono {
       return c.json(report);
     } catch (err) {
       if (err instanceof DiagnosisAssetError) return c.json({ error: err.message }, 404);
-      if (err instanceof DiagnosisOutputError) return c.json({ error: err.message }, 422);
       return c.json({ error: err instanceof Error ? err.message : String(err) }, 500);
     }
   });
@@ -199,7 +198,7 @@ export function createDoctorRoutes(deps: DoctorRouteDeps = {}): Hono {
       { kind, hubRelativePath },
       {
         fs,
-        getCriteria: deps.getCriteria ?? listCriteria,
+        ruleSet: registry.ruleSet ?? null,
         cache: deps.cache ?? nodeDoctorCacheStore,
         lastRunStore: deps.lastRunStore ?? nodeDoctorLastRunStore,
         config: loadAiClassifyConfig(deps.aiConfigStore ?? nodeAiConfigStore),
@@ -219,14 +218,13 @@ export function createDoctorRoutes(deps: DoctorRouteDeps = {}): Hono {
     if (!isAiConfigComplete(config)) {
       return c.json({ category: kind, total: assets.length, cacheHits: 0, willCall: 0 });
     }
-    const criteria = (deps.getCriteria ?? listCriteria)();
-    const criteriaHash = hashCriteria(criteria);
+    const rulesHash = hashRuleSet(registry.ruleSet ?? null);
     const entries = sanitizeDoctorEntries(deps.cache !== undefined ? deps.cache.load() : nodeDoctorCacheStore.load());
     let cacheHits = 0;
     for (const path of assets) {
       const content = fs.read(path);
       if (content === null) continue;
-      const key = computeDoctorCacheKey({ kind, content, criteriaHash, model: config.model });
+      const key = computeDoctorCacheKey({ kind, content, rulesHash, model: config.model });
       if (entries[key] !== undefined) cacheHits += 1;
     }
     return c.json({ category: kind, total: assets.length, cacheHits, willCall: assets.length - cacheHits });

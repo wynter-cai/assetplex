@@ -11,7 +11,6 @@ import { buildCoverage } from '../../../src/core/diagnosis-report.js';
 import type { DoctorCacheStore } from '../../../src/core/doctor-cache.js';
 import type { AiClassifyConfig } from '../../../src/core/ai-config.js';
 import type { LlmClient } from '../../../src/core/skill-ai-classification.js';
-import type { CriterionAsset } from '../../../src/core/criteria.js';
 import type { DiagnosisRuleSet } from '../../../src/core/types.js';
 
 const CONTENT = '---\nname: Demo_Skill\ndescription: Use when 用户要导出 CSV。\n---\n正文\n';
@@ -41,19 +40,6 @@ const RULE_SET: DiagnosisRuleSet = {
   ],
 };
 
-const CRITERIA: CriterionAsset[] = [
-  {
-    slug: 'token-economy',
-    relativePath: 'criteria/token-economy.md',
-    name: 'Token 效率',
-    description: '',
-    priority: 5,
-    enabled: true,
-    appliesTo: ['all'],
-    body: '只写模型不知道的',
-  },
-];
-
 const CONFIG: AiClassifyConfig = { baseUrl: 'https://demo.local/v1', apiKey: 'k', model: 'demo-model' };
 
 function memoryCache(): DoctorCacheStore & { size(): number } {
@@ -80,12 +66,11 @@ function harness(options: { config?: AiClassifyConfig | null; failWith?: Error }
     chat: async (input) => {
       calls.push(input);
       if (options.failWith !== undefined) throw options.failWith;
-      return JSON.stringify({ overall: 'healthy', issues: [] });
+      return JSON.stringify({ findings: [] });
     },
   };
   const deps: DiagnoseDeps = {
     fs: { read: (path) => (path === 'skills/demo/SKILL.md' ? CONTENT : null) },
-    getCriteria: () => CRITERIA,
     cache,
     llm,
     config,

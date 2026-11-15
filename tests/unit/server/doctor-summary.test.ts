@@ -1,9 +1,9 @@
 /**
- * GET /api/doctor/summary 测试（refactor-asset-pipeline T2）
+ * GET /api/doctor/summary 测试（refactor-asset-pipeline T2；add-diagnosis-rules 起指纹用规则集）
  *
  * spec: specs/asset-pipeline.spec.md Requirement 2 / Scenario 6.2 / 6.7；
  * api-contract: DoctorSummaryResponse；错误约定 400 / 403 / 200+available=false。
- * 全依赖注入：假 fs / 准则 / 内存缓存 / 内存记录存储；llm 一旦被调用即抛错（零模型调用断言）。
+ * 全依赖注入：假 fs / 规则集 / 内存缓存 / 内存记录存储；llm 一旦被调用即抛错（零模型调用断言）。
  */
 
 import { describe, it, expect } from 'vitest';
@@ -12,26 +12,31 @@ import {
   computeDoctorCacheKey,
   doctorLastRunKey,
   hashDoctorContent,
+  hashRuleSet,
   type DoctorCacheEntry,
   type DoctorCacheStore,
   type DoctorLastRunRecord,
 } from '../../../src/core/doctor-cache.js';
-import { hashCriteria, type CriterionAsset } from '../../../src/core/criteria.js';
 import type { AiConfigStore, AiClassifyConfig } from '../../../src/core/ai-config.js';
 import type { LlmClient } from '../../../src/core/skill-ai-classification.js';
+import type { DiagnosisRuleSet } from '../../../src/core/types.js';
 
-const demoCriterion: CriterionAsset = {
-  slug: 'token-economy',
-  relativePath: 'criteria/token-economy.md',
-  name: 'Token 效率',
-  description: '',
-  priority: 5,
-  enabled: true,
-  appliesTo: ['all'],
-  body: '只写模型不知道的',
+const RULE_SET: DiagnosisRuleSet = {
+  version: '1.0.0',
+  updatedAt: '2026-01-01',
+  rules: [
+    {
+      id: 'SK-09',
+      category: 'skill',
+      severity: 'medium',
+      mode: 'llm',
+      signal: '演示语义信号',
+      recommendation: '演示改法',
+      source: '演示出处',
+    },
+  ],
 };
 
-const otherCriterion: CriterionAsset = { ...demoCriterion, slug: 'rule-topic', name: '规则单主题' };
 const SKILL_PATH = 'skills/demo-skill/SKILL.md';
 const SKILL_CONTENT = '---\nname: demo-skill\ndescription: 演示\n---\n正文内容\n';
 const MODEL = 'demo-model';
@@ -52,7 +57,7 @@ function record(overrides: Partial<DoctorLastRunRecord> = {}): DoctorLastRunReco
     generatedAt: '2026-11-14T12:00:00.000Z',
     inputs: {
       contentHash: hashDoctorContent(SKILL_CONTENT),
-      criteriaHash: hashCriteria([demoCriterion]),
+      rulesHash: hashRuleSet(RULE_SET),
       model: MODEL,
     },
     ...overrides,
@@ -61,11 +66,11 @@ function record(overrides: Partial<DoctorLastRunRecord> = {}): DoctorLastRunReco
 
 function cachedEntry(): DoctorCacheEntry {
   return {
-    overall: 'needs-attention',
-    issues: [],
+    findings: [],
+    rejected: 0,
+    candidateCount: 1,
     model: MODEL,
-    criteriaUsed: [demoCriterion.slug],
-    criteriaSkipped: 0,
+    rulesVersion: '1.0.0',
     generatedAt: '2026-11-14T12:00:00.000Z',
   };
 }
@@ -75,7 +80,7 @@ interface HarnessOptions {
   files?: Record<string, string>;
   records?: Record<string, unknown>;
   cacheEntries?: Record<string, DoctorCacheEntry>;
-  criteria?: CriterionAsset[];
+  ruleSet?: DiagnosisRuleSet;
 }
 
 function harness(opts: HarnessOptions = {}) {
@@ -107,7 +112,7 @@ function harness(opts: HarnessOptions = {}) {
   const routes = createDoctorRoutes({
     fs: { read: (p: string) => files[p] ?? null },
     listAssets: () => Object.keys(files),
-    getCriteria: () => opts.criteria ?? [demoCriterion],
+    ruleSet: opts.ruleSet ?? RULE_SET,
     cache,
     llmClient: llm,
     aiConfigStore,
@@ -151,7 +156,7 @@ describe('GET /api/doctor/summary', () => {
     const key = computeDoctorCacheKey({
       kind: 'skill',
       content: SKILL_CONTENT,
-      criteriaHash: hashCriteria([demoCriterion]),
+      rulesHash: hashRuleSet(RULE_SET),
       model: MODEL,
     });
     const h = harness({ records: { [KEY]: record() }, cacheEntries: { [key]: cachedEntry() } });
@@ -176,7 +181,9 @@ describe('GET /api/doctor/summary', () => {
   });
 
   it('正文已变 → state=stale + staleReasons=[content]，lastRun 仍返回、将调用模型', async () => {
-    const stale = record({ inputs: { contentHash: hashDoctorContent('旧正文'), criteriaHash: hashCriteria([demoCriterion]), model: MODEL } });
+    const stale = record({
+      inputs: { contentHash: hashDoctorContent('旧正文'), rulesHash: hashRuleSet(RULE_SET), model: MODEL },
+    });
     const h = harness({ records: { [KEY]: stale } });
     const body = await (await h.get(SUMMARY)).json();
     expect(body.state).toBe('stale');
@@ -187,17 +194,25 @@ describe('GET /api/doctor/summary', () => {
     expect(h.llmCalls).toBe(0);
   });
 
-  it('准则集已更新 → state=stale + staleReasons=[criteria]', async () => {
-    const stale = record({ inputs: { contentHash: hashDoctorContent(SKILL_CONTENT), criteriaHash: hashCriteria([otherCriterion]), model: MODEL } });
+  it('规则集已更新 → state=stale + staleReasons=[rules]', async () => {
+    const stale = record({
+      inputs: {
+        contentHash: hashDoctorContent(SKILL_CONTENT),
+        rulesHash: hashRuleSet({ ...RULE_SET, version: '0.9.0' }),
+        model: MODEL,
+      },
+    });
     const h = harness({ records: { [KEY]: stale } });
     const body = await (await h.get(SUMMARY)).json();
     expect(body.state).toBe('stale');
-    expect(body.staleReasons).toEqual(['criteria']);
+    expect(body.staleReasons).toEqual(['rules']);
     expect(h.llmCalls).toBe(0);
   });
 
   it('模型已更换 → state=stale + staleReasons=[model]', async () => {
-    const stale = record({ inputs: { contentHash: hashDoctorContent(SKILL_CONTENT), criteriaHash: hashCriteria([demoCriterion]), model: 'demo-model-old' } });
+    const stale = record({
+      inputs: { contentHash: hashDoctorContent(SKILL_CONTENT), rulesHash: hashRuleSet(RULE_SET), model: 'demo-model-old' },
+    });
     const h = harness({ records: { [KEY]: stale } });
     const body = await (await h.get(SUMMARY)).json();
     expect(body.state).toBe('stale');
@@ -206,7 +221,11 @@ describe('GET /api/doctor/summary', () => {
   });
 
   it('未配置 AI → aiConfigured=false 且 willCallModel 恒 false（Scenario 2.4）', async () => {
-    const mechanical = record({ mechanicalOnly: true, model: '', inputs: { contentHash: hashDoctorContent(SKILL_CONTENT), criteriaHash: hashCriteria([demoCriterion]), model: '' } });
+    const mechanical = record({
+      mechanicalOnly: true,
+      model: '',
+      inputs: { contentHash: hashDoctorContent(SKILL_CONTENT), rulesHash: hashRuleSet(RULE_SET), model: '' },
+    });
     const h = harness({ config: null, records: { [KEY]: mechanical } });
     const body = await (await h.get(SUMMARY)).json();
     expect(body.aiConfigured).toBe(false);

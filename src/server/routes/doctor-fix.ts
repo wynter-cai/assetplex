@@ -13,7 +13,7 @@ import { Hono } from 'hono';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { getHubRoot } from '../../utils/paths.js';
-import { diagnoseAsset, DiagnosisAssetError, DiagnosisOutputError } from '../../core/doctor.js';
+import { diagnoseAsset, DiagnosisAssetError } from '../../core/doctor.js';
 import {
   generateFixDraft,
   FixDraftOutputError,
@@ -25,6 +25,8 @@ import {
 import type { DoctorCacheStore } from '../../core/doctor-cache.js';
 import { listCriteria, type CriterionAsset } from '../../core/criteria.js';
 import { loadAiClassifyConfig, type AiConfigStore } from '../../core/ai-config.js';
+import { loadRouteRuleSet } from '../lib/rule-registry.js';
+import type { DiagnosisRuleSet } from '../../core/types.js';
 import type { LlmClient } from '../../core/skill-ai-classification.js';
 import {
   applyAssetFix,
@@ -49,6 +51,8 @@ export interface DoctorFixRouteDeps {
   getCriteria?: () => CriterionAsset[];
   /** 诊断缓存：fix-draft 前重新诊断以对齐 issueIndexes 与报告 */
   doctorCache?: DoctorCacheStore;
+  /** 规则集：缺省按构建产物 / 仓库定义位置加载；显式传 null 表示本轮不跑规则 */
+  ruleSet?: DiagnosisRuleSet | null;
   /** 草案缓存 */
   fixCache?: FixDraftCacheStore;
   llmClient?: LlmClient;
@@ -138,10 +142,10 @@ export function createDoctorFixRoutes(deps: DoctorFixRouteDeps = {}): Hono {
     try {
       const report = await diagnoseAsset(parsed.input, {
         fs,
-        getCriteria: deps.getCriteria ?? listCriteria,
         cache: deps.doctorCache ?? nodeDoctorCacheStore,
         llm,
         config,
+        ruleSet: loadRouteRuleSet(deps.ruleSet).ruleSet,
         ...(deps.now === undefined ? {} : { now: deps.now }),
       });
       const selected: SelectedFixIssue[] = [];
@@ -169,7 +173,7 @@ export function createDoctorFixRoutes(deps: DoctorFixRouteDeps = {}): Hono {
       return c.json(draft);
     } catch (err) {
       if (err instanceof DiagnosisAssetError) return c.json({ error: err.message }, 404);
-      if (err instanceof DiagnosisOutputError || err instanceof FixDraftOutputError) {
+      if (err instanceof FixDraftOutputError) {
         return c.json({ error: err.message }, 422);
       }
       if (err instanceof FixDraftUnavailableError || err instanceof FixDraftTruncatedError) {

@@ -28,9 +28,9 @@ const OVERALL_LABEL: Record<DiagnosisOverall, string> = {
   'at-risk': '有风险',
 };
 
-const STALE_REASON_LABEL: Record<'content' | 'criteria' | 'model', string> = {
+const STALE_REASON_LABEL: Record<'content' | 'rules' | 'model', string> = {
   content: '正文已变更',
-  criteria: '准则集已更新',
+  rules: '规则集已更新',
   model: '模型已更换',
 };
 

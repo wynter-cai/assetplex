@@ -264,14 +264,9 @@ export function ReportView({
           当前仅确定性检查结果——配置 AI 端点后可诊断语义质量问题。
         </p>
       )}
-      {!report.mechanicalOnly && report.criteriaSkipped > 0 && (
+      {!report.mechanicalOnly && report.rulesVersion !== '' && (
         <p className="text-xs text-muted-foreground">
-          提示：{report.criteriaSkipped} 条准则未参与本次诊断（预算截断）
-        </p>
-      )}
-      {!report.mechanicalOnly && report.criteriaUsed.length === 0 && (
-        <p className="text-xs text-muted-foreground">
-          当前无自定义准则，结论基于内置基线——保存准则后诊断会更贴合你的标准
+          结论基于诊断规则集 v{report.rulesVersion}：静态规则全跑，语义规则按需增量。
         </p>
       )}
     </div>

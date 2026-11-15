@@ -1,29 +1,20 @@
 /**
- * 资产医生诊断引擎（add-asset-doctor E2/E3/E4）
+ * 资产医生诊断引擎（add-asset-doctor E2/E3/E4；add-diagnosis-rules 起改走规则化语义链路）
  *
- * 诊断 = 「单资产 × 准则集」的对照审视：prompt 组装、内容哈希缓存、闭集解析、
- * 失败隔离全部与仲裁同构（proposal D1，复用 criteria/llm-output/ai-config 基建）。
- * advisory-only：本模块只产报告，永不写库（修复链路见 doctor-fix，Phase F）。
+ * 诊断 = 「静态规则全跑 + AI 语义增量」：静态规则确定性执行并给出证据，
+ * AI 只从候选 ruleId 里补语义结论（证据必须能在原文定位），静态结论优先且永不因模型消失。
+ * 内容哈希缓存、失败隔离与降级与仲裁同构；advisory-only：本模块只产报告，永不写库。
  *
- * spec: 设计文档/changes/add-asset-doctor/specs/asset-diagnosis.spec.md
+ * spec: 设计文档/changes/add-diagnosis-rules/specs/diagnosis-rules.spec.md Requirement 2 / 3 / 7
  */
 
-import {
-  assembleCriteriaPromptBlock,
-  hashCriteria,
-  type CriterionAsset,
-} from './criteria.js';
 import { isAiConfigComplete, type AiClassifyConfig } from './ai-config.js';
 import type { LlmClient } from './skill-ai-classification.js';
 import { runMechanicalChecks } from './doctor-mechanical.js';
 import {
-  parseDiagnosisOutput,
-  DiagnosisOutputError,
-  type ParsedDiagnosis,
-} from './doctor-parse.js';
-import {
   computeDoctorCacheKey,
   hashDoctorContent,
+  hashRuleSet,
   sanitizeDoctorEntries,
   type DoctorCacheEntry,
   type DoctorCacheStore,
@@ -31,6 +22,7 @@ import {
 } from './doctor-cache.js';
 import { applyIgnores } from './diagnosis-ignore.js';
 import { persistDoctorLastRun } from './doctor-last-run.js';
+import { runIncrementalChecks } from './diagnosis-llm.js';
 import {
   type DiagnosisCoverage,
   type DiagnosisIssue,
@@ -41,9 +33,9 @@ import {
   type RuleFinding,
 } from './types.js';
 import { runStaticChecks } from './diagnosis-static.js';
-import { buildCoverage, mergeOverall, projectFindingsToIssues } from './diagnosis-report.js';
+import { buildCoverage, overallFromFindings, projectFindingsToIssues } from './diagnosis-report.js';
 
-/** 资产正文进 prompt 的截断上限（超长部分不参与诊断，与仲裁单侧上限同值不同义） */
+/** 资产正文进修复草案 prompt 的截断上限（修复链路沿用；诊断发送面已改为片段制） */
 export const DIAGNOSIS_CONTENT_LIMIT = 6000;
 
 /** 资产文件读取失败（路由层映射 404） */
@@ -54,107 +46,35 @@ export class DiagnosisAssetError extends Error {
   }
 }
 
-// 解析层定义在 doctor-parse.ts，此处 re-export 保持对外导入面稳定
-export { DiagnosisOutputError, parseDiagnosisOutput, type ParsedDiagnosis };
-
 // ============ 报告与缓存类型（对应 api-contract） ============
 
 export interface DiagnosisReport {
   kind: DoctorAssetKind;
   hubRelativePath: string;
   overall: DiagnosisOverall;
-  /** 新链路主结果：规则命中的 findings（含被忽略项，T5 起填充 ignored） */
+  /** 主结果：规则命中的 findings（含被忽略项，供「已忽略 N 条」入口使用） */
   findings: RuleFinding[];
   /** 兼容字段：由 findings 投影出的旧结构（无证据项不进入此列表） */
   issues: DiagnosisIssue[];
   /** 规则集版本，用于跨版本对比；规则集未加载时为空串 */
   rulesVersion: string;
   coverage: DiagnosisCoverage;
+  /** 裁决准则已退出诊断链路（偏好层只服务于修复草案），保留字段供契约对齐 */
   criteriaUsed: string[];
   criteriaSkipped: number;
-  /** 模型部分来自缓存（机械项每次都重跑，确定性结果不变） */
+  /** 语义结论来自缓存（静态规则每次都重跑，确定性结果不变） */
   cached: boolean;
-  /** AI 未配置：只含静态与机械结论，前端展示配置引导（Scenario 7） */
+  /** AI 未配置：只含静态与机械结论，前端展示配置引导 */
   mechanicalOnly: boolean;
-  /** AI 是否实际参与本轮（区别于「配置了但失败」） */
+  /** AI 是否实际参与本轮（区别于「配置了但失败 / 该类别无语义规则」） */
   aiEvaluated: boolean;
-  /** 被丢弃的模型条目数（规则编号非法 / 证据不可定位 / 结构缺失；T4 起填充） */
+  /** 被丢弃的模型条目数（规则编号非法 / 证据不可定位 / 结构缺失） */
   rejected: number;
   model: string;
   generatedAt: string;
 }
 
-// ============ E2: prompt 组装 ============
-
-const KIND_LABEL: Record<DoctorAssetKind, string> = {
-  identity: '身份/人设（identity）',
-  skill: '技能（skill）',
-  rule: '规则（rule）',
-  agent: '子代理（agent）',
-  command: '斜杠命令（command）',
-  memory: '记忆（memory）',
-};
-
-export interface DiagnosisPromptInput {
-  kind: DoctorAssetKind;
-  content: string;
-  /** assembleCriteriaPromptBlock 的准则区文本；空串=库内无可用准则（仅内置基线，Scenario 6） */
-  criteriaBlock: string;
-  /** 机械检查已确认的 finding 清单：注入 user 让模型不重复提出 */
-  mechanicalFindings: string[];
-}
-
-export interface DiagnosisPrompt {
-  system: string;
-  user: string;
-  /** 正文超出审视上限时为 true（草案生成据此拒绝一键修复，fix spec Scenario 7） */
-  contentTruncated: boolean;
-}
-
-/** 构造诊断 prompt（导出便于测试约束内容，同 buildArbitrationPrompt 惯例） */
-export function buildDiagnosisPrompt(input: DiagnosisPromptInput): DiagnosisPrompt {
-  const systemParts = [
-    [
-      `你是资产医生。待审视资产类别：${KIND_LABEL[input.kind]}。`,
-      '只审视这一个资产本身的质量：是否清晰、可触发、精简、符合最佳实践。',
-      '结论取值闭集（三选一）：',
-      '- healthy：未发现实质问题',
-      '- needs-attention：有中等问题，或多个小问题',
-      '- at-risk：有高严重度问题，已实质影响资产效果',
-      'issues 每条五要素：severity ∈ high/medium/low、criterion（引用准则 slug）、',
-      'finding（哪里有问题，中文）、suggestion（怎么改，中文）、fixable（能否改写修复，布尔）。',
-      '未发现问题时返回空 issues，绝不编造低价值建议凑数。',
-      '只输出 JSON：{"overall":"...","issues":[{"severity":"...","criterion":"...","finding":"...","suggestion":"...","fixable":true}]}',
-    ].join('\n'),
-  ];
-  if (input.criteriaBlock.trim() !== '') {
-    systemParts.push(
-      [
-        '审视时须依据以下裁决准则（来自维护者资产库，按优先级排列）：',
-        input.criteriaBlock,
-      ].join('\n'),
-    );
-  }
-
-  const truncated = input.content.length > DIAGNOSIS_CONTENT_LIMIT;
-  const visible = truncated ? input.content.slice(0, DIAGNOSIS_CONTENT_LIMIT) : input.content;
-  const userParts = [
-    truncated
-      ? `【待审视资产正文】（超长，仅前 ${DIAGNOSIS_CONTENT_LIMIT} 字符可见，余下已截断，截断部分不参与诊断）\n${visible}`
-      : `【待审视资产正文】\n${visible}`,
-  ];
-  if (input.mechanicalFindings.length > 0) {
-    userParts.push(
-      [
-        '机械检查已确认的问题（不要重复提出，只补充语义层面发现）：',
-        ...input.mechanicalFindings.map((f) => `- ${f}`),
-      ].join('\n'),
-    );
-  }
-  return { system: systemParts.join('\n\n'), user: userParts.join('\n\n'), contentTruncated: truncated };
-}
-
-// ============ E4: 诊断执行（机械恒跑 + 缓存 + 失败隔离） ============
+// ============ 诊断执行（静态恒跑 + 语义增量 + 缓存 + 失败隔离） ============
 
 export interface DiagnoseInput {
   kind: DoctorAssetKind;
@@ -164,10 +84,9 @@ export interface DiagnoseInput {
 export interface DiagnoseDeps {
   /** 读取资产内容（路由层注入 Hub 相对路径解析；读不到返回 null → 404） */
   fs: { read(hubRelativePath: string): string | null };
-  getCriteria(): CriterionAsset[];
   cache: DoctorCacheStore;
   llm: LlmClient;
-  /** null/不完整 = 未配置 AI：只出机械报告（Scenario 7），不抛错 */
+  /** null/不完整 = 未配置 AI：只出静态报告，不抛错 */
   config: AiClassifyConfig | null;
   /** 规则集：null/缺省 = 规则集未加载，本轮无规则结论（findings 为空，coverage 全零） */
   ruleSet?: DiagnosisRuleSet | null;
@@ -187,14 +106,10 @@ function staticOnlyReport(
   now: string,
   options: { mechanicalOnly: boolean; model: string },
 ): DiagnosisReport {
-  // 被忽略项不参与计分（Scenario 4.2 / 4.3：忽略不等于修好，但也不该继续扣分）
-  const visible = findings.filter((f) => !f.ignored);
-  const hasHigh = mechanical.some((i) => i.severity === 'high') || visible.some((f) => f.severity === 'high');
-  const worst: DiagnosisOverall = hasHigh ? 'at-risk' : mechanical.length + visible.length > 0 ? 'needs-attention' : 'healthy';
   return {
     kind: input.kind,
     hubRelativePath: input.hubRelativePath,
-    overall: worst,
+    overall: overallFromFindings(mechanical, findings),
     findings,
     issues: projectFindingsToIssues(mechanical, [], findings),
     rulesVersion,
@@ -211,117 +126,106 @@ function staticOnlyReport(
 }
 
 /**
- * 诊断一个库内资产：机械项恒跑；AI 未配置降级 mechanicalOnly；
- * 缓存 key 命中不调模型；模型输出非法 throw 且不落缓存（下次重调）。
+ * 诊断一个库内资产：静态规则恒跑；AI 未配置降级 mechanicalOnly；
+ * 缓存 key 命中不调模型；超预算 / 超时保留静态结论并标注语义未完成。
  */
-export async function diagnoseAsset(
-  input: DiagnoseInput,
-  deps: DiagnoseDeps,
-): Promise<DiagnosisReport> {
+export async function diagnoseAsset(input: DiagnoseInput, deps: DiagnoseDeps): Promise<DiagnosisReport> {
   const now = (deps.now ?? (() => new Date().toISOString()))();
   const content = deps.fs.read(input.hubRelativePath);
   if (content === null) throw new DiagnosisAssetError(input.hubRelativePath);
 
   const ruleSet = deps.ruleSet ?? null;
   const rulesVersion = ruleSet === null ? '' : ruleSet.version;
+  const contentHash = hashDoctorContent(content);
+  const ignoreScope = { hubRelativePath: input.hubRelativePath, contentHash };
+  const ignores = deps.ignores ?? [];
   const mechanical = runMechanicalChecks(input.kind, content);
-  const staticResult = runStaticChecks(
-    { kind: input.kind, hubRelativePath: input.hubRelativePath, content },
-    ruleSet,
-  );
+  const staticResult = runStaticChecks({ kind: input.kind, hubRelativePath: input.hubRelativePath, content }, ruleSet);
   // 忽略按内容哈希绑定：内容变更后自动失效，旧忽略条目不再命中（Scenario 4.2）
-  const findings = applyIgnores(
-    staticResult.findings,
-    { hubRelativePath: input.hubRelativePath, contentHash: hashDoctorContent(content) },
-    deps.ignores ?? [],
-  );
+  const staticFindings = applyIgnores(staticResult.findings, ignoreScope, ignores);
+  const covered = (aiEvaluated: boolean, reason?: 'no-ai-config' | 'budget' | 'timeout'): DiagnosisCoverage =>
+    buildCoverage(ruleSet, input.kind, staticResult.evaluatedRuleIds.length, aiEvaluated, reason);
+
   const config = deps.config;
   if (config === null || !isAiConfigComplete(config)) {
-    const report = staticOnlyReport(
-      input,
-      mechanical,
-      findings,
-      buildCoverage(ruleSet, input.kind, staticResult.evaluatedRuleIds.length, false),
-      rulesVersion,
-      now,
-      { mechanicalOnly: true, model: '' },
-    );
+    const report = staticOnlyReport(input, mechanical, staticFindings, covered(false), rulesVersion, now, {
+      mechanicalOnly: true,
+      model: '',
+    });
     persistDoctorLastRun(deps, input, report, content, null, now);
     return report;
   }
 
-  const criteria = deps.getCriteria();
-  const criteriaHash = hashCriteria(criteria);
-  const { block, used, skipped } = assembleCriteriaPromptBlock(criteria, input.kind);
-  const key = computeDoctorCacheKey({
-    kind: input.kind,
-    content,
-    criteriaHash,
-    model: config.model,
-  });
-
-  const hit = sanitizeDoctorEntries(deps.cache.load())[key] ?? null;
-  let modelPart: DoctorCacheEntry;
-  if (hit !== null) {
-    modelPart = hit;
-  } else {
-    const prompt = buildDiagnosisPrompt({
-      kind: input.kind,
-      content,
-      criteriaBlock: block,
-      mechanicalFindings: mechanical.map((i) => i.finding),
+  // 规则集未加载：没有候选语义规则，AI 无从参与——静态报告照常返回，不伪装已评估
+  if (ruleSet === null) {
+    const report = staticOnlyReport(input, mechanical, staticFindings, covered(false), rulesVersion, now, {
+      mechanicalOnly: false,
+      model: config.model,
     });
-    const output = await deps.llm
-      .chat({ system: prompt.system, user: prompt.user })
-      .catch(() => null);
-    // 超时 / 网络失败：保留静态结论并标注语义未完成，不落缓存，下次可重试（Scenario 7.2）
-    if (output === null) {
+    persistDoctorLastRun(deps, input, report, content, null, now);
+    return report;
+  }
+
+  const rulesHash = hashRuleSet(ruleSet);
+  const key = computeDoctorCacheKey({ kind: input.kind, content, rulesHash, model: config.model });
+  const entries = sanitizeDoctorEntries(deps.cache.load());
+  const hit = entries[key] ?? null;
+  let aiPart: DoctorCacheEntry;
+  if (hit !== null) {
+    aiPart = hit;
+  } else {
+    const run = await runIncrementalChecks(
+      { kind: input.kind, hubRelativePath: input.hubRelativePath, content, staticFindings, ruleSet },
+      { llm: deps.llm },
+    );
+    // 超预算 / 超时：保留静态结论并标注语义未完成，不落缓存，下次可重试（Scenario 7.2）
+    if (run.skippedReason !== null) {
       const degraded = staticOnlyReport(
         input,
         mechanical,
-        findings,
-        buildCoverage(ruleSet, input.kind, staticResult.evaluatedRuleIds.length, false, 'timeout'),
+        staticFindings,
+        covered(false, run.skippedReason),
         rulesVersion,
         now,
         { mechanicalOnly: false, model: config.model },
       );
-      persistDoctorLastRun(deps, input, degraded, content, criteriaHash, now);
+      persistDoctorLastRun(deps, input, degraded, content, rulesHash, now);
       return degraded;
     }
-    const parsed = parseDiagnosisOutput(output);
-    modelPart = {
-      overall: parsed.overall,
-      issues: parsed.issues,
+    aiPart = {
+      findings: run.findings,
+      rejected: run.rejected,
+      candidateCount: run.candidateCount,
       model: config.model,
-      criteriaUsed: used,
-      criteriaSkipped: skipped,
+      rulesVersion,
       generatedAt: now,
     };
-    const entries = sanitizeDoctorEntries(deps.cache.load());
-    entries[key] = modelPart;
-    deps.cache.save(entries);
+    // 该类别没有语义规则（候选 0）或本轮有条目被丢弃时都不写缓存：
+    // 前者缓存无意义，后者要让下次诊断重新调模型（解析失败不固化成结论）
+    if (run.candidateCount > 0 && run.rejected === 0) {
+      entries[key] = aiPart;
+      deps.cache.save(entries);
+    }
   }
 
-  const hasHigh =
-    mechanical.some((issue) => issue.severity === 'high') ||
-    findings.some((finding) => finding.severity === 'high' && !finding.ignored);
+  const findings = applyIgnores(aiPart.findings, ignoreScope, ignores);
   const report: DiagnosisReport = {
     kind: input.kind,
     hubRelativePath: input.hubRelativePath,
-    overall: mergeOverall(modelPart.overall, hasHigh),
+    overall: overallFromFindings(mechanical, findings),
     findings,
-    issues: projectFindingsToIssues(mechanical, modelPart.issues, findings),
+    issues: projectFindingsToIssues(mechanical, [], findings),
     rulesVersion,
-    coverage: buildCoverage(ruleSet, input.kind, staticResult.evaluatedRuleIds.length, true),
-    criteriaUsed: modelPart.criteriaUsed,
-    criteriaSkipped: modelPart.criteriaSkipped,
+    coverage: covered(aiPart.candidateCount > 0),
+    criteriaUsed: [],
+    criteriaSkipped: 0,
     cached: hit !== null,
     mechanicalOnly: false,
-    aiEvaluated: true,
-    rejected: 0,
-    model: modelPart.model,
-    generatedAt: modelPart.generatedAt,
+    aiEvaluated: aiPart.candidateCount > 0,
+    rejected: aiPart.rejected,
+    model: aiPart.model,
+    generatedAt: aiPart.generatedAt,
   };
-  persistDoctorLastRun(deps, input, report, content, criteriaHash, now);
+  persistDoctorLastRun(deps, input, report, content, rulesHash, now);
   return report;
 }
