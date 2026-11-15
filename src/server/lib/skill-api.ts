@@ -54,6 +54,17 @@ export interface SkillApiCatalogInfo extends SkillApiInfo, SkillCatalogEntryFiel
   diagnosis?: SkillDiagnosisSummaryView;
 }
 
+/**
+ * sourcePath → Hub 内相对路径（如 'skills/demo-a/SKILL.md'）。
+ * 只取保险箱根目录（<hub>/skills）之后的片段，绝不回传本机绝对路径。
+ */
+export function hubRelativePathOf(sourcePath: string, vaultSkillsDir: string): string | null {
+  const p = sourcePath.replace(/\\/g, '/');
+  const prefix = `${vaultSkillsDir.replace(/\\/g, '/').replace(/\/+$/, '')}/`;
+  if (!p.startsWith(prefix)) return null;
+  return `skills/${p.slice(prefix.length)}`;
+}
+
 /** 内部盘点条目 → API 对外条目（不透传 origin/sourcePath/variants 数组） */
 export function toApiSkill(skill: SkillInfo): SkillApiInfo {
   const api: SkillApiInfo = {

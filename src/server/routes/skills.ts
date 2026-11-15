@@ -49,6 +49,7 @@ import {
 } from '../../core/skill-ai-classification.js';
 import {
   loadAiClassifyConfig,
+  isAiConfigComplete,
   saveAiClassifyConfig,
   toAiConfigView,
 } from '../../core/ai-config.js';
@@ -63,9 +64,42 @@ import { nodeSkillSummaryStore } from '../lib/node-skill-summary-store.js';
 import { createOpenAiLlmClient } from '../lib/openai-llm-client.js';
 import { buildWorkspacesOverview } from '../lib/node-workspaces.js';
 import { toWriteErrorResponse } from '../lib/write-error.js';
-import { toApiSkill } from '../lib/skill-api.js';
+import { toApiSkill, hubRelativePathOf } from '../lib/skill-api.js';
 import { buildCatalogApiResponse } from '../lib/skill-catalog-api.js';
-import type { SkillDiagnosisSummaryStore } from '../../core/skill-diagnosis-summary.js';
+import {
+  computeSkillContentHash,
+  isDiagnosisSummaryStale,
+  sanitizeDiagnosisSummary,
+  sanitizeDiagnosisSummaries,
+  type SkillDiagnosisSummary,
+  type SkillDiagnosisSummaryStore,
+} from '../../core/skill-diagnosis-summary.js';
+
+/** 子集诊断上限（拍板：单次最多 100、预计超 50 次需二次确认、硬上限 200） */
+export const SKILL_DIAGNOSE_LIMITS = { maxSelection: 100, confirmThreshold: 50, maxCalls: 200 } as const;
+
+/** POST /api/skills/diagnose/estimate 响应（契约：refactor-skill-catalog api-contract.ts） */
+export interface SkillDiagnoseEstimate {
+  total: number;
+  diagnosable: number;
+  unDiagnosable: Array<{ id: string; name: string; reason: 'not-in-library' | 'missing-file' | 'not-found' }>;
+  cacheHits: number;
+  willCall: number;
+  aiConfigured: boolean;
+  mechanicalOnly: boolean;
+  overSelectionLimit: boolean;
+  overCallLimit: boolean;
+  confirmRequired: boolean;
+  limits: { maxSelection: number; confirmThreshold: number; maxCalls: number };
+  /** 执行目标清单（T6 实现补充）：可诊断技能及其库内相对路径，前端据此逐条调用诊断 */
+  targets: Array<{ id: string; name: string; hubRelativePath: string }>;
+}
+
+/** PUT /api/skills/diagnosis-summary 响应（部分成功语义） */
+export interface PutSkillDiagnosisSummariesResponse {
+  saved: number;
+  rejected: Array<{ id: string; reason: 'not-found' | 'not-in-library' | 'invalid' }>;
+}
 
 export interface SkillsRouteDeps {
   fs: SkillFs;
@@ -184,6 +218,133 @@ export function skillsRouteFactory(
     } catch (err) {
       return c.json({ error: err instanceof Error ? err.message : String(err) }, 400);
     }
+  });
+
+  /**
+   * 子集诊断预估（refactor-skill-catalog T6）：零模型零写库。
+   * 不可诊断项逐条给原因；AI 未配置时 willCall 恒 0、mechanicalOnly=true。
+   */
+  routes.post('/diagnose/estimate', async (c) => {
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: '请求体必须是 JSON' }, 400);
+    }
+    const rawIds = (body as { ids?: unknown } | null)?.ids;
+    if (!Array.isArray(rawIds) || rawIds.length === 0) return c.json({ error: 'ids 必须是非空字符串数组' }, 400);
+    const ids: string[] = [];
+    for (const item of rawIds) {
+      if (typeof item !== 'string' || item.trim() === '') return c.json({ error: 'ids 必须是非空字符串数组' }, 400);
+      if (!ids.includes(item.trim())) ids.push(item.trim());
+    }
+
+    const sourcesNow = currentSources();
+    const listing = listSkills({ fs, sources: sourcesNow, store, aiLookup });
+    const byId = new Map(listing.items.map((skill) => [skill.id, skill]));
+    const config = loadAiClassifyConfig(deps.aiConfigStore ?? nodeAiConfigStore);
+    const aiConfigured = isAiConfigComplete(config);
+    let summaries: Record<string, SkillDiagnosisSummary>;
+    try {
+      summaries = sanitizeDiagnosisSummaries((deps.summaryStore ?? nodeSkillSummaryStore).load());
+    } catch {
+      summaries = {};
+    }
+
+    const unDiagnosable: SkillDiagnoseEstimate['unDiagnosable'] = [];
+    const targets: SkillDiagnoseEstimate['targets'] = [];
+    let cacheHits = 0;
+    for (const id of ids) {
+      const skill = byId.get(id);
+      if (skill === undefined) {
+        unDiagnosable.push({ id, name: id, reason: 'not-found' });
+        continue;
+      }
+      const hubRelativePath = hubRelativePathOf(skill.sourcePath, sourcesNow.vaultSkillsDir);
+      if (hubRelativePath === null) {
+        unDiagnosable.push({ id, name: skill.name, reason: 'not-in-library' });
+        continue;
+      }
+      const content = fs.read(skill.sourcePath);
+      if (content === null) {
+        unDiagnosable.push({ id, name: skill.name, reason: 'missing-file' });
+        continue;
+      }
+      targets.push({ id, name: skill.name, hubRelativePath });
+      const record = summaries[hubRelativePath];
+      if (record !== undefined && !isDiagnosisSummaryStale(record, computeSkillContentHash(content))) cacheHits += 1;
+    }
+
+    const willCall = aiConfigured ? targets.length - cacheHits : 0;
+    const estimate: SkillDiagnoseEstimate = {
+      total: ids.length,
+      diagnosable: targets.length,
+      unDiagnosable,
+      cacheHits,
+      willCall,
+      aiConfigured,
+      mechanicalOnly: !aiConfigured,
+      overSelectionLimit: ids.length > SKILL_DIAGNOSE_LIMITS.maxSelection,
+      overCallLimit: willCall > SKILL_DIAGNOSE_LIMITS.maxCalls,
+      confirmRequired: willCall > SKILL_DIAGNOSE_LIMITS.confirmThreshold,
+      limits: SKILL_DIAGNOSE_LIMITS,
+      targets,
+    };
+    return c.json(estimate);
+  });
+
+  /**
+   * 诊断摘要回写（refactor-skill-catalog T7）：服务端按当前正文算哈希，前端不回传。
+   * 部分成功语义：非法 / 未入库条目进 rejected，其余照常写入。
+   */
+  routes.put('/diagnosis-summary', async (c) => {
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: '请求体必须是 JSON' }, 400);
+    }
+    const rawItems = (body as { items?: unknown } | null)?.items;
+    if (!Array.isArray(rawItems)) return c.json({ error: 'items 必须是数组' }, 400);
+
+    const sourcesNow = currentSources();
+    const listing = listSkills({ fs, sources: sourcesNow, store, aiLookup });
+    const byId = new Map(listing.items.map((skill) => [skill.id, skill]));
+    const storeImpl = deps.summaryStore ?? nodeSkillSummaryStore;
+    const records = sanitizeDiagnosisSummaries(storeImpl.load());
+    const rejected: PutSkillDiagnosisSummariesResponse['rejected'] = [];
+    let saved = 0;
+
+    for (const raw of rawItems) {
+      const item = raw as Record<string, unknown> | null;
+      const id = item?.['id'];
+      if (typeof id !== 'string') {
+        rejected.push({ id: String(id ?? ''), reason: 'invalid' });
+        continue;
+      }
+      const skill = byId.get(id);
+      if (skill === undefined) {
+        rejected.push({ id, reason: 'not-found' });
+        continue;
+      }
+      const hubRelativePath = hubRelativePathOf(skill.sourcePath, sourcesNow.vaultSkillsDir);
+      if (hubRelativePath === null) {
+        rejected.push({ id, reason: 'not-in-library' });
+        continue;
+      }
+      const content = fs.read(skill.sourcePath);
+      const summary = content === null ? null : sanitizeDiagnosisSummary({ ...item, hubRelativePath, contentHash: computeSkillContentHash(content) });
+      if (summary === null) {
+        rejected.push({ id, reason: 'invalid' });
+        continue;
+      }
+      records[hubRelativePath] = summary;
+      saved += 1;
+    }
+
+    if (saved > 0) storeImpl.save(records);
+    const response: PutSkillDiagnosisSummariesResponse = { saved, rejected };
+    return c.json(response);
   });
 
   /** 手动覆盖职能分类 */

@@ -90,7 +90,8 @@ export function sanitizeDiagnosisSummary(value: unknown): SkillDiagnosisSummary 
     !(DIAGNOSIS_OVERALLS as readonly string[]).includes(entry.overall) ||
     typeof entry.mechanicalOnly !== 'boolean' ||
     !isNonEmptyString(entry.rulesVersion) ||
-    !isNonEmptyString(entry.model) ||
+    // 未配置 AI 时诊断报告的 model 为空串，摘要需原样保留这一事实
+    typeof entry.model !== 'string' ||
     !isNonEmptyString(entry.checkedAt)
   ) {
     return null;

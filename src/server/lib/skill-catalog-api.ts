@@ -27,7 +27,7 @@ import {
 } from '../../core/skill-diagnosis-summary.js';
 import { hashSkillContent, type AiClassifyCacheStore } from '../../core/skill-ai-cache.js';
 import { isAiConfigComplete, loadAiClassifyConfig, type AiConfigStore } from '../../core/ai-config.js';
-import { toApiCatalogSkill, type SkillApiCatalogInfo } from './skill-api.js';
+import { toApiCatalogSkill, hubRelativePathOf, type SkillApiCatalogInfo } from './skill-api.js';
 
 /** GET /api/skills/catalog 响应 = 看板概览 + 当前筛选下的条目 */
 export interface SkillCatalogResponse extends SkillCatalogOverview {
@@ -50,17 +50,6 @@ export interface CatalogApiInput {
 function currentContentHashOf(fs: SkillFs, skill: SkillInfo): string | null {
   const raw = fs.read(skill.sourcePath);
   return raw === null ? null : computeSkillContentHash(raw);
-}
-
-/**
- * sourcePath → Hub 内相对路径（如 'skills/demo-a/SKILL.md'）。
- * 只取保险箱根目录（<hub>/skills）之后的片段，绝不回传本机绝对路径。
- */
-function hubRelativePathOf(sourcePath: string, vaultSkillsDir: string): string | null {
-  const p = sourcePath.replace(/\\/g, '/');
-  const prefix = `${vaultSkillsDir.replace(/\\/g, '/').replace(/\/+$/, '')}/`;
-  if (!p.startsWith(prefix)) return null;
-  return `skills/${p.slice(prefix.length)}`;
 }
 
 /** 读取摘要存储并按当前内容哈希转展示投影；失败时降级为空表 + 标记 */

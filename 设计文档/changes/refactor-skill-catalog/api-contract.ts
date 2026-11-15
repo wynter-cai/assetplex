@@ -260,6 +260,11 @@ export interface SkillDiagnoseEstimate {
     /** 单次实际调用硬上限，建议 200；超出必须分批 */
     maxCalls: number;
   };
+  /**
+   * 执行目标清单（T6 实现补充）：可诊断技能及其库内相对路径，
+   * 前端据此逐条调用 `POST /api/doctor/diagnose`，不自行把绝对路径换算成库内路径。
+   */
+  targets: Array<{ id: string; name: string; hubRelativePath: string }>;
 }
 
 // ============ R6 批量分发 ============
