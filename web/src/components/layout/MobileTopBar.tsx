@@ -1,7 +1,7 @@
 import type { RefObject } from 'react';
 import { Menu } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
-import { MAIN_NAV } from './nav-items';
+import { resolveNavSummary } from './nav-items';
 
 interface MobileTopBarProps {
   /** 抽屉是否打开（驱动 aria-expanded） */
@@ -14,14 +14,13 @@ interface MobileTopBarProps {
 /**
  * 窄屏顶部工具条（enhance-a11y-responsive T10/D4，responsive Scenario 1）：
  * <lg 显示汉堡 + 当前页摘要；≥lg 完全隐藏，侧栏改为常驻。
+ *
+ * 摘要按导航组映射（refactor-home-action-panel navigation Scenario 5.3）：
+ * `/sync` 显示「连接与同步」而非某个子项或「总览」。
  */
 export function MobileTopBar({ navOpen, onOpen, buttonRef }: MobileTopBarProps): JSX.Element {
   const { pathname } = useLocation();
-  // 最长前缀匹配：/vault/memory 命中「资产库」，/ 只精确命中
-  const current =
-    MAIN_NAV.filter((item) => item.to !== '/')
-      .sort((a, b) => b.to.length - a.to.length)
-      .find((item) => pathname.startsWith(item.to)) ?? MAIN_NAV[0];
+  const summary = resolveNavSummary(pathname);
 
   return (
     <header className="lg:hidden flex h-14 shrink-0 items-center gap-2 border-b bg-background px-4">
@@ -36,7 +35,7 @@ export function MobileTopBar({ navOpen, onOpen, buttonRef }: MobileTopBarProps):
       >
         <Menu className="h-5 w-5" />
       </button>
-      <span className="truncate text-sm font-medium">{current.label}</span>
+      <span className="truncate text-sm font-medium">{summary}</span>
     </header>
   );
 }

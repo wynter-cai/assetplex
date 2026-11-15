@@ -8,12 +8,12 @@ import { AppLayout } from './AppLayout';
  * enhance-a11y-responsive T5（keyboard Scenario 1，决策 D2）：
  * skip-link 是布局骨架的一部分，默认隐藏、聚焦可见、回车后焦点进主内容区。
  */
-function renderLayout(): ReturnType<typeof render> {
+function renderLayout(initialPath = '/vault'): ReturnType<typeof render> {
   // Sidebar 依赖 useAssetCategories（react-query），测试壳必须带 QueryClientProvider
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={['/vault']}>
+      <MemoryRouter initialEntries={[initialPath]}>
         <Routes>
           <Route path="/" element={<AppLayout />}>
             <Route path="vault" element={<div>资产库内容</div>} />
@@ -51,5 +51,12 @@ describe('AppLayout skip-link 与主内容地标', () => {
     expect(main).toHaveAttribute('id', 'main-content');
     expect(main).toHaveAttribute('tabindex', '-1');
     expect(document.activeElement).toBe(main);
+  });
+
+  // navigation Scenario 5.3：窄屏顶部条摘要按组映射，不固定写「总览」
+  it('窄屏顶部条摘要显示当前所属组（/vault → 资产库）', () => {
+    renderLayout('/vault');
+    const header = screen.getByRole('banner');
+    expect(header).toHaveTextContent('资产库');
   });
 });
