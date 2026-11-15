@@ -10,12 +10,7 @@
  */
 
 import { Hono } from 'hono';
-import { existsSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { getHubRoot } from '../../utils/paths.js';
-import { listHubFiles, type HubFileCategory } from '../../core/hub-files.js';
-import { listAssets } from '../../core/assets.js';
-import { DIAGNOSIS_SEVERITIES, DOCTOR_ASSET_KINDS, type DoctorAssetKind } from '../../core/types.js';
+import { DOCTOR_ASSET_KINDS, DIAGNOSIS_SEVERITIES } from '../../core/types.js';
 import { groupDuplicates } from '../../core/duplicates.js';
 import { buildDuplicateAssets, type DuplicateSourceAsset } from '../../core/duplicate-scan.js';
 import {
@@ -23,90 +18,28 @@ import {
   type DuplicateSummaryForSuggestion,
   type GovernanceSuggestionResult,
 } from '../../core/governance-suggestions.js';
-import { assembleGovernanceHealth, type GovernanceAssemblyDeps } from '../../core/governance-assembly.js';
 import {
   collectDimensionIssues,
   HEALTH_DIMENSION_IDS,
   sortHealthIssues,
-  type GovernanceAssetInput,
   type HealthDimensionId,
-  type HealthDuplicateGroup,
   type HealthIssueRef,
-  type GovernanceHealth,
 } from '../../core/governance-health.js';
-import type { AssetDistributionInfo } from '../../core/distribution-status.js';
-import { loadAiClassifyConfig, isAiConfigComplete, type AiConfigStore } from '../../core/ai-config.js';
-import { computeDoctorCacheKey, sanitizeDoctorEntries, type DoctorCacheStore } from '../../core/doctor-cache.js';
-import { hashCriteria, listCriteria } from '../../core/criteria.js';
-import { nodeAiConfigStore, nodeDoctorCacheStore } from '../lib/node-ai-classify-store.js';
-import { getDistributions } from '../lib/distribution-context.js';
-import { isHubInternalPath } from './doctor.js';
+import {
+  createGovernanceSnapshot,
+  nodeRead,
+  type GovernanceSnapshotDeps,
+} from '../lib/governance-snapshot.js';
 import { createRemediationRoutes, type RemediationRouteDeps } from './remediation.js';
 import { createDuplicateRoutes, defaultListAssets, type DuplicateRouteDeps } from './duplicates.js';
 
-export interface GovernanceRouteDeps {
-  listAssets?: (kind: DoctorAssetKind) => string[];
-  read?: (hubRelativePath: string) => string | null;
-  distributions?: (hubRelativePath: string) => AssetDistributionInfo[];
-  semantic?: GovernanceAssemblyDeps['semantic'];
-  aiConfigured?: () => boolean;
-  aiConfigStore?: AiConfigStore;
-  cache?: DoctorCacheStore;
-  duplicateGroups?: () => HealthDuplicateGroup[];
+export interface GovernanceRouteDeps extends GovernanceSnapshotDeps {
   /** 重复治理摘要（首页建议用；缺省本地扫描一次，零模型） */
   duplicateSummary?: () => DuplicateSummaryForSuggestion;
-  /** 我的库资产总数（首页快照与治理页共用口径；缺省读真实 Hub） */
-  libraryCount?: () => number | Promise<number>;
-  now?: () => string;
   /** 一键整改子路由依赖（草案/写库/撤销/批次存储） */
   remediation?: Omit<RemediationRouteDeps, 'loadAssets' | 'read' | 'now' | 'invalidate'>;
   /** 重复治理子路由依赖（写库/归档/还原/批次存储） */
   duplicates?: Omit<Partial<DuplicateRouteDeps>, 'listAssets' | 'read'>;
-}
-
-/** 医生类别 → Hub 目录（与 routes/doctor.ts 同口径） */
-const KIND_TO_HUB_DIR: Record<DoctorAssetKind, HubFileCategory> = {
-  identity: 'identity',
-  skill: 'skills',
-  rule: 'rules',
-  agent: 'agents',
-  command: 'commands',
-  memory: 'memory',
-};
-
-/** 默认资产枚举：技能只取包主文件 SKILL.md，其余类别取目录内全部文件 */
-const nodeListAssets = (kind: DoctorAssetKind): string[] => {
-  const files = listHubFiles(KIND_TO_HUB_DIR[kind]);
-  return files
-    .filter((f) => !f.isDirectory)
-    .filter((f) => (kind === 'skill' ? f.relativePath.endsWith('/SKILL.md') : true))
-    .map((f) => f.relativePath);
-};
-
-const nodeRead = (hubRelativePath: string): string | null => {
-  try {
-    if (!isHubInternalPath(hubRelativePath)) return null;
-    const full = resolve(getHubRoot(), hubRelativePath);
-    if (!existsSync(full)) return null;
-    return readFileSync(full, 'utf-8');
-  } catch {
-    return null;
-  }
-};
-
-/** 语义诊断只读缓存：未命中即「未评估」，绝不在健康分聚合时调用模型 */
-function makeSemanticProvider(
-  model: string,
-  cache: DoctorCacheStore,
-): NonNullable<GovernanceAssemblyDeps['semantic']> {
-  const criteria = listCriteria();
-  const criteriaHash = hashCriteria(criteria);
-  return ({ kind, content }) => {
-    const key = computeDoctorCacheKey({ kind, content, criteriaHash, model });
-    const entry = sanitizeDoctorEntries(cache.load())[key];
-    if (entry === undefined) return { semanticIssues: [], evaluated: false };
-    return { semanticIssues: entry.issues, evaluated: true };
-  };
 }
 
 function isDimensionId(raw: string | undefined): raw is HealthDimensionId {
@@ -131,66 +64,9 @@ function parseInteger(
 export function createGovernanceRoutes(deps: GovernanceRouteDeps = {}): Hono {
   const routes = new Hono();
 
-  /** 健康分聚合缓存（与分发索引同口径的短 TTL；refresh=1 强制绕过） */
-  const CACHE_TTL_MS = 30_000;
-  let cache: {
-    at: number;
-    health: GovernanceHealth;
-    assets: GovernanceAssetInput[];
-    groups: HealthDuplicateGroup[];
-  } | null = null;
-
-  /** 我的库资产总数：与资产库 listAssets 同源；资产库未把 agent 纳入一等类别，这里补上 */
-  const libraryCount =
-    deps.libraryCount ??
-    (async () => {
-      const { total } = await listAssets();
-      return total + (deps.listAssets ?? nodeListAssets)('agent').length;
-    });
-
-  /** 装配一次：健康分与问题清单共用同一份资产快照 */
-  async function load(force = false): Promise<{
-    health: GovernanceHealth;
-    assets: GovernanceAssetInput[];
-    groups: HealthDuplicateGroup[];
-  }> {
-    if (!force && cache !== null && Date.now() - cache.at < CACHE_TTL_MS) {
-      return { health: { ...cache.health, cached: true }, assets: cache.assets, groups: cache.groups };
-    }
-
-    const config = loadAiClassifyConfig(deps.aiConfigStore ?? nodeAiConfigStore);
-    const aiConfigured = deps.aiConfigured === undefined ? isAiConfigComplete(config) : deps.aiConfigured();
-    const semantic =
-      deps.semantic ??
-      (aiConfigured ? makeSemanticProvider(config.model, deps.cache ?? nodeDoctorCacheStore) : undefined);
-
-    let distributionIndex: Record<string, AssetDistributionInfo[]> | null = null;
-    if (deps.distributions === undefined) {
-      distributionIndex = (await getDistributions()).index;
-    }
-    const groups = (deps.duplicateGroups ?? (() => []))();
-
-    const assembled = assembleGovernanceHealth({
-      listAssets: deps.listAssets ?? nodeListAssets,
-      read: deps.read ?? nodeRead,
-      distributions:
-        deps.distributions ??
-        ((hubRelativePath) => (distributionIndex as Record<string, AssetDistributionInfo[]>)[hubRelativePath] ?? []),
-      ...(semantic === undefined ? {} : { semantic }),
-      duplicateGroups: groups,
-      aiConfigured,
-      ...(deps.now === undefined ? {} : { now: deps.now }),
-    });
-
-    // 资产总数收敛到「我的库」口径（含 mcp / agent，命令不计）：
-    // 参与评分的只是可诊断的文档资产，数字口径与评分范围分开，避免首页与治理页两个总数
-    const totalAssets = await libraryCount();
-    const health: GovernanceHealth =
-      totalAssets === assembled.health.totalAssets ? assembled.health : { ...assembled.health, totalAssets };
-
-    cache = { at: Date.now(), health, assets: assembled.assets, groups };
-    return { health, assets: assembled.assets, groups };
-  }
+  /** 共享治理快照装配（30 秒缓存；refresh=1 强制绕过，写库后失效） */
+  const snapshot = createGovernanceSnapshot(deps);
+  const load = snapshot.load;
 
   /** 本机确定性扫描一次重复分组（只读、零模型），用于首页建议 */
   function computeDuplicateSummary(): DuplicateSummaryForSuggestion {
@@ -270,7 +146,7 @@ export function createGovernanceRoutes(deps: GovernanceRouteDeps = {}): Hono {
       loadAssets: async () => (await load()).assets,
       read: deps.read ?? nodeRead,
       invalidate: () => {
-        cache = null;
+        snapshot.invalidate();
       },
       ...(deps.now === undefined ? {} : { now: deps.now }),
     }),
@@ -287,7 +163,7 @@ export function createGovernanceRoutes(deps: GovernanceRouteDeps = {}): Hono {
       ...(deps.aiConfigStore === undefined ? {} : { aiConfigStore: deps.aiConfigStore }),
       ...(deps.now === undefined ? {} : { now: deps.now }),
       invalidate: () => {
-        cache = null;
+        snapshot.invalidate();
         deps.duplicates?.invalidate?.();
       },
     }),
