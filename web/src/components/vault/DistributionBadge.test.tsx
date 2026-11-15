@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { DistributionBadge } from './DistributionBadge';
+import { DistributionBadge, DistributionLegend } from './DistributionBadge';
 import { makeDistributionEntry } from '@/lib/test-factories';
 import type { AssetDistributionInfo } from '@/types/api';
 
@@ -11,6 +11,18 @@ import type { AssetDistributionInfo } from '@/types/api';
  *   空清单不写「未分发」）
  * 关联: fix-trust-and-consistency tasks I2
  */
+
+describe('DistributionLegend 圆点图例（走查补充 ③）', () => {
+  it('常驻列出四种圆点含义，不再只靠 hover title', () => {
+    render(<DistributionLegend />);
+    const legend = screen.getByLabelText('同步状态图例');
+    expect(legend).toHaveTextContent('圆点含义：');
+    for (const label of ['已同步', '待同步', '冲突', '未启用']) {
+      expect(legend).toHaveTextContent(label);
+    }
+    expect(legend).not.toHaveTextContent('未安装');
+  });
+});
 
 describe('DistributionBadge 五状态渲染', () => {
   it.each([

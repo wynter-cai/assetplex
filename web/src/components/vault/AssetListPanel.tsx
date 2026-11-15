@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ErrorState } from '@/components/common/ErrorState';
 import { AssetCard } from './AssetCard';
+import { DistributionLegend } from './DistributionBadge';
 import { AssetFilterBar } from './AssetFilterBar';
 import {
   ALL_FILTER_VALUE,
@@ -217,14 +218,12 @@ export function AssetListPanel({
       )}
 
       {/* 结果数变化可被屏幕阅读器播报（enhance-a11y-responsive T8，keyboard Scenario 8，拍板点 C） */}
-      <p
-        className="text-xs text-muted-foreground mb-2"
-        data-testid="asset-count"
-        role="status"
-        aria-live="polite"
-      >
-        共 {filtered.length} 项资产
-      </p>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+        <p className="text-xs text-muted-foreground" data-testid="asset-count" role="status" aria-live="polite">
+          共 {filtered.length} 项资产
+        </p>
+        {!singleAsset && <DistributionLegend />}
+      </div>
 
       {paged.items.length === 0 ? (
         <StateBlock icon={<Search className="h-12 w-12" />} title="没有符合筛选条件的资产">

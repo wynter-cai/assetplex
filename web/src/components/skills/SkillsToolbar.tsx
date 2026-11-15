@@ -138,6 +138,12 @@ export function SkillsToolbar({
         </div>
       </div>
 
+      {/* 口径说明（走查补充 ④）：来源与库状态是两个正交维度，三个数字不能相加 */}
+      <p className="mb-2 text-xs text-muted-foreground" data-testid="skills-count-hint">
+        「自建 / 官方内置 / 市场安装」按技能来源分，「我的库 / 未收藏」按是否已收藏；
+        两组可叠加筛选，数字含义不同，不要相加。
+      </p>
+
       {/* 当前维度分类计数条（子选项卡跟随维度切换） */}
       <div className="flex flex-wrap gap-1.5 mb-4">
         {dimension === 'provenance'

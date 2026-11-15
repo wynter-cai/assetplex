@@ -54,3 +54,31 @@ export function DistributionBadge({ distributions }: DistributionBadgeProps): JS
     </div>
   );
 }
+
+/** 图例只列卡片上真会出现的四值（未安装不会出现在圆点条里） */
+const LEGEND_STATUSES: AssetSyncStatus[] = ['synced', 'pending', 'conflict', 'not_enabled'];
+
+/**
+ * 同步状态图例（BUG 走查补充 ③）
+ *
+ * 卡片圆点只有 hover 提示，一眼看不出红绿含义；在列表里常驻一行文字图例。
+ */
+export function DistributionLegend(): JSX.Element {
+  return (
+    <div
+      className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground"
+      aria-label="同步状态图例"
+    >
+      <span className="shrink-0">圆点含义：</span>
+      {LEGEND_STATUSES.map((status) => (
+        <span key={status} className="inline-flex items-center gap-1">
+          <span
+            aria-hidden="true"
+            className={`inline-block h-2 w-2 rounded-full ${DISTRIBUTION_STATUS[status].dot}`}
+          />
+          {DISTRIBUTION_STATUS[status].label}
+        </span>
+      ))}
+    </div>
+  );
+}

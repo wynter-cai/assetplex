@@ -119,6 +119,15 @@ describe('SkillsView 出处与库状态组合筛选', () => {
     expect(document.body.textContent).not.toContain('沉淀');
   });
 
+  it('口径说明常驻：说清来源与库状态是两个维度，数字不能相加（走查补充 ④）', async () => {
+    renderView();
+    await screen.findByText(/去重后共 442 个技能/);
+    const hint = screen.getByTestId('skills-count-hint');
+    expect(hint).toHaveTextContent('按技能来源分');
+    expect(hint).toHaveTextContent('按是否已收藏');
+    expect(hint).toHaveTextContent('不要相加');
+  });
+
   it('按职能维度：九个 chips 均带职能色点，与卡面同一套令牌（spec skill-function-color）', async () => {
     const { container } = renderView();
     await screen.findByText(/去重后共 442 个技能/);
