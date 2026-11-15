@@ -142,6 +142,9 @@ export function AssetListPanel({
   );
   const paged = paginate(filtered, page);
   const filterActive = isAssetFilterActive(effectiveFilter);
+  // 单资产时筛选与搜索没有意义（T4）：只留「共 N 项」计数与那张卡；
+  // 搜索态下保留工具条，否则 1 条搜索结果会连「清除搜索」的入口一起消失
+  const singleAsset = assets.length === 1 && search.trim() === '';
 
   if (error) return <ErrorState onRetry={onRetry} />;
 
@@ -193,16 +196,18 @@ export function AssetListPanel({
 
   return (
     <div className="min-w-0">
-      <AssetFilterBar
-        categoryOptions={categoryOptions}
-        showCategoryFilter={lockedCategory === null}
-        filter={effectiveFilter}
-        search={search}
-        showClearFilter={filterActive && paged.items.length > 0}
-        onFilterChange={setFilter}
-        onSearchChange={onSearchChange}
-        onClearFilter={() => setFilter(DEFAULT_ASSET_FILTER)}
-      />
+      {!singleAsset && (
+        <AssetFilterBar
+          categoryOptions={categoryOptions}
+          showCategoryFilter={lockedCategory === null}
+          filter={effectiveFilter}
+          search={search}
+          showClearFilter={filterActive && paged.items.length > 0}
+          onFilterChange={setFilter}
+          onSearchChange={onSearchChange}
+          onClearFilter={() => setFilter(DEFAULT_ASSET_FILTER)}
+        />
+      )}
 
       {/* 索引降级：失败的工具在索引里没有条目，也不拿它名字冒充状态，只给一句诚实提示（Scenario 8） */}
       {distributions.partial && (
@@ -243,7 +248,10 @@ export function AssetListPanel({
               />
             ))}
           </div>
-          <PaginationRow page={paged.page} totalPages={paged.totalPages} onPageChange={(p) => setPaging({ key, page: p })} />
+          {/* 单资产没有翻页概念，显式不渲染分页（T4） */}
+          {!singleAsset && (
+            <PaginationRow page={paged.page} totalPages={paged.totalPages} onPageChange={(p) => setPaging({ key, page: p })} />
+          )}
         </>
       )}
     </div>

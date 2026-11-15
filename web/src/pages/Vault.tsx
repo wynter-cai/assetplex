@@ -1,7 +1,7 @@
-import { useState, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Download } from 'lucide-react';
+import { Plus, Download, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
 import { useEscapeKey } from '@/lib/use-escape-key';
@@ -9,6 +9,8 @@ import { pickCategory, useAssetCategories } from '@/lib/use-asset-categories';
 import { toast } from '@/lib/toast-store';
 import { categoryOptionsFor } from '@/lib/asset-filter';
 import { distributionsFor, useDistributions } from '@/lib/use-distributions';
+import { useAssetDeepLink } from '@/lib/use-asset-deep-link';
+import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { AssetListPanel } from '@/components/vault/AssetListPanel';
 import { AssetEditor } from '@/components/vault/AssetEditor';
@@ -17,8 +19,6 @@ import { AgentsView } from '@/components/agents/AgentsView';
 import { SkillsView } from '@/components/skills/SkillsView';
 import { CriteriaView } from '@/components/criteria/CriteriaView';
 import type { Asset, FrontendCategory } from '@/types/api';
-
-type ViewMode = 'list' | 'view' | 'edit' | 'create';
 
 /** 接口错误统一取文案：api 抛 Error，未知值兜底为字符串 */
 function errorText(err: unknown): string {
@@ -32,6 +32,8 @@ export default function Vault(): JSX.Element {
   const queryClient = useQueryClient();
 
   const selectedCategory = params.category ?? null;
+  // 搜索词只认地址里的 q：切类别后新地址没有 q，搜索自然归零，不再另存一份状态
+  const search = searchParams.get('q') ?? '';
   // 当前类别的 label / description / external 一律以接口清单为准，查不到再回退 fallback（tasks I1）
   const { categories, source, isFetching, isError } = useAssetCategories();
   const currentCategory = selectedCategory ? pickCategory(categories, selectedCategory) : undefined;
@@ -43,12 +45,10 @@ export default function Vault(): JSX.Element {
     !!selectedCategory && !currentCategory && !isError && (source === 'fallback' || isFetching);
   // 分发状态真值：页级拉一次索引，逐卡下发条目（spec asset-distribution-truth，tasks I2）
   const distributionsIndex = useDistributions();
-  const [search, setSearch] = useState(searchParams.get('q') ?? '');
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
-  const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [distributeAsset, setDistributeAsset] = useState<Asset | null>(null);
   // Esc 关闭详情面板后焦点归还触发卡片（enhance-a11y-responsive T7，keyboard Scenario 5）
   const detailTriggerRef = useRef<HTMLElement | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
 
   // 获取资产列表（外部类别由专用视图自行取数）
   const { data, isLoading, error, refetch } = useQuery({
@@ -59,6 +59,35 @@ export default function Vault(): JSX.Element {
         category: selectedCategory ?? undefined,
         search: search || undefined,
       }),
+  });
+  const assets = useMemo(() => data?.items ?? [], [data]);
+  // 查询被禁用（等清单落地 / 外部类别）时 data 还是空的，不能据此报「库是空的」
+  const listLoading = isLoading || categoryPending || (!data && !error);
+  // 列表落地才允许判定深链命中：加载中不是「不存在」
+  const listReady = data !== undefined && !isLoading && !categoryPending && !error;
+
+  const handleAssetMissing = useCallback((path: string): void => {
+    toast.info('资产不存在或已被移动', { description: `路径：${path}` });
+  }, []);
+
+  // 详情开关与地址参数同源（T5）；单资产自动展开只在本次停留发生一次（T4）
+  const {
+    viewMode,
+    selectedAsset,
+    detailOpen,
+    openEdit,
+    toggleView,
+    toggleEdit,
+    openCreate,
+    closeDetail,
+  } = useAssetDeepLink({
+    assets,
+    listReady,
+    category: selectedCategory,
+    searchParams,
+    setSearchParams,
+    onAssetMissing: handleAssetMissing,
+    autoExpandEnabled: search.trim() === '',
   });
 
   // 获取资产详情
@@ -75,7 +104,7 @@ export default function Vault(): JSX.Element {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assets'] });
       queryClient.invalidateQueries({ queryKey: ['overview'] });
-      setViewMode('list');
+      closeDetail();
     },
     // 失败必须说清原因（重名/名称非法）：静默停住会让人误以为已保存（memory-visible Scenario 4）
     onError: (err: unknown) => {
@@ -89,7 +118,7 @@ export default function Vault(): JSX.Element {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assets'] });
       queryClient.invalidateQueries({ queryKey: ['asset', selectedAsset?.id] });
-      setViewMode('list');
+      closeDetail();
     },
     onError: (err: unknown) => {
       toast.error('保存失败', { description: errorText(err) });
@@ -110,42 +139,41 @@ export default function Vault(): JSX.Element {
 
   /** 点击卡片切换详情：再点同一张卡片收起右侧面板 */
   const handleView = (asset: Asset): void => {
-    if (selectedAsset?.id === asset.id && viewMode !== 'list') {
-      setViewMode('list');
-      setSelectedAsset(null);
-    } else {
+    if (!detailOpen) {
       // 打开时刻记录触发元素：面板渲染后 activeElement 会移走，事后取不到
       detailTriggerRef.current =
         document.activeElement instanceof HTMLElement ? document.activeElement : null;
-      setSelectedAsset(asset);
-      setViewMode('view');
     }
+    toggleView(asset);
   };
 
+  /** 搜索词与详情参数互不覆盖：改 q 时保留 asset，改 asset 时保留 q */
   const handleSearchChange = (value: string): void => {
-    setSearch(value);
-    if (value) {
-      setSearchParams({ q: value });
-    } else {
-      setSearchParams({});
-    }
+    const next = new URLSearchParams(searchParams);
+    if (value) next.set('q', value);
+    else next.delete('q');
+    setSearchParams(next);
   };
+
+  // 类别切换：详情/搜索/筛选由地址与 hook 重置，滚动位置在这里归零
+  const prevCategory = useRef(selectedCategory);
+  useEffect(() => {
+    if (prevCategory.current === selectedCategory) return;
+    prevCategory.current = selectedCategory;
+    if (scrollRef.current !== null) scrollRef.current.scrollTop = 0;
+  }, [selectedCategory]);
 
   // 类别筛选选项 = 当前列表里真正出现的类别，label 取声明源（tasks I3）
   const categoryOptions = useMemo(
-    () => categoryOptionsFor(data?.items ?? [], categories),
-    [data, categories],
+    () => categoryOptionsFor(assets, categories),
+    [assets, categories],
   );
-  // 查询被禁用（等清单落地 / 外部类别）时 data 还是空的，不能据此报「库是空的」
-  const listLoading = isLoading || categoryPending || (!data && !error);
-
-  const showDetail = viewMode !== 'list';
 
   // Esc 关闭详情/编辑面板（输入框内不触发，见 use-escape-key）；关闭后焦点归还触发卡片
-  useEscapeKey(showDetail, () => {
-    setViewMode('list');
-    setSelectedAsset(null);
-  }, { returnFocusRef: detailTriggerRef });
+  useEscapeKey(detailOpen, closeDetail, { returnFocusRef: detailTriggerRef });
+
+  // 单资产时列表列收窄，避免一张卡拉伸到整宽
+  const singleAsset = assets.length === 1;
 
   return (
     <div className="flex h-full min-w-0">
@@ -176,13 +204,7 @@ export default function Vault(): JSX.Element {
                 <Download className="h-3.5 w-3.5 mr-1.5" />
                 收藏
               </Button>
-              <Button
-                size="sm"
-                onClick={() => {
-                  setSelectedAsset(null);
-                  setViewMode('create');
-                }}
-              >
+              <Button size="sm" onClick={openCreate}>
                 <Plus className="h-3.5 w-3.5 mr-1.5" />
                 新建
               </Button>
@@ -191,11 +213,18 @@ export default function Vault(): JSX.Element {
         />
 
         <div className="flex min-h-0 min-w-0 flex-1 gap-4">
-        <div className="flex min-w-0 flex-1 flex-col">
-        <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+        <div
+          data-testid="asset-list-column"
+          className={cn(
+            'flex min-w-0 flex-col',
+            singleAsset ? 'lg:w-[340px] lg:flex-none' : 'flex-1',
+          )}
+        >
+        <div ref={scrollRef} data-testid="asset-scroll" className="min-h-0 flex-1 overflow-y-auto pr-1">
         {/* 筛选、分页、空态与失败态集中在列表区（spec asset-center-consistency Scenario 6/8，tasks I3） */}
         <AssetListPanel
-          assets={data?.items ?? []}
+          key={selectedCategory ?? 'all'}
+          assets={assets}
           categoryOptions={categoryOptions}
           lockedCategory={selectedCategory}
           lockedCategoryLabel={currentCategory?.label}
@@ -208,21 +237,30 @@ export default function Vault(): JSX.Element {
           }}
           onSearchChange={handleSearchChange}
           selectedAssetId={selectedAsset?.id ?? null}
-          detailOpen={showDetail}
+          detailOpen={detailOpen}
           onView={handleView}
-          onEdit={(asset) => {
-            setSelectedAsset(asset);
-            setViewMode('edit');
-          }}
+          onEdit={openEdit}
           onDistribute={(asset) => setDistributeAsset(asset)}
           onCollect={() => navigate('/import')}
           onRestartOnboarding={() => navigate('/onboarding')}
         />
+        {/* 单资产关闭后仍有明确入口可再打开（T4：本次停留不再自动展开） */}
+        {singleAsset && !detailOpen && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-2 w-full"
+            onClick={() => handleView(assets[0])}
+          >
+            <Eye className="h-3.5 w-3.5 mr-1.5" />
+            展开详情
+          </Button>
+        )}
         </div>
         </div>
 
         {/* 详情/编辑面板：<1024px 全屏 overlay，≥1024px 主从侧栏（spec navigation-consolidation） */}
-        {showDetail && (
+        {detailOpen && (
           <div
             data-testid="detail-overlay"
             className="fixed inset-0 z-50 flex min-w-0 flex-col overflow-y-auto bg-background p-4 lg:static lg:inset-auto lg:z-auto lg:max-w-xl lg:flex-1 lg:overflow-visible lg:rounded-lg lg:border lg:bg-card lg:p-0"
@@ -230,13 +268,11 @@ export default function Vault(): JSX.Element {
             <AssetEditor
               asset={assetDetail ?? selectedAsset}
               category={selectedCategory ?? 'skill'}
-              mode={viewMode === 'create' ? 'create' : viewMode}
-              onClose={() => {
-                setViewMode('list');
-                setSelectedAsset(null);
-              }}
+              mode={viewMode === 'create' ? 'create' : viewMode === 'edit' ? 'edit' : 'view'}
+              onClose={closeDetail}
               onSave={handleSave}
-              onSwitchToEdit={() => setViewMode(viewMode === 'view' ? 'edit' : 'view')}
+              onSwitchToEdit={toggleEdit}
+              onDistribute={(asset) => setDistributeAsset(asset)}
             />
           </div>
         )}
