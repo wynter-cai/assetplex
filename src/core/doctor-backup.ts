@@ -10,7 +10,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve, sep } from 'node:path';
 import { getHubRoot } from '../utils/paths.js';
-import { backupTarget, makeSwapId, pruneSwapBackups } from './swap-fs.js';
+import { backupTarget, makeSwapId, pruneSwapBackups } from './asset-write-fs.js';
 
 /** 备份保留次数（与 swap backupRetain 默认一致） */
 export const DOCTOR_BACKUP_RETAIN = 3;

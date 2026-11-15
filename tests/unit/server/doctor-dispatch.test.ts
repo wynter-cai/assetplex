@@ -14,8 +14,8 @@ import { BaseAdapter } from '../../../src/core/adapters/base.js';
 import type { HubConfig } from '../../../src/core/config.js';
 import { HubConfigSchema } from '../../../src/core/config.js';
 import type { HubItem, SyncTarget } from '../../../src/core/types.js';
-import { SwapEngine } from '../../../src/core/swap.js';
-import type { SwapCategory } from '../../../src/core/swap.js';
+import { AssetWriteEngine } from '../../../src/core/asset-write.js';
+import type { SwapCategory } from '../../../src/core/asset-write.js';
 import { dispatchToolViaSwap, resolveDefaultTargets, type DispatchDeps } from '../../../src/server/lib/doctor-dispatch.js';
 
 const LAYOUT: Record<'identity' | 'rule', { rel: string; target: string; isDir: boolean }> = {
@@ -92,7 +92,7 @@ describe('doctor dispatch via swap（F3 分发端口）', () => {
 
   function deps(categories: SwapCategory[]): DispatchDeps {
     const adapter = new FakeToolAdapter(toolDir, categories);
-    const engine = new SwapEngine(HubConfigSchema.parse({}), [adapter]);
+    const engine = new AssetWriteEngine(HubConfigSchema.parse({}), [adapter]);
     return {
       getSwapEngine: () => engine,
       listInstalledTools: async () => [adapter.name],

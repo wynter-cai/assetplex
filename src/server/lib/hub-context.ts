@@ -1,6 +1,6 @@
 import { loadHubConfig, saveHubConfig, type HubConfig } from '../../core/config.js';
 import { SyncEngine } from '../../core/sync-engine.js';
-import { SwapEngine } from '../../core/swap.js';
+import { AssetWriteEngine } from '../../core/asset-write.js';
 import {
   registerBuiltinAdapters,
   getAllAdapters,
@@ -17,7 +17,7 @@ import type { ToolAdapter } from '../../core/adapters/base.js';
 class HubContext {
   private config: HubConfig | null = null;
   private engine: SyncEngine | null = null;
-  private swapEngine: SwapEngine | null = null;
+  private swapEngine: AssetWriteEngine | null = null;
   private adaptersRegistered = false;
 
   /** 获取当前 Hub 配置（懒加载） */
@@ -46,10 +46,10 @@ class HubContext {
   }
 
   /** 获取 SwapEngine 实例（懒加载，备份保留次数读自 swap.backupRetain） */
-  getSwapEngine(): SwapEngine {
+  getSwapEngine(): AssetWriteEngine {
     if (!this.swapEngine) {
       const config = this.getConfig();
-      this.swapEngine = new SwapEngine(config, this.getAllAdapters(), {
+      this.swapEngine = new AssetWriteEngine(config, this.getAllAdapters(), {
         backupRetain: config.swap?.backupRetain,
       });
     }

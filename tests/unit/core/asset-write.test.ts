@@ -13,8 +13,8 @@ import { BaseAdapter } from '../../../src/core/adapters/base.js';
 import type { HubConfig } from '../../../src/core/config.js';
 import { HubConfigSchema } from '../../../src/core/config.js';
 import type { HubItem, SyncStrategy, SyncTarget } from '../../../src/core/types.js';
-import { SwapEngine, SWAP_CATEGORIES } from '../../../src/core/swap.js';
-import type { SwapCategory, SwapPreview } from '../../../src/core/swap.js';
+import { AssetWriteEngine, SWAP_CATEGORIES } from '../../../src/core/asset-write.js';
+import type { SwapCategory, SwapPreview } from '../../../src/core/asset-write.js';
 
 /** 六类各备一份库内资产(相对 Hub 根 posix 路径) */
 const CATEGORY_HUB_FILE: Record<SwapCategory, string> = {
@@ -132,9 +132,9 @@ describe('swap 核心引擎(enable-tool-hot-swap T3-T6)', () => {
     }
   }
 
-  function engineWith(categories: SwapCategory[], strategy?: 'symlink' | 'copy'): SwapEngine {
+  function engineWith(categories: SwapCategory[], strategy?: 'symlink' | 'copy'): AssetWriteEngine {
     const adapter = new FakeToolAdapter(toolDir, categories, strategy);
-    return new SwapEngine(HubConfigSchema.parse({}), [adapter]);
+    return new AssetWriteEngine(HubConfigSchema.parse({}), [adapter]);
   }
 
   function groupOf(preview: SwapPreview, cat: SwapCategory) {
@@ -675,7 +675,7 @@ describe('swap 核心引擎(enable-tool-hot-swap T3-T6)', () => {
     it('backupRetain 可配置', async () => {
       writeHub('identity/profile.md', '# V1');
       const adapter = new FakeToolAdapter(toolDir, ['identity'], 'copy');
-      const engine = new SwapEngine(HubConfigSchema.parse({}), [adapter], { backupRetain: 1 });
+      const engine = new AssetWriteEngine(HubConfigSchema.parse({}), [adapter], { backupRetain: 1 });
 
       const p1 = await engine.preview('faketool');
       await engine.execute({ tool: 'faketool', previewGeneratedAt: p1.generatedAt, overwriteDecisions: [] });

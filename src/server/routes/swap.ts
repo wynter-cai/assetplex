@@ -9,21 +9,21 @@
 import { Hono } from 'hono';
 import type { HubConfig } from '../../core/config.js';
 import type { ToolAdapter } from '../../core/adapters/base.js';
-import { SwapEngine } from '../../core/swap.js';
+import { AssetWriteEngine } from '../../core/asset-write.js';
 import { invalidateDistributionIndex } from '../../core/distribution-index.js';
 import type {
   CategorySupport,
   SwapCategory,
   SwapExecuteRequest,
   SwapToolCandidate,
-} from '../../core/swap.js';
-import { SWAP_CATEGORIES } from '../../core/swap.js';
+} from '../../core/asset-write.js';
+import { SWAP_CATEGORIES } from '../../core/asset-write.js';
 import { getHubRoot } from '../../utils/paths.js';
 import { hubContext } from '../lib/hub-context.js';
 
 /** 路由依赖（可注入，默认走 hubContext 单例） */
 export interface SwapRouteDeps {
-  getEngine: () => SwapEngine;
+  getEngine: () => AssetWriteEngine;
   listAdapters: () => ToolAdapter[];
   getHubConfig: () => HubConfig;
 }

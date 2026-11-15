@@ -14,8 +14,8 @@ import { BaseAdapter } from '../../../src/core/adapters/base.js';
 import type { HubConfig } from '../../../src/core/config.js';
 import { HubConfigSchema } from '../../../src/core/config.js';
 import type { HubItem, SyncStrategy, SyncTarget } from '../../../src/core/types.js';
-import { SwapEngine } from '../../../src/core/swap.js';
-import type { SwapCategory } from '../../../src/core/swap.js';
+import { AssetWriteEngine } from '../../../src/core/asset-write.js';
+import type { SwapCategory } from '../../../src/core/asset-write.js';
 
 const FAKE_LAYOUT: Record<SwapCategory, { rel: string; target: string; strategy: SyncStrategy; isDir: boolean }> = {
   identity: { rel: 'identity/profile.md', target: 'IDENTITY.md', strategy: 'symlink', isDir: false },
@@ -97,8 +97,8 @@ describe('swap 单资产范围执行（doctor F3）', () => {
     writeFileSync(abs, content, 'utf-8');
   }
 
-  function engineWith(categories: SwapCategory[]): SwapEngine {
-    return new SwapEngine(HubConfigSchema.parse({}), [new FakeToolAdapter(toolDir, categories)]);
+  function engineWith(categories: SwapCategory[]): AssetWriteEngine {
+    return new AssetWriteEngine(HubConfigSchema.parse({}), [new FakeToolAdapter(toolDir, categories)]);
   }
 
   it('范围只含 identity：仅该资产写入，范围外类别目录零变化', async () => {

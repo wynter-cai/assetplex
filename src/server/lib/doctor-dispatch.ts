@@ -7,11 +7,11 @@
  * 全程本机执行，零网络（Scenario 9）。
  */
 
-import type { SwapEngine, SwapPreview } from '../../core/swap.js';
+import type { AssetWriteEngine, SwapPreview } from '../../core/asset-write.js';
 import type { DoctorDispatchItem } from '../../core/doctor-apply.js';
 
 export interface DispatchDeps {
-  getSwapEngine: () => SwapEngine;
+  getSwapEngine: () => AssetWriteEngine;
   /** 已安装工具名清单（adapter.detect 判定） */
   listInstalledTools: () => Promise<string[]>;
 }

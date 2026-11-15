@@ -2,7 +2,7 @@
  * swap 公共类型（enable-tool-hot-swap）
  *
  * 与 设计文档/changes/enable-tool-hot-swap/api-contract.ts 一一对应。
- * 纯类型 + 常量清单，不含运行时逻辑；实现见 core/swap.ts。
+ * 纯类型 + 常量清单，不含运行时逻辑；实现见 core/asset-write.ts。
  */
 
 import type { HubItem } from './types.js';

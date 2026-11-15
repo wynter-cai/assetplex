@@ -9,8 +9,8 @@
 import { describe, it, expect } from 'vitest';
 import { HubConfigSchema } from '../../../src/core/config.js';
 import type { HubConfig } from '../../../src/core/config.js';
-import type { SwapCategory } from '../../../src/core/swap.js';
-import { SWAP_CATEGORIES } from '../../../src/core/swap.js';
+import type { SwapCategory } from '../../../src/core/asset-write.js';
+import { SWAP_CATEGORIES } from '../../../src/core/asset-write.js';
 import { WorkBuddyAdapter } from '../../../src/core/adapters/workbuddy.js';
 import { TraeCnAdapter } from '../../../src/core/adapters/trae-cn.js';
 import { ClaudeCodeAdapter } from '../../../src/core/adapters/claude-code.js';

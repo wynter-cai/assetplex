@@ -2,7 +2,7 @@
  * swap 预览展开辅助
  *
  * 把 SyncEngine.plan 的 (item, target) 单元展开为文件级预览条目，
- * 并做冲突判定与指纹计算。纯函数，供 core/swap.ts 编排使用。
+ * 并做冲突判定与指纹计算。纯函数，供 core/asset-write.ts 编排使用。
  */
 
 import { existsSync, readFileSync } from 'node:fs';
@@ -11,8 +11,8 @@ import type { HubConfig } from './config.js';
 import type { HubItemType, SyncPlanItem, SyncStrategy } from './types.js';
 import { getHubRoot } from '../utils/paths.js';
 import { extractEnvVars, interpolateEnv } from '../transforms/env-interpolation.js';
-import { listFilesRecursive } from './swap-fs.js';
-import type { WriteUnit } from './swap-exec.js';
+import { listFilesRecursive } from './asset-write-fs.js';
+import type { WriteUnit } from './asset-write-exec.js';
 import type {
   CategorySupport,
   SwapCategory,
@@ -20,8 +20,8 @@ import type {
   SwapConflictStatus,
   SwapPreview,
   SwapPreviewItem,
-} from './swap-types.js';
-import { SWAP_CATEGORIES } from './swap-types.js';
+} from './asset-write-types.js';
+import { SWAP_CATEGORIES } from './asset-write-types.js';
 
 /** 类别 → Hub 内目录名(单复数与 hub-files 布局一致) */
 export const CATEGORY_HUB_DIR: Record<SwapCategory, string> = {

@@ -1,5 +1,5 @@
 /**
- * SwapEngine - 工具热切换核心编排（enable-tool-hot-swap）
+ * AssetWriteEngine - 资产写入引擎（原工具热切换引擎，remove-tool-swap B21）
  *
  * 纯逻辑层：组装切换包 → 冲突预览 → 执行(覆盖前备份) → 回读验证 → 回滚/历史。
  * 复用 SyncEngine.plan 的目标解析与 skip 逻辑，不改动既有 /sync 契约。
@@ -26,8 +26,8 @@ import {
   pruneSwapBackups,
   type SwapBackupEntry,
   type SwapBackupManifest,
-} from './swap-fs.js';
-import { executeUnit, type ExecContext, type WriteUnit } from './swap-exec.js';
+} from './asset-write-fs.js';
+import { executeUnit, type ExecContext, type WriteUnit } from './asset-write-exec.js';
 import {
   CATEGORY_HUB_DIR,
   asSwapCategory,
@@ -36,8 +36,8 @@ import {
   fingerprintOf,
   hubRelativeOf,
   unsupportedGroup,
-} from './swap-plan.js';
-import { verifyTarget } from './swap-verify.js';
+} from './asset-write-plan.js';
+import { verifyTarget } from './asset-write-verify.js';
 import type {
   CategorySupport,
   SwapBundle,
@@ -49,10 +49,10 @@ import type {
   SwapPreview,
   SwapRollbackResult,
   SwapVerifyResult,
-} from './swap-types.js';
-import { SWAP_CATEGORIES } from './swap-types.js';
+} from './asset-write-types.js';
+import { SWAP_CATEGORIES } from './asset-write-types.js';
 
-export * from './swap-types.js';
+export * from './asset-write-types.js';
 
 /** 预览快照(执行时做 staleness 校验) */
 interface PreviewSnapshot {
@@ -71,7 +71,7 @@ export function filterUnitsByScope(units: WriteUnit[], scope?: string[]): WriteU
   return units.filter((unit) => unit.entries.some((e) => set.has(e.preview.hubRelativePath)));
 }
 
-export class SwapEngine {
+export class AssetWriteEngine {
   private readonly snapshots = new Map<string, PreviewSnapshot>();
 
   constructor(

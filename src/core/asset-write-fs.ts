@@ -1,7 +1,7 @@
 /**
  * swap 文件系统辅助
  *
- * 切换编排专用的文件枚举、备份清单与历史记录读写封装，供 core/swap.ts 使用。
+ * 资产写入专用的文件枚举、备份清单与历史记录读写封装，供 core/asset-write.ts 使用。
  * 不反向依赖 cli/server/web；仅本机文件操作，零数据上传。
  */
 
@@ -9,7 +9,7 @@ import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from '
 import type { Dirent } from 'node:fs';
 import { join } from 'node:path';
 import { copyRecursive, ensureDir, isSymlink, safeRemove } from '../utils/fs.js';
-import type { SwapHistoryEntry } from './swap-types.js';
+import type { SwapHistoryEntry } from './asset-write-types.js';
 
 /** 备份清单单条：记录覆盖前状态，回滚的唯一依据 */
 export interface SwapBackupEntry {

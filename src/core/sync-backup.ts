@@ -9,7 +9,7 @@
 
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { backupTarget, makeSwapId, pruneSwapBackups } from './swap-fs.js';
+import { backupTarget, makeSwapId, pruneSwapBackups } from './asset-write-fs.js';
 import type { SyncPlan } from './types.js';
 
 /** 备份保留批次数（与 swap/doctor 的 backupRetain 默认一致） */

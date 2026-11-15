@@ -16,8 +16,8 @@ import type { ToolAdapter } from '../../../src/core/adapters/base.js';
 import type { HubConfig } from '../../../src/core/config.js';
 import { HubConfigSchema } from '../../../src/core/config.js';
 import type { HubItem, SyncStrategy, SyncTarget } from '../../../src/core/types.js';
-import { SwapEngine } from '../../../src/core/swap.js';
-import type { SwapCategory } from '../../../src/core/swap.js';
+import { AssetWriteEngine } from '../../../src/core/asset-write.js';
+import type { SwapCategory } from '../../../src/core/asset-write.js';
 import { swapRoutesFactory } from '../../../src/server/routes/swap.js';
 
 const ALL_CATEGORIES: SwapCategory[] = ['identity', 'rule', 'skill', 'mcp', 'memory', 'agent'];
@@ -118,11 +118,11 @@ describe('/api/swap 路由(enable-tool-hot-swap T7)', () => {
     }
   }
 
-  /** 构建被测 app:注入指定适配器集合的 SwapEngine(可传自定义 config) */
+  /** 构建被测 app:注入指定适配器集合的 AssetWriteEngine(可传自定义 config) */
   function buildApp(adapters: ToolAdapter[], config: HubConfig = HubConfigSchema.parse({})): Hono {
-    let engine: SwapEngine | null = null;
-    const getEngine = (): SwapEngine => {
-      if (!engine) engine = new SwapEngine(config, adapters);
+    let engine: AssetWriteEngine | null = null;
+    const getEngine = (): AssetWriteEngine => {
+      if (!engine) engine = new AssetWriteEngine(config, adapters);
       return engine;
     };
     const app = new Hono();

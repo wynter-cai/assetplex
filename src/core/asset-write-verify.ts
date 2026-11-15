@@ -6,8 +6,8 @@
  */
 
 import { existsSync, readFileSync } from 'node:fs';
-import type { SwapVerifyResult } from './swap-types.js';
-import { expectedBuffer } from './swap-plan.js';
+import type { SwapVerifyResult } from './asset-write-types.js';
+import { expectedBuffer } from './asset-write-plan.js';
 import { isValidJson, isValidToml } from '../transforms/json-toml.js';
 
 /** 按扩展名校验目标内容可否解析 */

@@ -12,8 +12,8 @@ import { dirname } from 'node:path';
 import { copyRecursive, ensureDir, isSymlink, safeRemove } from '../utils/fs.js';
 import type { HubItem, SyncTarget } from './types.js';
 import type { ToolAdapter } from './adapters/base.js';
-import type { SwapItemResult, SwapPreviewItem } from './swap-types.js';
-import { backupTarget, type SwapBackupEntry } from './swap-fs.js';
+import type { SwapItemResult, SwapPreviewItem } from './asset-write-types.js';
+import { backupTarget, type SwapBackupEntry } from './asset-write-fs.js';
 
 /** 写入单元：一次 adapter.apply 或逐文件落盘的最小粒度 */
 export interface WriteUnit {

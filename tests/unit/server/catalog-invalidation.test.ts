@@ -18,7 +18,7 @@ import {
 } from '../../../src/core/distribution-index.js';
 import { HubConfigSchema } from '../../../src/core/config.js';
 import type { ToolAdapter } from '../../../src/core/adapters/base.js';
-import type { SwapEngine } from '../../../src/core/swap.js';
+import type { AssetWriteEngine } from '../../../src/core/asset-write.js';
 import { swapRoutesFactory } from '../../../src/server/routes/swap.js';
 
 /** 未安装适配器：索引可算且不触达文件系统 */
@@ -69,7 +69,7 @@ function countingLoader(): { load: () => Promise<DistributionIndexDeps>; count: 
 }
 
 /** 最小假引擎：只实现路由会调用的三个方法 */
-function fakeEngine(): SwapEngine {
+function fakeEngine(): AssetWriteEngine {
   const engine = {
     async execute() {
       return { swapId: 'swap-demo', tool: 'faketool', success: true, counts: { written: 1 } };
@@ -81,7 +81,7 @@ function fakeEngine(): SwapEngine {
       return [];
     },
   };
-  return engine as unknown as SwapEngine;
+  return engine as unknown as AssetWriteEngine;
 }
 
 function buildSwapApp(): Hono {
