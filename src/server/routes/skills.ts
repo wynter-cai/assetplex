@@ -18,6 +18,7 @@
  */
 
 import { Hono } from 'hono';
+import type { Context } from 'hono';
 import { homedir } from 'node:os';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
@@ -58,10 +59,13 @@ import { nodeAgentFs } from '../lib/node-agent-fs.js';
 import { nodeSkillWriteFs } from '../lib/node-skill-write-fs.js';
 import { nodeSkillOverrideStore } from '../lib/node-skill-override-store.js';
 import { nodeAiConfigStore, nodeAiCacheStore } from '../lib/node-ai-classify-store.js';
+import { nodeSkillSummaryStore } from '../lib/node-skill-summary-store.js';
 import { createOpenAiLlmClient } from '../lib/openai-llm-client.js';
 import { buildWorkspacesOverview } from '../lib/node-workspaces.js';
 import { toWriteErrorResponse } from '../lib/write-error.js';
 import { toApiSkill } from '../lib/skill-api.js';
+import { buildCatalogApiResponse } from '../lib/skill-catalog-api.js';
+import type { SkillDiagnosisSummaryStore } from '../../core/skill-diagnosis-summary.js';
 
 export interface SkillsRouteDeps {
   fs: SkillFs;
@@ -74,6 +78,8 @@ export interface SkillsRouteDeps {
   aiCacheStore?: AiClassifyCacheStore;
   /** LLM 客户端（可选；缺省按配置现场构造 OpenAI 兼容客户端，测试注入 mock） */
   llmClient?: LlmClient;
+  /** 技能诊断摘要存储（可选；缺省读 ~/.assetplex/skill-diagnosis-summaries.json） */
+  summaryStore?: SkillDiagnosisSummaryStore;
   /** 动态解析工作区目录（设置变更即时生效）；缺省用静态 sources.workspaceDirs */
   resolveWorkspaceDirs?: () => string[];
 }
@@ -124,6 +130,15 @@ export function skillsRouteFactory(
   /** AI 缓存查询（缓存未注入时为 undefined，盘点回退关键词兜底） */
   const aiLookup = deps.aiCacheStore ? createAiLookup(deps.aiCacheStore) : undefined;
 
+  /** 列表与看板共用的筛选参数（非法值由 listSkills 校验后转 400） */
+  const readListParams = (c: Context): ListSkillsParams => ({
+    scope: (c.req.query('scope') as ListSkillsParams['scope']) ?? undefined,
+    function: (c.req.query('function') as ListSkillsParams['function']) ?? undefined,
+    provenance: (c.req.query('provenance') as ListSkillsParams['provenance']) ?? undefined,
+    status: (c.req.query('status') as ListSkillsParams['status']) ?? undefined,
+    search: c.req.query('search') ?? undefined,
+  });
+
   /** 列出技能全貌（scope 视图预设 + provenance/status 过滤；计数随筛选联动） */
   routes.get('/', (c) => {
     try {
@@ -132,13 +147,7 @@ export function skillsRouteFactory(
         sources: currentSources(),
         store,
         aiLookup,
-        params: {
-          scope: (c.req.query('scope') as ListSkillsParams['scope']) ?? undefined,
-          function: (c.req.query('function') as ListSkillsParams['function']) ?? undefined,
-          provenance: (c.req.query('provenance') as ListSkillsParams['provenance']) ?? undefined,
-          status: (c.req.query('status') as ListSkillsParams['status']) ?? undefined,
-          search: c.req.query('search') ?? undefined,
-        },
+        params: readListParams(c),
       });
       return c.json({
         total: result.total,
@@ -148,6 +157,30 @@ export function skillsRouteFactory(
         countByStatus: result.countByStatus,
         countByScope: result.countByScope,
       });
+    } catch (err) {
+      return c.json({ error: err instanceof Error ? err.message : String(err) }, 400);
+    }
+  });
+
+  /**
+   * 技能分类全貌看板：三组 + 九类 + 最近更新 + 上次体检摘要 + AI 归类成本。
+   * 摘要/缓存局部读失败只降级对应字段（partial 标记），不 500 整页。
+   */
+  routes.get('/catalog', (c) => {
+    try {
+      const sourcesNow = currentSources();
+      const listing = listSkills({ fs, sources: sourcesNow, store, aiLookup, params: readListParams(c) });
+      return c.json(
+        buildCatalogApiResponse({
+          listing,
+          fs,
+          sources: sourcesNow,
+          summaryStore: deps.summaryStore ?? nodeSkillSummaryStore,
+          aiConfigStore: deps.aiConfigStore ?? nodeAiConfigStore,
+          aiCacheStore: deps.aiCacheStore,
+          generatedAt: new Date().toISOString(),
+        }),
+      );
     } catch (err) {
       return c.json({ error: err instanceof Error ? err.message : String(err) }, 400);
     }
