@@ -21,7 +21,7 @@ import type {
   QualityIssueCluster,
 } from '@/types/api';
 
-const KIND_LABEL: Record<DoctorAssetKind, string> = {
+export const KIND_LABEL: Record<DoctorAssetKind, string> = {
   identity: '身份',
   skill: '技能',
   rule: '规则',

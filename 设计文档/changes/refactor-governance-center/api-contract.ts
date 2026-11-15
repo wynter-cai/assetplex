@@ -209,6 +209,11 @@ export interface BatchDiagnoseEstimate {
   /** 圈选类别实际会评估的规则条数（按需加载口径） */
   ruleCoverage: Array<{ kind: BatchDiagnoseTargetKind; evaluatedRules: number; skippedRules: number }>;
   rulesVersion: string;
+  /**
+   * 执行目标清单（T5 实现补充）：可诊断资产按稳定顺序列出，
+   * 前端据此逐资产调用 `POST /api/doctor/diagnose`，不自行重算圈选口径。
+   */
+  targets: Array<{ kind: BatchDiagnoseTargetKind; hubRelativePath: string }>;
   limits: {
     maxAssets: number;
     confirmAboveCalls: number;

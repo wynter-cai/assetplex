@@ -77,6 +77,8 @@ import type {
   GovernanceHealth,
   GovernanceIssueList,
   QualityOverview,
+  BatchDiagnoseEstimate,
+  BatchDiagnoseEstimateRequest,
   GovernanceIssueQuery,
   RemediationApplyRequest,
   RemediationApplyResponse,
@@ -376,6 +378,15 @@ export const api = {
   /** 质量中心全局概览（聚类 + 影响面排序 + 待处理总数同源） */
   getQualityOverview: (refresh = false) =>
     request<QualityOverview>(`/governance/overview${refresh ? '?refresh=1' : ''}`),
+  /**
+   * 跨类别批量诊断预估（refactor-governance-center T4）：零模型零写库。
+   * 缺任一成本字段时前端必须禁用发起，不自行推算。
+   */
+  estimateBatchDiagnosis: (body: BatchDiagnoseEstimateRequest) =>
+    request<BatchDiagnoseEstimate>('/governance/diagnose/estimate', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
   /** 规则清单（与诊断引擎同一份规则集，含版本与计数） */
   getDiagnosisRules: () => request<DiagnosisRuleListResponse>('/diagnosis/rules'),
   /** 忽略一条 finding（按路径 + 规则绑定；内容变更后自动失效并重新提示） */

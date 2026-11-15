@@ -11,7 +11,7 @@ import Projects from './pages/Projects';
 import Duplicates from './pages/Duplicates';
 import QualityCenter from './pages/QualityCenter';
 import QualityRules from './pages/QualityRules';
-import QualityPlaceholder from './pages/QualityPlaceholder';
+import QualityBatch from './pages/QualityBatch';
 import Activities from './pages/Activities';
 import Onboarding from './pages/Onboarding';
 import { CriteriaView } from './components/criteria/CriteriaView';
@@ -51,10 +51,7 @@ export default function App(): JSX.Element {
         <Route path="/duplicates" element={<Duplicates />} />
         {/* 质量中心（refactor-governance-center T1）：体检报告 / 跨类别批量 / 规则与忽略 / 裁决准则 */}
         <Route path="/quality" element={<QualityCenter />} />
-        <Route
-          path="/quality/batch"
-          element={<QualityPlaceholder title="跨类别批量" />}
-        />
+        <Route path="/quality/batch" element={<QualityBatch />} />
         <Route path="/quality/rules" element={<QualityRules />} />
         <Route path="/quality/criteria" element={<CriteriaView />} />
         <Route path="/connections" element={<Connections />} />

@@ -70,6 +70,11 @@ describe('estimateBatchDiagnosis', () => {
       { hubRelativePath: 'd:/elsewhere/SKILL.md', kind: 'skill', reason: 'env-asset' },
     ]);
     expect(estimate.estimatedAt).toBe('2026-11-15T00:00:00.000Z');
+    // 执行目标清单：只含可诊断资产，顺序稳定
+    expect(estimate.targets).toEqual([
+      { kind: 'skill', hubRelativePath: 'skills/a/SKILL.md' },
+      { kind: 'skill', hubRelativePath: 'skills/b/SKILL.md' },
+    ]);
     expect(estimate.limits).toEqual({
       maxAssets: BATCH_MAX_ASSETS,
       confirmAboveCalls: BATCH_CONFIRM_ABOVE_CALLS,

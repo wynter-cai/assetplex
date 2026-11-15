@@ -50,6 +50,11 @@ export interface BatchDiagnosisEstimate {
   unDiagnosable: UnDiagnosableAsset[];
   ruleCoverage: BatchRuleCoverage[];
   rulesVersion: string;
+  /**
+   * 执行目标清单（T5 补充）：可诊断资产按稳定顺序列出，前端据此逐资产调用
+   * `/api/doctor/diagnose`，避免前端自己按类别重算一份口径。
+   */
+  targets: Array<{ kind: DoctorAssetKind; hubRelativePath: string }>;
   limits: { maxAssets: number; confirmAboveCalls: number; hardMaxCalls: number };
   estimatedAt: string;
 }
@@ -103,6 +108,7 @@ export function ruleCoverageByKind(
 
 export function estimateBatchDiagnosis(input: BatchEstimateInput): BatchDiagnosisEstimate {
   const unDiagnosable: UnDiagnosableAsset[] = [];
+  const targets: BatchDiagnosisEstimate['targets'] = [];
   let cacheHits = 0;
   let willCall = 0;
   const kinds = new Set<DoctorAssetKind>();
@@ -125,6 +131,7 @@ export function estimateBatchDiagnosis(input: BatchEstimateInput): BatchDiagnosi
       continue;
     }
     kinds.add(candidate.kind);
+    targets.push({ kind: candidate.kind, hubRelativePath: candidate.hubRelativePath });
     if (!input.aiConfigured) continue;
     if (input.isCached({ kind: candidate.kind, content: candidate.content })) cacheHits += 1;
     else willCall += 1;
@@ -140,6 +147,7 @@ export function estimateBatchDiagnosis(input: BatchEstimateInput): BatchDiagnosi
     unDiagnosable,
     ruleCoverage: coverage,
     rulesVersion: input.ruleSet.version,
+    targets,
     limits: {
       maxAssets: BATCH_MAX_ASSETS,
       confirmAboveCalls: BATCH_CONFIRM_ABOVE_CALLS,

@@ -1131,6 +1131,31 @@ export interface GovernanceIssueQuery {
   offset?: number;
 }
 
+// ========== 跨类别批量诊断（refactor-governance-center T4/T5） ==========
+
+export type UnDiagnosableReason = 'env-asset' | 'unreadable' | 'unsupported-kind' | 'rule-load-failed';
+
+export interface BatchDiagnoseEstimateRequest {
+  kinds?: DoctorAssetKind[];
+  clusterKeys?: string[];
+  ruleIds?: string[];
+}
+
+/** POST /api/governance/diagnose/estimate 的响应（零模型零写库） */
+export interface BatchDiagnoseEstimate {
+  totalAssets: number;
+  cacheHits: number;
+  willCall: number;
+  semanticSkipped: number;
+  unDiagnosable: Array<{ hubRelativePath: string; kind: DoctorAssetKind; reason: UnDiagnosableReason }>;
+  ruleCoverage: Array<{ kind: DoctorAssetKind; evaluatedRules: number; skippedRules: number }>;
+  rulesVersion: string;
+  /** 执行目标清单：前端据此逐资产发起诊断，不自行重算口径 */
+  targets: Array<{ kind: DoctorAssetKind; hubRelativePath: string }>;
+  limits: { maxAssets: number; confirmAboveCalls: number; hardMaxCalls: number };
+  estimatedAt: string;
+}
+
 // ========== 首页行动面板（refactor-home-action-panel Phase 0） ==========
 
 /** 工具行状态（与后端 routes/home.ts 闭集一致） */

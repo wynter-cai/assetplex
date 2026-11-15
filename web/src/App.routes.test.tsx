@@ -43,10 +43,8 @@ vi.mock('./pages/QualityCenter', () => ({
 vi.mock('./pages/QualityRules', () => ({
   default: (): JSX.Element => <div>page-quality-rules</div>,
 }));
-vi.mock('./pages/QualityPlaceholder', () => ({
-  default: ({ title }: { title: string }): JSX.Element => (
-    <div>page-quality-placeholder:{title}</div>
-  ),
+vi.mock('./pages/QualityBatch', () => ({
+  default: (): JSX.Element => <div>page-quality-batch</div>,
 }));
 vi.mock('./components/criteria/CriteriaView', () => ({
   CriteriaView: (): JSX.Element => <div>page-quality-criteria</div>,
@@ -139,7 +137,7 @@ describe('App 旧 URL 重定向', () => {
 describe('App 质量中心路由（governance-center Scenario 1.2 / 1.4 / 6.1）', () => {
   it.each([
     ['/quality', 'page-quality-center'],
-    ['/quality/batch', 'page-quality-placeholder:跨类别批量'],
+    ['/quality/batch', 'page-quality-batch'],
     ['/quality/rules', 'page-quality-rules'],
     ['/quality/criteria', 'page-quality-criteria'],
   ])('%s 渲染质量中心对应页面', async (path, text) => {
