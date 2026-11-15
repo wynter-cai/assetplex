@@ -72,6 +72,22 @@ export function listHubFiles(category: HubFileCategory): HubFileInfo[] {
   return files.sort((a, b) => a.relativePath.localeCompare(b.relativePath));
 }
 
+/** 备份与临时文件后缀：编辑器或旧版本留下的旁支副本，不属于任何资产 */
+const BACKUP_SUFFIXES = ['.bak', '.tmp', '.temp', '.swp', '.swo', '.orig', '.rej', '.old', '.save'];
+
+/**
+ * 备份 / 临时文件判定。
+ *
+ * BUG-01：Hub/memory 下的 `xxx.md.bak` 曾与 `xxx.md` 并列成两个资产，
+ * 同一条问题在首页待办里出现两次。这类残留副本一律不进文件枚举。
+ */
+export function isBackupOrTempFile(fileName: string): boolean {
+  const lower = fileName.toLowerCase();
+  if (lower.startsWith('~$')) return true; // Office 锁文件
+  if (lower.endsWith('~')) return true; // 编辑器备份（xxx.md~）
+  return BACKUP_SUFFIXES.some((suffix) => lower.endsWith(suffix));
+}
+
 function collectFiles(currentDir: string, hubRoot: string, out: HubFileInfo[]): void {
   const entries = readdirSync(currentDir, { withFileTypes: true });
   for (const entry of entries) {
@@ -81,8 +97,9 @@ function collectFiles(currentDir: string, hubRoot: string, out: HubFileInfo[]): 
       if (entry.name.startsWith('.')) continue;
       collectFiles(fullPath, hubRoot, out);
     } else if (entry.isFile()) {
-      // 跳过隐藏文件
+      // 跳过隐藏文件与备份/临时文件
       if (entry.name.startsWith('.')) continue;
+      if (isBackupOrTempFile(entry.name)) continue;
       const stat = statSync(fullPath);
       out.push({
         relativePath: relative(hubRoot, fullPath).replace(/\\/g, '/'),

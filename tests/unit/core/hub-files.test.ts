@@ -146,6 +146,16 @@ describe('createHubFile 记忆重名保护（add-memory-category T15 走查回�
     rmSync(hubRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   });
 
+  it('备份与临时文件不当作 Hub 文件（BUG-01：xxx.md.bak 不应与 xxx.md 并列成两个资产）', () => {
+    createHubFile('memory/note.md', '正文');
+    writeFileSync(join(hubRoot, 'memory', 'note.md.bak'), '正文');
+    writeFileSync(join(hubRoot, 'memory', 'note.md~'), '正文');
+    writeFileSync(join(hubRoot, 'memory', '.note.md.swp'), '正文');
+    writeFileSync(join(hubRoot, 'memory', 'note.orig'), '正文');
+
+    expect(listHubFiles('memory').map((f) => f.relativePath)).toEqual(['memory/note.md']);
+  });
+
   it('仅大小写不同的同名记忆文件拒绝创建，原文件内容不变', () => {
     createHubFile('memory/team-decisions.md', '第一版');
 
