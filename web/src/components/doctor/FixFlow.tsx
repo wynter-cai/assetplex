@@ -9,7 +9,7 @@
  * spec: 设计文档/changes/add-asset-doctor/specs/fix-and-distribute.spec.md
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
@@ -20,6 +20,14 @@ export interface FixFlowProps {
   kind: DoctorAssetKind;
   hubRelativePath: string;
   report: DiagnosisReport;
+  /** 应用成功后自动复检一次（refactor-asset-pipeline T9）；缺省不自动跑 */
+  onRecheck?: () => Promise<DiagnosisReport | null>;
+  /** 撤销成功回调：父级据此把摘要置为过期，且不触发诊断 */
+  onUndone?: () => void;
+  /** 自动复检开关（设置页可关，默认开） */
+  autoRecheck?: boolean;
+  /** 复检是否会真实调用模型（服务端判定；仅用于确认屏披露） */
+  recheckWillCallModel?: boolean;
 }
 
 type FlowView =
@@ -44,6 +52,10 @@ export function FixFlow(props: FixFlowProps): JSX.Element {
   const [toolNames, setToolNames] = useState<string[]>([]);
   const [toolCandidates, setToolCandidates] = useState<AssetWriteToolCandidate[]>([]);
   const [undoMessage, setUndoMessage] = useState('');
+  const [recheckMessage, setRecheckMessage] = useState('');
+  const [rechecking, setRechecking] = useState(false);
+  const autoRecheck = props.autoRecheck ?? false;
+  const rechecked = useRef(false);
 
   // 医生类别是分发类别子集（command 除外，适配器矩阵暂无该键）
   const supportsKind = (tool: AssetWriteToolCandidate): boolean => {
@@ -84,6 +96,29 @@ export function FixFlow(props: FixFlowProps): JSX.Element {
       );
   };
 
+  const runRecheck = (): void => {
+    if (props.onRecheck === undefined) return;
+    setRechecking(true);
+    setRecheckMessage('');
+    props
+      .onRecheck()
+      .then((fresh) => {
+        if (fresh === null) {
+          setRecheckMessage('复检失败：未能取得新结论');
+          return;
+        }
+        const remaining =
+          fresh.findings !== undefined && fresh.findings.length > 0
+            ? fresh.findings.filter((finding) => !finding.ignored).length
+            : fresh.issues.length;
+        setRecheckMessage(`已修复 ${checked.length} 项，剩余 ${remaining} 项`);
+      })
+      .catch((err: unknown) =>
+        setRecheckMessage(`复检失败：${err instanceof Error ? err.message : String(err)}`),
+      )
+      .finally(() => setRechecking(false));
+  };
+
   const submitApply = (): void => {
     const distribute = toolNames.length > 0;
     setView({ kind: 'applying' });
@@ -95,7 +130,14 @@ export function FixFlow(props: FixFlowProps): JSX.Element {
         distribute,
         ...(distribute ? { targets: toolNames } : {}),
       })
-      .then((apply) => setView({ kind: 'result', apply }))
+      .then((apply) => {
+        setView({ kind: 'result', apply });
+        // 写库已成功：自动复检只补充结论，失败不回滚写库事实
+        if (autoRecheck && !rechecked.current) {
+          rechecked.current = true;
+          runRecheck();
+        }
+      })
       .catch((err: unknown) => {
         const message = err instanceof Error ? err.message : String(err);
         const fallback: FixDraftResponse =
@@ -107,7 +149,11 @@ export function FixFlow(props: FixFlowProps): JSX.Element {
   const undoFix = (backupRef: string): void => {
     api
       .doctorUndo(backupRef)
-      .then(() => setUndoMessage('已撤销：库内已恢复修复前的旧版本'))
+      .then(() => {
+        setUndoMessage('已撤销：库内已恢复修复前的旧版本');
+        // 撤销后不自动复检（不调用模型），只让摘要标记过期
+        props.onUndone?.();
+      })
       .catch((err: unknown) =>
         setUndoMessage(err instanceof Error ? err.message : String(err)),
       );
@@ -171,6 +217,13 @@ export function FixFlow(props: FixFlowProps): JSX.Element {
         </p>
       )}
 
+      {view.kind === 'confirm' && autoRecheck && (
+        <p className="text-xs text-muted-foreground">
+          保存后将自动复检
+          {props.recheckWillCallModel === true ? '（将调用 1 次模型）' : '（语义结论已缓存，不调用模型）'}
+        </p>
+      )}
+
       {view.kind === 'confirm' && (
         <ConfirmView
           originalPath={props.hubRelativePath}
@@ -209,6 +262,25 @@ export function FixFlow(props: FixFlowProps): JSX.Element {
       )}
 
       {undoMessage !== '' && <p className="text-xs text-muted-foreground">{undoMessage}</p>}
+
+      {rechecking && (
+        <p className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          正在复检修复结果…
+        </p>
+      )}
+      {!rechecking && recheckMessage !== '' && (
+        <div className="flex flex-wrap items-center gap-2">
+          <p className={`text-xs ${recheckMessage.startsWith('复检失败') ? 'text-destructive' : 'text-muted-foreground'}`}>
+            {recheckMessage}
+          </p>
+          {recheckMessage.startsWith('复检失败') && (
+            <Button variant="outline" size="sm" className="h-7 text-xs" onClick={runRecheck}>
+              重试复检
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

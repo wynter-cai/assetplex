@@ -1,4 +1,4 @@
-/**
+﻿/**
  * DiagnosisPanel 组件测试（add-asset-doctor E6）
  *
  * spec: specs/asset-diagnosis.spec.md Scenario 1/2/4/5(披露)/7/8 的 UI 面。
@@ -19,6 +19,7 @@ vi.mock('@/lib/api', async () => {
     api: {
       ...actual.api,
       getHubHealth: vi.fn(),
+      getDoctorSummary: vi.fn(),
       doctorDiagnose: vi.fn(),
     },
   };
@@ -72,6 +73,16 @@ beforeEach(() => {
     fileCountByCategory: {},
     totalFiles: 0,
   });
+  vi.mocked(api.getDoctorSummary).mockResolvedValue({
+    kind: 'skill',
+    hubRelativePath: 'skills/demo-skill/SKILL.md',
+    available: true,
+    state: 'never',
+    lastRun: null,
+    staleReasons: [],
+    aiConfigured: true,
+    willCallModel: true,
+  });
   vi.mocked(api.doctorDiagnose).mockReset();
 });
 
@@ -88,7 +99,7 @@ describe('DiagnosisPanel', () => {
     vi.mocked(api.doctorDiagnose).mockResolvedValue(baseReport());
     renderPanel();
     expect(api.doctorDiagnose).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole('button', { name: '资产医生' }));
+    fireEvent.click(screen.getByRole('button', { name: '开始诊断' }));
     await waitFor(() => expect(api.doctorDiagnose).toHaveBeenCalledTimes(1));
     expect(api.doctorDiagnose).toHaveBeenCalledWith({ kind: 'skill', hubRelativePath: 'skills/demo-skill/SKILL.md' });
   });
@@ -96,7 +107,7 @@ describe('DiagnosisPanel', () => {
   it('报告渲染：结论徽标 + 逐条问题（严重度/机械检查标注/准则链接/建议）', async () => {
     vi.mocked(api.doctorDiagnose).mockResolvedValue(baseReport());
     renderPanel();
-    fireEvent.click(screen.getByRole('button', { name: '资产医生' }));
+    fireEvent.click(screen.getByRole('button', { name: '开始诊断' }));
 
     expect(await screen.findByText('需关注')).toBeInTheDocument();
     expect(screen.getByText('高')).toBeInTheDocument();
@@ -115,7 +126,7 @@ describe('DiagnosisPanel', () => {
       baseReport({ overall: 'healthy', issues: [] }),
     );
     renderPanel();
-    fireEvent.click(screen.getByRole('button', { name: '资产医生' }));
+    fireEvent.click(screen.getByRole('button', { name: '开始诊断' }));
     expect(await screen.findByText('健康')).toBeInTheDocument();
     expect(screen.getByText('未发现违反已启用准则的问题')).toBeInTheDocument();
   });
@@ -123,33 +134,45 @@ describe('DiagnosisPanel', () => {
   it('cached 与预算截断披露同仲裁机制（Scenario 4/5）', async () => {
     vi.mocked(api.doctorDiagnose).mockResolvedValue(baseReport({ cached: true, criteriaSkipped: 2 }));
     renderPanel();
-    fireEvent.click(screen.getByRole('button', { name: '资产医生' }));
+    fireEvent.click(screen.getByRole('button', { name: '开始诊断' }));
     expect(await screen.findByText('来自缓存')).toBeInTheDocument();
     expect(screen.getByText(/2 条准则未参与本次诊断/)).toBeInTheDocument();
   });
 
-  it('AI 未配置机械降级：展示配置引导与入口（Scenario 7）', async () => {
+  it('AI 未配置机械降级：展示配置引导与入口（Scenario 7 / T11 不再指向技能页）', async () => {
+    vi.mocked(api.getDoctorSummary).mockResolvedValue({
+      kind: 'skill',
+      hubRelativePath: 'skills/demo-skill/SKILL.md',
+      available: true,
+      state: 'never',
+      lastRun: null,
+      staleReasons: [],
+      aiConfigured: false,
+      willCallModel: false,
+    });
     vi.mocked(api.doctorDiagnose).mockResolvedValue(
       baseReport({ overall: 'at-risk', mechanicalOnly: true, issues: [baseReport().issues[0]], criteriaUsed: [], model: '' }),
     );
     renderPanel();
-    fireEvent.click(screen.getByRole('button', { name: '资产医生' }));
+    fireEvent.click(screen.getByRole('button', { name: '开始诊断' }));
     expect(await screen.findByText(/配置 AI 端点后可诊断语义质量问题/)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: '去配置 AI 服务' })).toHaveAttribute('href', '/skills');
+    // 配置入口改为就地打开对话框，不再跳技能页
+    expect(screen.getByRole('button', { name: '配置 AI 端点' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: '去配置 AI 服务' })).not.toBeInTheDocument();
     expect(screen.getByText('有风险')).toBeInTheDocument();
   });
 
   it('诊断失败如实展示后端文案，不产生半成品报告（Scenario 8）', async () => {
     vi.mocked(api.doctorDiagnose).mockRejectedValue(new Error('诊断失败：输出无法解析为 JSON'));
     renderPanel();
-    fireEvent.click(screen.getByRole('button', { name: '资产医生' }));
+    fireEvent.click(screen.getByRole('button', { name: '开始诊断' }));
     expect(await screen.findByText('诊断失败：输出无法解析为 JSON')).toBeInTheDocument();
   });
 
   it('报告含可修复问题 → 下方出现修复流入口（add-asset-doctor F4 联动）', async () => {
     vi.mocked(api.doctorDiagnose).mockResolvedValue(baseReport());
     renderPanel();
-    fireEvent.click(screen.getByRole('button', { name: '资产医生' }));
+    fireEvent.click(screen.getByRole('button', { name: '开始诊断' }));
     expect(await screen.findByText('需关注')).toBeInTheDocument();
     expect(screen.getByRole('region', { name: '修复流' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /生成修复草案/ })).toBeInTheDocument();
@@ -160,8 +183,9 @@ describe('DiagnosisPanel', () => {
       baseReport({ overall: 'at-risk', mechanicalOnly: true, issues: [baseReport().issues[0]], criteriaUsed: [], model: '' }),
     );
     renderPanel();
-    fireEvent.click(screen.getByRole('button', { name: '资产医生' }));
+    fireEvent.click(screen.getByRole('button', { name: '开始诊断' }));
     await screen.findByText(/配置 AI 端点后可诊断语义质量问题/);
     expect(screen.queryByRole('region', { name: '修复流' })).not.toBeInTheDocument();
   });
 });
+

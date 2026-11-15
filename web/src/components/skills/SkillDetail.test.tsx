@@ -1,4 +1,4 @@
-/**
+﻿/**
  * SkillDetail 收藏到我的库交互测试
  *
  * spec: add-skill-curation / refactor-skill-origin-taxonomy
@@ -238,6 +238,16 @@ describe('SkillDetail 资产医生入口', () => {
   beforeEach(() => {
     vi.spyOn(api, 'getSkill').mockResolvedValue({ skill: librarySelfBuilt, rawContent: '# mine\n内容' });
     vi.spyOn(api, 'getAiClassifyConfig').mockResolvedValue({ baseUrl: '', model: '', hasApiKey: false });
+    vi.spyOn(api, 'getDoctorSummary').mockResolvedValue({
+      kind: 'skill',
+      hubRelativePath: 'skills/mine/SKILL.md',
+      available: true,
+      state: 'never',
+      lastRun: null,
+      staleReasons: [],
+      aiConfigured: true,
+      willCallModel: true,
+    });
   });
 
   it('库内技能且路径在 Hub 根内 → 渲染「资产医生」入口（add-asset-doctor E6）', async () => {
@@ -245,7 +255,7 @@ describe('SkillDetail 资产医生入口', () => {
       hubRoot: '/x', hubExists: true, hubTomlExists: true, fileCountByCategory: {}, totalFiles: 1,
     });
     renderDetail(librarySelfBuilt);
-    expect(await screen.findByRole('button', { name: '资产医生' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: '开始诊断' })).toBeInTheDocument();
   });
 
   it('库内但路径不在 Hub 根内 → 入口隐藏（医生只服务库内资产）', async () => {
@@ -255,7 +265,7 @@ describe('SkillDetail 资产医生入口', () => {
     renderDetail(librarySelfBuilt);
     await screen.findByRole('button', { name: '编辑' });
     await new Promise((r) => setTimeout(r, 50));
-    expect(screen.queryByRole('button', { name: '资产医生' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '开始诊断' })).toBeNull();
   });
 
   it('环境条目（inLibrary=false）不提供医生入口', async () => {
@@ -265,7 +275,7 @@ describe('SkillDetail 资产医生入口', () => {
     renderDetail(marketSkill);
     await screen.findByRole('button', { name: 'AI 分类' });
     await new Promise((r) => setTimeout(r, 50));
-    expect(screen.queryByRole('button', { name: '资产医生' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '开始诊断' })).toBeNull();
   });
 });
 
@@ -322,3 +332,4 @@ describe('SkillDetail 调整分类确认流（spec inline-function-confirm）', 
     expect(onClose).not.toHaveBeenCalled();
   });
 });
+

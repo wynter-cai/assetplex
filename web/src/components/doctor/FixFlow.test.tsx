@@ -185,8 +185,7 @@ describe('FixFlow 一屏确认（Scenario 2/6 + identity 警示）', () => {
   });
 });
 
-describe('FixFlow 结果与撤销（Scenario 3/4）', () => {
-  it('逐工具结果如实展示，提供撤销本次修复入口并可点回滚同步', async () => {
+describe('FixFlow 结果与撤销（Scenario 3/4）', () => {  it('逐工具结果如实展示，提供撤销本次修复入口并可点回滚同步', async () => {
     vi.mocked(api.doctorApply).mockResolvedValue({
       saved: true,
       backupRef: 'backup-1',
@@ -208,5 +207,71 @@ describe('FixFlow 结果与撤销（Scenario 3/4）', () => {
     vi.mocked(api.rollbackRemediation).mockResolvedValue({ swapId: 'write-1', restored: 1, removed: 0, success: true });
     fireEvent.click(screen.getByRole('button', { name: /回滚同步/ }));
     await waitFor(() => expect(api.rollbackRemediation).toHaveBeenCalledWith('write-1'));
+  });
+});
+
+describe('FixFlow 自动复检（refactor-asset-pipeline T9）', () => {
+  function renderWithRecheck(
+    onRecheck: () => Promise<DiagnosisReport | null>,
+    extra: { autoRecheck?: boolean; onUndone?: () => void } = {},
+  ): void {
+    render(
+      <FixFlow
+        kind="skill"
+        hubRelativePath={report.hubRelativePath}
+        report={report}
+        onRecheck={onRecheck}
+        autoRecheck={extra.autoRecheck ?? true}
+        recheckWillCallModel
+        {...(extra.onUndone === undefined ? {} : { onUndone: extra.onUndone })}
+      />,
+    );
+  }
+
+  it('确认屏披露自动复检将调用 1 次模型', async () => {
+    renderWithRecheck(vi.fn().mockResolvedValue(report));
+    await toConfirm();
+    expect(screen.getByText(/保存后将自动复检（将调用 1 次模型）/)).toBeInTheDocument();
+  });
+
+  it('应用成功后自动复检一次，并报「已修复 X 项，剩余 Y 项」', async () => {
+    const onRecheck = vi.fn().mockResolvedValue({ ...report, issues: [report.issues[2]] });
+    renderWithRecheck(onRecheck);
+    await toConfirm();
+    fireEvent.click(screen.getByRole('button', { name: /确认应用并同步/ }));
+    await waitFor(() => expect(onRecheck).toHaveBeenCalledTimes(1));
+    expect(await screen.findByText('已修复 2 项，剩余 1 项')).toBeInTheDocument();
+  });
+
+  it('复检失败：保留写库成功事实，给出失败原因与重试入口', async () => {
+    const onRecheck = vi.fn().mockRejectedValue(new Error('模型超时'));
+    renderWithRecheck(onRecheck);
+    await toConfirm();
+    fireEvent.click(screen.getByRole('button', { name: /确认应用并同步/ }));
+    await waitFor(() => expect(screen.getByText(/复检失败：模型超时/)).toBeInTheDocument());
+    // 写库结果区仍在：撤销入口可见
+    expect(screen.getByRole('button', { name: /撤销本次修复/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /重试复检/ })).toBeInTheDocument();
+  });
+
+  it('关闭自动复检后，应用成功不触发复检', async () => {
+    const onRecheck = vi.fn().mockResolvedValue(report);
+    renderWithRecheck(onRecheck, { autoRecheck: false });
+    await toConfirm();
+    fireEvent.click(screen.getByRole('button', { name: /确认应用并同步/ }));
+    await waitFor(() => expect(screen.getByRole('button', { name: /撤销本次修复/ })).toBeInTheDocument());
+    expect(onRecheck).not.toHaveBeenCalled();
+  });
+
+  it('撤销成功只标记摘要过期，不触发复检', async () => {
+    const onRecheck = vi.fn().mockResolvedValue(report);
+    const onUndone = vi.fn();
+    renderWithRecheck(onRecheck, { autoRecheck: false, onUndone });
+    await toConfirm();
+    fireEvent.click(screen.getByRole('button', { name: /确认应用并同步/ }));
+    await waitFor(() => expect(screen.getByRole('button', { name: /撤销本次修复/ })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /撤销本次修复/ }));
+    await waitFor(() => expect(onUndone).toHaveBeenCalledTimes(1));
+    expect(onRecheck).not.toHaveBeenCalled();
   });
 });

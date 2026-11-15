@@ -10,7 +10,7 @@ import { toast } from '@/lib/toast-store';
 import { pickCategory, useAssetCategories } from '@/lib/use-asset-categories';
 import { TOOL_DISPLAY_NAME } from '@/components/connections/tool-display';
 import { DISTRIBUTION_STATUS } from './DistributionBadge';
-import type { Asset, AssetDistributionInfo, AssetSyncStatus, AssetWriteCategorySupport } from '@/types/api';
+import type { Asset, AssetDistributionInfo, AssetSyncStatus, AssetWriteCategorySupport, SyncResult } from '@/types/api';
 
 interface DistributionDialogProps {
   asset: Asset | null;
@@ -67,6 +67,8 @@ export function DistributionDialog({
   // 本地维护哪些工具启用了同步（Phase 1 不持久化，Phase 2 实现）
   const [enabledTools, setEnabledTools] = useState<Record<string, boolean>>({});
   const [syncing, setSyncing] = useState(false);
+  // 就地结果 + 失败重试（refactor-asset-pipeline T10）：结果留在对话框里，不只靠 toast
+  const [results, setResults] = useState<SyncResult[]>([]);
   const queryClient = useQueryClient();
 
   // 每个工具一行：状态/开关/类别支持算一次，渲染与同步目标共用，避免两处判断漂移
@@ -83,11 +85,16 @@ export function DistributionDialog({
   // 目标 = 开关开启 + 已安装 + 类别支持；空目标不发请求（无工具过滤等于全量分发）
   const targets = rows.filter((row) => row.tool.installed && !row.unsupported && row.isEnabled).map((row) => row.tool.name);
 
-  const handleSync = async (): Promise<void> => {
-    if (syncing || targets.length === 0) return;
+  const handleSync = async (targetList: string[] = targets): Promise<void> => {
+    if (syncing || targetList.length === 0) return;
     setSyncing(true);
     try {
-      const result = await api.runSync(targets, false, { backup: true });
+      const result = await api.runSync(targetList, false, { backup: true });
+      // 同一工具重试时用新结果覆盖旧结果，不叠成两条
+      setResults((prev) => {
+        const next = prev.filter((item) => !targetList.includes(item.tool));
+        return [...next, ...result.results];
+      });
       const failed = result.results.filter((r) => !r.success);
       if (failed.length > 0) {
         toast.error('同步未全部成功', {
@@ -108,6 +115,8 @@ export function DistributionDialog({
       setSyncing(false);
     }
   };
+
+  const failedResults = results.filter((item) => !item.success);
 
   if (!asset) return <></>;
 
@@ -154,6 +163,36 @@ export function DistributionDialog({
             ))
           )}
         </div>
+
+        {results.length > 0 && (
+          <div className="rounded-md border bg-muted/30 p-2 space-y-1" aria-label="分发结果">
+            {results.map((item) => (
+              <div key={item.tool} className="text-xs">
+                <span className="font-medium">{TOOL_DISPLAY_NAME[item.tool] ?? item.tool}：</span>
+                {item.success ? (
+                  <span className="text-muted-foreground">
+                    已写入 {item.itemCount} 项{item.skippedCount > 0 ? `，跳过 ${item.skippedCount} 项` : ''}
+                  </span>
+                ) : (
+                  <span className="text-destructive">失败：{item.errors[0] ?? '未知原因'}</span>
+                )}
+              </div>
+            ))}
+            {failedResults.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs"
+                disabled={syncing}
+                onClick={() => {
+                  void handleSync(failedResults.map((item) => item.tool));
+                }}
+              >
+                重试失败项（{failedResults.length}）
+              </Button>
+            )}
+          </div>
+        )}
 
         <div className="flex items-center justify-end gap-2 pt-2">
           {!isLoading && targets.length === 0 && (

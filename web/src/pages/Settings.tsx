@@ -18,6 +18,16 @@ import { errorMessage } from '@/lib/error-message';
 import { APP_VERSION } from '@/lib/app-version';
 import { STRATEGY_OPTIONS } from '@/lib/sync-strategy-labels';
 import { toolDisplayList, toolIdFromDisplay } from '@/components/connections/tool-display';
+import { AUTO_RECHECK_KEY } from '@/components/doctor/DiagnosisPanel';
+
+/** 修复后自动复检：默认开，'0' 为关（与详情摘要栏共用一个键） */
+function readAutoRecheck(): boolean {
+  try {
+    return window.localStorage.getItem(AUTO_RECHECK_KEY) !== '0';
+  } catch {
+    return true;
+  }
+}
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -25,6 +35,7 @@ export default function Settings() {
   const { data } = useQuery({ queryKey: ['hub-config'], queryFn: api.getHubConfig });
   const [draft, setDraft] = useState<HubConfig | null>(null);
   const [dirty, setDirty] = useState(false);
+  const [autoRecheck, setAutoRecheck] = useState<boolean>(readAutoRecheck);
 
   useEffect(() => {
     if (data && !draft) {
@@ -224,6 +235,32 @@ export default function Settings() {
               className="font-mono text-xs"
             />
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">资产体检</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <Label htmlFor="auto-recheck">修复后自动复检</Label>
+            <p className="mt-1 text-xs text-muted-foreground">
+              保存修复后立刻再诊断一次，确认问题是否真的消失；语义结论已缓存时不会调用模型。
+            </p>
+          </div>
+          <Switch
+            id="auto-recheck"
+            checked={autoRecheck}
+            onCheckedChange={(value) => {
+              setAutoRecheck(value);
+              try {
+                window.localStorage.setItem(AUTO_RECHECK_KEY, value ? '1' : '0');
+              } catch {
+                // 隐私模式等写不进去：本次会话内仍然按新值生效
+              }
+            }}
+          />
         </CardContent>
       </Card>
 

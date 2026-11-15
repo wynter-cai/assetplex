@@ -26,6 +26,8 @@ interface AssetEditorProps {
   onClose: () => void;
   onSave: (data: { name: string; category: string; content: string }) => Promise<void>;
   onSwitchToEdit?: () => void;
+  /** 详情内分发：复用资产库既有的同步管理对话框（refactor-asset-pipeline T10） */
+  onDistribute?: (asset: Asset) => void;
 }
 
 export function AssetEditor({
@@ -35,6 +37,7 @@ export function AssetEditor({
   onClose,
   onSave,
   onSwitchToEdit,
+  onDistribute,
 }: AssetEditorProps): JSX.Element {
   const isReadOnly = mode === 'view';
   const [name, setName] = useState(asset?.name ?? '');
@@ -107,7 +110,13 @@ export function AssetEditor({
           <div className="h-full overflow-auto p-4 prose prose-sm max-w-none">
             {doctorKind !== null && asset !== undefined && asset !== null && (
               <div className="mb-3 max-w-none">
-                <DiagnosisPanel kind={doctorKind} hubRelativePath={asset.hubPath} />
+                <DiagnosisPanel
+                  kind={doctorKind}
+                  hubRelativePath={asset.hubPath}
+                  {...(onDistribute === undefined
+                    ? {}
+                    : { onDistribute: () => onDistribute(asset) })}
+                />
               </div>
             )}
             <pre className="whitespace-pre-wrap font-mono text-sm leading-relaxed bg-muted p-4 rounded-md">{content}</pre>

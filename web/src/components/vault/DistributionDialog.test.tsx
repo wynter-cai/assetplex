@@ -203,8 +203,38 @@ describe('DistributionDialog 立即同步', () => {
     expect(toast?.description).toContain('2');
   });
 
-  it('类别不支持的工具不进同步目标', async () => {
-    const runSync = vi.spyOn(api, 'runSync').mockResolvedValue({ results: [] });
+  it('结果就地展示：失败项可只重试失败工具（refactor-asset-pipeline T10）', async () => {
+    const runSync = vi
+      .spyOn(api, 'runSync')
+      .mockResolvedValueOnce({
+        results: [
+          { tool: 'trae-cn', success: true, itemCount: 1, skippedCount: 0, errors: [], warnings: [], durationMs: 3 },
+          { tool: 'codex', success: false, itemCount: 0, skippedCount: 0, errors: ['目标目录不可写'], warnings: [], durationMs: 2 },
+        ],
+      })
+      .mockResolvedValueOnce({
+        results: [
+          { tool: 'codex', success: true, itemCount: 1, skippedCount: 0, errors: [], warnings: [], durationMs: 2 },
+        ],
+      });
+    renderDialog([
+      makeDistributionEntry({ toolId: 'trae-cn', status: 'synced' }),
+      makeDistributionEntry({ toolId: 'codex', status: 'synced' }),
+    ]);
+
+    await screen.findByText('TRAE 中国版');
+    fireEvent.click(screen.getByRole('button', { name: /立即同步/ }));
+
+    expect(await screen.findByText(/失败：目标目录不可写/)).toBeInTheDocument();
+    expect(screen.getByText(/已写入 1 项/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /重试失败项（1）/ }));
+    await waitFor(() => expect(runSync).toHaveBeenLastCalledWith(['codex'], false, { backup: true }));
+    await waitFor(() => expect(screen.queryByText(/失败：目标目录不可写/)).not.toBeInTheDocument());
+    expect(screen.queryByRole('button', { name: /重试失败项/ })).not.toBeInTheDocument();
+  });
+
+  it('类别不支持的工具不进同步目标', async () => {    const runSync = vi.spyOn(api, 'runSync').mockResolvedValue({ results: [] });
     renderDialog(
       [
         makeDistributionEntry({ toolId: 'trae-cn', status: 'synced' }),
