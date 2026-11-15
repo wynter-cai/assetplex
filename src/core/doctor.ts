@@ -23,11 +23,13 @@ import {
 } from './doctor-parse.js';
 import {
   computeDoctorCacheKey,
+  hashDoctorContent,
   sanitizeDoctorEntries,
   type DoctorCacheEntry,
   type DoctorCacheStore,
   type DoctorLastRunStore,
 } from './doctor-cache.js';
+import { applyIgnores } from './diagnosis-ignore.js';
 import { persistDoctorLastRun } from './doctor-last-run.js';
 import {
   type DiagnosisCoverage,
@@ -35,6 +37,7 @@ import {
   type DiagnosisOverall,
   type DiagnosisRuleSet,
   type DoctorAssetKind,
+  type IgnoredFinding,
   type RuleFinding,
 } from './types.js';
 import { runStaticChecks } from './diagnosis-static.js';
@@ -168,6 +171,8 @@ export interface DiagnoseDeps {
   config: AiClassifyConfig | null;
   /** 规则集：null/缺省 = 规则集未加载，本轮无规则结论（findings 为空，coverage 全零） */
   ruleSet?: DiagnosisRuleSet | null;
+  /** 忽略清单（路由层注入）：同路径同规则且内容哈希一致时标记 finding.ignored */
+  ignores?: IgnoredFinding[];
   /** 上次运行摘要记录：缺省不写（既有调用零改动；路由层注入 Node 实现） */
   lastRunStore?: DoctorLastRunStore;
   now?: () => string;
@@ -181,8 +186,10 @@ function mechanicalOnlyReport(
   rulesVersion: string,
   now: string,
 ): DiagnosisReport {
-  const hasHigh = mechanical.some((i) => i.severity === 'high') || findings.some((f) => f.severity === 'high');
-  const worst: DiagnosisOverall = hasHigh ? 'at-risk' : mechanical.length + findings.length > 0 ? 'needs-attention' : 'healthy';
+  // 被忽略项不参与计分（Scenario 4.2 / 4.3：忽略不等于修好，但也不该继续扣分）
+  const visible = findings.filter((f) => !f.ignored);
+  const hasHigh = mechanical.some((i) => i.severity === 'high') || visible.some((f) => f.severity === 'high');
+  const worst: DiagnosisOverall = hasHigh ? 'at-risk' : mechanical.length + visible.length > 0 ? 'needs-attention' : 'healthy';
   return {
     kind: input.kind,
     hubRelativePath: input.hubRelativePath,
@@ -221,7 +228,12 @@ export async function diagnoseAsset(
     { kind: input.kind, hubRelativePath: input.hubRelativePath, content },
     ruleSet,
   );
-  const findings = staticResult.findings;
+  // 忽略按内容哈希绑定：内容变更后自动失效，旧忽略条目不再命中（Scenario 4.2）
+  const findings = applyIgnores(
+    staticResult.findings,
+    { hubRelativePath: input.hubRelativePath, contentHash: hashDoctorContent(content) },
+    deps.ignores ?? [],
+  );
   const config = deps.config;
   if (config === null || !isAiConfigComplete(config)) {
     const report = mechanicalOnlyReport(
@@ -272,7 +284,9 @@ export async function diagnoseAsset(
     deps.cache.save(entries);
   }
 
-  const hasHigh = mechanical.some((issue) => issue.severity === 'high') || findings.some((finding) => finding.severity === 'high');
+  const hasHigh =
+    mechanical.some((issue) => issue.severity === 'high') ||
+    findings.some((finding) => finding.severity === 'high' && !finding.ignored);
   const report: DiagnosisReport = {
     kind: input.kind,
     hubRelativePath: input.hubRelativePath,

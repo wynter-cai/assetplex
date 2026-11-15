@@ -34,7 +34,7 @@ import { createHomeRoutes } from './routes/home.js';
 import { createActivityRoutes } from './routes/activity.js';
 import { createOnboardingRoutes } from './routes/onboarding.js';
 import { errorHandler } from './middleware/error.js';
-import { nodeDoctorLastRunStore } from './lib/node-ai-classify-store.js';
+import { nodeDiagnosisIgnoreStore, nodeDoctorLastRunStore } from './lib/node-ai-classify-store.js';
 
 export interface ServerOptions {
   /** 端口号，默认 17521 */
@@ -80,10 +80,13 @@ export async function startServer(options: ServerOptions = {}): Promise<void> {
   app.route('/api/remediations', remediationRollbackRoutes);
   app.route('/api/criteria', criteriaRoutes);
   app.route('/api/arbitration', createArbitrationRoutes());
-  app.route('/api/doctor', createDoctorRoutes({ lastRunStore: nodeDoctorLastRunStore }));
+  app.route(
+    '/api/doctor',
+    createDoctorRoutes({ lastRunStore: nodeDoctorLastRunStore, ignoreStore: nodeDiagnosisIgnoreStore }),
+  );
   app.route('/api/doctor', createDoctorFixRoutes());
-  app.route('/api/diagnosis', createDiagnosisRoutes());
-  app.route('/api/governance', createGovernanceRoutes());
+  app.route('/api/diagnosis', createDiagnosisRoutes({ ignoreStore: nodeDiagnosisIgnoreStore }));
+  app.route('/api/governance', createGovernanceRoutes({ ignoreStore: nodeDiagnosisIgnoreStore }));
   app.route('/api/home', createHomeRoutes());
   app.route('/api/activity', createActivityRoutes());
   app.route('/api/onboarding', createOnboardingRoutes());

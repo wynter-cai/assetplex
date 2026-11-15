@@ -18,7 +18,7 @@ import { DiagnosisSummaryBar } from './DiagnosisSummaryBar';
 import { IssueList } from './IssueList';
 import { FixFlow } from './FixFlow';
 import { DistributionGate } from './DistributionGate';
-import type { DiagnosisOverall, DiagnosisReport, DoctorAssetKind } from '@/types/api';
+import type { DiagnosisOverall, DiagnosisReport, DoctorAssetKind, RuleFinding } from '@/types/api';
 
 const OVERALL_LABEL: Record<DiagnosisOverall, string> = {
   healthy: '健康',
@@ -64,6 +64,7 @@ type PanelState =
 export function DiagnosisPanel(props: DiagnosisPanelProps): JSX.Element | null {
   const [state, setState] = useState<PanelState>({ kind: 'idle' });
   const [aiDialogOpen, setAiDialogOpen] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const autoStarted = useRef(false);
   const queryClient = useQueryClient();
 
@@ -92,6 +93,51 @@ export function DiagnosisPanel(props: DiagnosisPanelProps): JSX.Element | null {
 
   const invalidateSummary = (): void => {
     void queryClient.invalidateQueries({ queryKey: ['doctor-summary', props.kind] });
+  };
+
+  /** 忽略只影响展示与计分：本地先落状态，失败再提示，不悄悄吞错 */
+  const applyIgnored = (ruleId: string, ignored: boolean): void => {
+    setState((prev) =>
+      prev.kind === 'done'
+        ? {
+            kind: 'done',
+            report: {
+              ...prev.report,
+              findings: (prev.report.findings ?? []).map((item) =>
+                item.ruleId === ruleId ? { ...item, ignored } : item,
+              ),
+            },
+          }
+        : prev,
+    );
+  };
+
+  const ignoreFinding = (finding: RuleFinding): void => {
+    if (hubRelativePath === null) return;
+    setActionError(null);
+    void api
+      .ignoreDiagnosisFinding({ kind: props.kind, hubRelativePath, ruleId: finding.ruleId })
+      .then(() => {
+        applyIgnored(finding.ruleId, true);
+        invalidateSummary();
+      })
+      .catch((err: unknown) => {
+        setActionError(err instanceof Error ? err.message : String(err));
+      });
+  };
+
+  const restoreFinding = (finding: RuleFinding): void => {
+    if (hubRelativePath === null) return;
+    setActionError(null);
+    void api
+      .restoreDiagnosisFinding({ hubRelativePath, ruleId: finding.ruleId })
+      .then(() => {
+        applyIgnored(finding.ruleId, false);
+        invalidateSummary();
+      })
+      .catch((err: unknown) => {
+        setActionError(err instanceof Error ? err.message : String(err));
+      });
   };
 
   const runDiagnose = (): Promise<DiagnosisReport> => {
@@ -140,7 +186,8 @@ export function DiagnosisPanel(props: DiagnosisPanelProps): JSX.Element | null {
           <p role="status" aria-live="polite" className="sr-only">
             {`诊断完成：${(state.report.findings ?? state.report.issues).filter((item) => !('ignored' in item && item.ignored)).length} 个问题`}
           </p>
-          <ReportView report={state.report} />
+          <ReportView report={state.report} onIgnore={ignoreFinding} onRestore={restoreFinding} />
+          {actionError !== null && <p className="text-xs text-destructive">{actionError}</p>}
           {!state.report.mechanicalOnly && state.report.issues.some((issue) => issue.fixable) && (
             <FixFlow
               kind={props.kind}
@@ -176,8 +223,16 @@ export function DiagnosisPanel(props: DiagnosisPanelProps): JSX.Element | null {
   );
 }
 
-/** 单份报告渲染（批量体检结果展开也复用，add-asset-doctor F5） */
-export function ReportView({ report }: { report: DiagnosisReport }): JSX.Element {
+/** 单份报告渲染（批量体检结果展开也复用，add-asset-doctor F5；批量不传回调 = 只读） */
+export function ReportView({
+  report,
+  onIgnore,
+  onRestore,
+}: {
+  report: DiagnosisReport;
+  onIgnore?: (finding: RuleFinding) => void;
+  onRestore?: (finding: RuleFinding) => void;
+}): JSX.Element {
   const modelLabel = !report.mechanicalOnly && report.model !== '' ? report.model : null;
   return (
     <div role="region" aria-label="体检报告" className="rounded border bg-muted/30 p-3 space-y-2">
@@ -187,7 +242,11 @@ export function ReportView({ report }: { report: DiagnosisReport }): JSX.Element
         {modelLabel !== null && <span className="text-xs text-muted-foreground">{modelLabel}</span>}
       </div>
 
-      <IssueList report={report} />
+      <IssueList
+        report={report}
+        {...(onIgnore === undefined ? {} : { onIgnore })}
+        {...(onRestore === undefined ? {} : { onRestore })}
+      />
 
       {report.mechanicalOnly && (
         <p className="text-xs text-muted-foreground">

@@ -380,3 +380,12 @@ export interface DiagnosisCoverage {
   skippedRules: number;
   skippedReasons: Array<{ mode: RuleMode; reason: 'no-ai-config' | 'budget' | 'timeout'; count: number }>;
 }
+
+/** 忽略清单条目：按 ruleId + 库内路径 + 内容哈希失效（内容变更后自动重新提示） */
+export interface IgnoredFinding {
+  ruleId: string;
+  hubRelativePath: string;
+  /** 忽略时刻的资产内容哈希 */
+  contentHash: string;
+  ignoredAt: string;
+}

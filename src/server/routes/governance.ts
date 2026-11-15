@@ -31,6 +31,11 @@ import { assetDeepLink, buildQualityOverview, type QualityCoverage } from '../..
 import { ruleAppliesToKind } from '../../core/diagnosis-static.js';
 import { loadRuleRegistryFromFile, resolveRuleSetFile } from '../../core/diagnosis-rules.js';
 import {
+  countActiveIgnores,
+  sanitizeIgnoredFindings,
+  type DiagnosisIgnoreStore,
+} from '../../core/diagnosis-ignore.js';
+import {
   createGovernanceSnapshot,
   nodeRead,
   type GovernanceSnapshotDeps,
@@ -45,6 +50,8 @@ export interface GovernanceRouteDeps extends GovernanceSnapshotDeps {
   remediation?: Omit<RemediationRouteDeps, 'loadAssets' | 'read' | 'now' | 'invalidate'>;
   /** 重复治理子路由依赖（写库/归档/还原/批次存储） */
   duplicates?: Omit<Partial<DuplicateRouteDeps>, 'listAssets' | 'read'>;
+  /** 忽略清单：概览「已忽略 N 条」取生效条数（缺省 0，不读本机文件） */
+  ignoreStore?: DiagnosisIgnoreStore;
 }
 
 function isDimensionId(raw: string | undefined): raw is HealthDimensionId {
@@ -68,9 +75,13 @@ function parseInteger(
 
 /**
  * 概览覆盖度（refactor-governance-center T2）：按需加载口径如实披露。
- * 忽略清单接口尚未就绪 → ignoredCount 固定 0（依赖表约定的降级，不伪造数字）。
+ * 忽略条数取生效条目（内容哈希仍一致），过期条目不冒充「已忽略」（D7 透明披露）。
  */
-function overviewCoverage(assets: GovernanceAssetInput[], aiConfigured: boolean): QualityCoverage {
+function overviewCoverage(
+  assets: GovernanceAssetInput[],
+  aiConfigured: boolean,
+  ignoredCount: number,
+): QualityCoverage {
   let rulesVersion = '';
   let evaluatedRules = 0;
   let skippedRules = 0;
@@ -102,7 +113,7 @@ function overviewCoverage(assets: GovernanceAssetInput[], aiConfigured: boolean)
     skippedRules,
     skippedReasons: skippedRules > 0 ? [{ reason: 'no-ai-config', count: skippedRules }] : [],
     noChannelRules,
-    ignoredCount: 0,
+    ignoredCount,
     semanticEvaluated: aiConfigured && assets.some((asset) => asset.semanticEvaluated),
   };
 }
@@ -170,11 +181,18 @@ export function createGovernanceRoutes(deps: GovernanceRouteDeps = {}): Hono {
     const snapshot = await load(refresh === '1');
     const queue = collectGovernanceQueue(snapshot.assets, snapshot.groups, Number.MAX_SAFE_INTEGER);
     const aiConfigured = snapshot.health.qualityMode === 'mechanical+ai';
+    const ignoredCount =
+      deps.ignoreStore === undefined
+        ? 0
+        : countActiveIgnores(
+            sanitizeIgnoredFindings(deps.ignoreStore.load()),
+            (path) => (deps.read ?? nodeRead)(path),
+          );
     return c.json(
       buildQualityOverview({
         health: snapshot.health,
         queue,
-        coverage: overviewCoverage(snapshot.assets, aiConfigured),
+        coverage: overviewCoverage(snapshot.assets, aiConfigured, ignoredCount),
         ...(deps.now === undefined ? {} : { now: deps.now }),
         cached: snapshot.health.cached,
       }),

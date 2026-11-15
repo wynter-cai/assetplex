@@ -6,12 +6,15 @@
 
 import { describe, it, expect } from 'vitest';
 import { createGovernanceRoutes, type GovernanceRouteDeps } from '../../../src/server/routes/governance.js';
-import type { DiagnosisIssue } from '../../../src/core/types.js';
+import { hashIgnoredContent, type DiagnosisIgnoreStore } from '../../../src/core/diagnosis-ignore.js';
+import type { DiagnosisIssue, IgnoredFinding } from '../../../src/core/types.js';
 
 const GOOD = '---\nname: demo\nversion: "1"\ndescription: 演示用\n---\n正文\n';
 const EMPTY_DESC = '---\nname: demo\nversion: "1"\ndescription: ""\n---\n正文\n';
 
-function harness(opts: { files?: Record<string, string>; aiConfigured?: boolean } = {}) {
+function harness(
+  opts: { files?: Record<string, string>; aiConfigured?: boolean; ignoreStore?: DiagnosisIgnoreStore } = {},
+) {
   const files = opts.files ?? {};
   const semantic = new Map<string, DiagnosisIssue[]>();
   const deps: GovernanceRouteDeps = {
@@ -33,6 +36,7 @@ function harness(opts: { files?: Record<string, string>; aiConfigured?: boolean 
     now: () => '2026-11-15T00:00:00.000Z',
     remediation: { recordActivity: () => {} },
     duplicates: { recordActivity: () => {} },
+    ...(opts.ignoreStore === undefined ? {} : { ignoreStore: opts.ignoreStore }),
   };
   const routes = createGovernanceRoutes(deps);
   const get = async (path: string) => {
@@ -112,6 +116,23 @@ describe('GET /api/governance/overview', () => {
   it('refresh 参数非法 → 400', async () => {
     const { get } = harness();
     expect((await get('/overview?refresh=2')).status).toBe(400);
+  });
+
+  it('已忽略条数据实取生效条目：内容变更的过期条目不冒充已忽略', async () => {
+    const files = { 'skills/demo-a/SKILL.md': GOOD };
+    const active: IgnoredFinding = {
+      ruleId: 'SK-02',
+      hubRelativePath: 'skills/demo-a/SKILL.md',
+      contentHash: hashIgnoredContent(GOOD),
+      ignoredAt: '2026-11-01T00:00:00.000Z',
+    };
+    const expired: IgnoredFinding = { ...active, ruleId: 'SK-03', contentHash: '旧哈希' };
+    const { get } = harness({
+      files,
+      ignoreStore: { load: () => [active, expired], save: () => {} },
+    });
+    const overview = (await get('/overview')).body as unknown as OverviewBody;
+    expect(overview.coverage.ignoredCount).toBe(1);
   });
 });
 

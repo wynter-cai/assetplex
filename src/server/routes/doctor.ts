@@ -32,6 +32,7 @@ import {
 import type { LlmClient } from '../../core/skill-ai-classification.js';
 import { DOCTOR_ASSET_KINDS, type DiagnosisRuleSet, type DoctorAssetKind } from '../../core/types.js';
 import { loadRouteRuleSet } from '../lib/rule-registry.js';
+import { sanitizeIgnoredFindings, type DiagnosisIgnoreStore } from '../../core/diagnosis-ignore.js';
 import { listHubFiles, type HubFileCategory } from '../../core/hub-files.js';
 import { nodeAiConfigStore, nodeDoctorCacheStore, nodeDoctorLastRunStore } from '../lib/node-ai-classify-store.js';
 import { createOpenAiLlmClient } from '../lib/openai-llm-client.js';
@@ -49,6 +50,8 @@ export interface DoctorRouteDeps {
   ruleSet?: DiagnosisRuleSet | null;
   /** 上次诊断记录：缺省 Node 实现（~/.assetplex/doctor-last.json），读不到按未诊断处理 */
   lastRunStore?: DoctorLastRunStore;
+  /** 忽略清单：缺省不启用（组合根注入 Node 实现，避免测试写入使用者本机） */
+  ignoreStore?: DiagnosisIgnoreStore;
   now?: () => string;
 }
 
@@ -76,7 +79,8 @@ export function isHubInternalPath(relativePath: string): boolean {
   return full !== hubRoot && full.startsWith(hubRoot + sep);
 }
 
-const nodeRead = {
+/** 库内资产读取的 Node 实现（诊断 / 忽略清单共用同一路径守卫） */
+export const nodeRead = {
   read: (hubRelativePath: string): string | null => {
     try {
       if (!isHubInternalPath(hubRelativePath)) return null;
@@ -163,6 +167,9 @@ export function createDoctorRoutes(deps: DoctorRouteDeps = {}): Hono {
         llm,
         config,
         ruleSet: registry.ruleSet,
+        ...(deps.ignoreStore === undefined
+          ? {}
+          : { ignores: sanitizeIgnoredFindings(deps.ignoreStore.load()) }),
         // 写入端只在组合根显式注入时启用：避免测试 / 嵌入式调用把摘要落到使用者本机
         ...(deps.lastRunStore === undefined ? {} : { lastRunStore: deps.lastRunStore }),
         ...(deps.now === undefined ? {} : { now: deps.now }),

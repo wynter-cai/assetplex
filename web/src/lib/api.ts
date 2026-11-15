@@ -59,6 +59,8 @@ import type {
   DoctorApplyRequest,
   DoctorApplyResponse,
   DoctorUndoResponse,
+  IgnoreFindingResponse,
+  RestoreFindingResponse,
   FixDraftResponse,
   ProjectListResult,
   ProjectOpenTarget,
@@ -376,6 +378,23 @@ export const api = {
     request<QualityOverview>(`/governance/overview${refresh ? '?refresh=1' : ''}`),
   /** 规则清单（与诊断引擎同一份规则集，含版本与计数） */
   getDiagnosisRules: () => request<DiagnosisRuleListResponse>('/diagnosis/rules'),
+  /** 忽略一条 finding（按路径 + 规则绑定；内容变更后自动失效并重新提示） */
+  ignoreDiagnosisFinding: (body: {
+    kind: DoctorAssetKind;
+    hubRelativePath: string;
+    ruleId: string;
+    contentHash?: string;
+  }) =>
+    request<IgnoreFindingResponse>('/diagnosis/ignore', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  /** 恢复一条被忽略的 finding */
+  restoreDiagnosisFinding: (params: { hubRelativePath: string; ruleId: string }) =>
+    request<RestoreFindingResponse>(
+      `/diagnosis/ignore?hubRelativePath=${encodeURIComponent(params.hubRelativePath)}&ruleId=${encodeURIComponent(params.ruleId)}`,
+      { method: 'DELETE' },
+    ),
   getRemediationPlan: (body: RemediationPlanRequest = {}) =>
     request<RemediationPlan>('/governance/remediation/plan', {
       method: 'POST',

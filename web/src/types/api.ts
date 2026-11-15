@@ -874,6 +874,28 @@ export interface RuleFinding {
   ignored: boolean;
 }
 
+/** 忽略清单条目：按 ruleId + 库内路径 + 内容哈希绑定，内容变更后自动失效 */
+export interface IgnoredFinding {
+  ruleId: string;
+  hubRelativePath: string;
+  contentHash: string;
+  ignoredAt: string;
+}
+
+/** POST /api/diagnosis/ignore 响应 */
+export interface IgnoreFindingResponse {
+  ignored: IgnoredFinding;
+  /** 该规则在该资产上是否还有未忽略命中（按整条忽略，恒为 0） */
+  remainingForRule: number;
+}
+
+/** DELETE /api/diagnosis/ignore 响应 */
+export interface RestoreFindingResponse {
+  ruleId: string;
+  hubRelativePath: string;
+  restored: boolean;
+}
+
 export interface DiagnosisSkippedReason {
   mode: 'static' | 'llm';
   reason: 'no-ai-config' | 'budget' | 'timeout';

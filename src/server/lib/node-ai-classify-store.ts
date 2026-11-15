@@ -36,6 +36,10 @@ import {
   type FixDraftCacheEntry,
   type FixDraftCacheStore,
 } from '../../core/doctor-fix.js';
+import {
+  sanitizeIgnoredFindings,
+  type DiagnosisIgnoreStore,
+} from '../../core/diagnosis-ignore.js';
 import { expandHome } from '../../utils/paths.js';
 
 /** 解析 Hub 元数据目录下的文件路径：$ASSETPLEX_DIR/<name> */
@@ -160,6 +164,22 @@ export function createNodeDoctorLastRunStore(
 }
 
 export const nodeDoctorLastRunStore = createNodeDoctorLastRunStore();
+
+/** 忽略清单存储（diagnosis-ignores.json，只写本机；内容哈希变更即失效） */
+export function createNodeDiagnosisIgnoreStore(
+  filePath: string = resolveAssetplexFile('diagnosis-ignores.json'),
+): DiagnosisIgnoreStore {
+  return {
+    load(): unknown {
+      return sanitizeIgnoredFindings(readJson(filePath));
+    },
+    save(items): void {
+      writeJson(filePath, items);
+    },
+  };
+}
+
+export const nodeDiagnosisIgnoreStore = createNodeDiagnosisIgnoreStore();
 
 /** 读取当前生效配置的便捷封装（路由层使用） */
 export function loadCurrentAiConfig(store: AiConfigStore = nodeAiConfigStore): AiClassifyConfig {

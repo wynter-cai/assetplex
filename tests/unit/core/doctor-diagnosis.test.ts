@@ -20,7 +20,8 @@ import type { DoctorCacheStore } from '../../../src/core/doctor-cache.js';
 import type { AiClassifyConfig } from '../../../src/core/ai-config.js';
 import type { LlmClient } from '../../../src/core/skill-ai-classification.js';
 import { loadRuleRegistryFromFile, DEFAULT_RULES_RELATIVE_PATH } from '../../../src/core/diagnosis-rules.js';
-import type { DiagnosisRuleSet } from '../../../src/core/types.js';
+import { hashIgnoredContent } from '../../../src/core/diagnosis-ignore.js';
+import type { DiagnosisRuleSet, IgnoredFinding } from '../../../src/core/types.js';
 
 const RULE_SET = loadRuleRegistryFromFile(resolve(process.cwd(), DEFAULT_RULES_RELATIVE_PATH)).ruleSet;
 
@@ -162,6 +163,7 @@ function harness(opts: {
   llmOutput?: string;
   cache?: DoctorCacheStore;
   ruleSet?: DiagnosisRuleSet | null;
+  ignores?: IgnoredFinding[];
 } = {}): HarnessDeps {
   const calls: { system: string; user: string }[] = [];
   const content = opts.content ?? '---\nname: demo-skill\ndescription: 演示\n---\n正文内容\n';
@@ -181,6 +183,7 @@ function harness(opts: {
       llm,
       ...(config === null ? { config: null } : { config }),
       ruleSet: opts.ruleSet ?? null,
+      ...(opts.ignores === undefined ? {} : { ignores: opts.ignores }),
       now: () => '2026-10-18T12:00:00.000Z',
     },
   };
@@ -326,5 +329,38 @@ describe('diagnoseAsset 规则报告', () => {
     expect(report.rulesVersion).toBe('');
     expect(report.coverage).toEqual({ evaluatedRules: 0, skippedRules: 0, skippedReasons: [] });
     expect(report.issues.some((issue) => issue.criterion === 'token-economy')).toBe(true);
+  });
+});
+
+// ================= T5: 忽略清单生效与失效（Scenario 4.2 / 4.3） =================
+
+describe('diagnoseAsset 忽略清单', () => {
+  const skillPath = 'skills/demo-skill/SKILL.md';
+  const content = '---\nname: Demo_Skill\ndescription: Use when 用户要导出 CSV。\n---\n正文\n';
+
+  function ignoreEntry(contentHash: string): IgnoredFinding {
+    return { ruleId: 'SK-02', hubRelativePath: skillPath, contentHash, ignoredAt: '2026-11-01T00:00:00.000Z' };
+  }
+
+  it('同内容再次诊断：命中被标记为已忽略，且不再进入旧 issues', async () => {
+    const h = harness({
+      ruleSet: RULE_SET,
+      content,
+      ignores: [ignoreEntry(hashIgnoredContent(content))],
+    });
+    const report = await diagnoseAsset({ kind: 'skill', hubRelativePath: skillPath }, h.deps);
+    const finding = report.findings.find((item) => item.ruleId === 'SK-02');
+
+    expect(finding?.ignored).toBe(true);
+    expect(report.issues.some((issue) => issue.criterion === 'SK-02')).toBe(false);
+  });
+
+  it('内容变更后忽略失效，仍命中则重新提示', async () => {
+    const h = harness({ ruleSet: RULE_SET, content, ignores: [ignoreEntry('旧哈希')] });
+    const report = await diagnoseAsset({ kind: 'skill', hubRelativePath: skillPath }, h.deps);
+    const finding = report.findings.find((item) => item.ruleId === 'SK-02');
+
+    expect(finding?.ignored).toBe(false);
+    expect(report.issues.some((issue) => issue.criterion === 'SK-02')).toBe(true);
   });
 });

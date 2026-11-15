@@ -29,9 +29,11 @@ function severityVariant(severity: DiagnosisSeverity): 'destructive' | 'warning'
 
 interface FindingRowProps {
   finding: RuleFinding;
+  onIgnore?: (finding: RuleFinding) => void;
+  onRestore?: (finding: RuleFinding) => void;
 }
 
-function FindingRow({ finding }: FindingRowProps): JSX.Element {
+function FindingRow({ finding, onIgnore, onRestore }: FindingRowProps): JSX.Element {
   const [open, setOpen] = useState(false);
   const evidence = finding.evidence;
 
@@ -44,6 +46,25 @@ function FindingRow({ finding }: FindingRowProps): JSX.Element {
         <Badge variant="outline">置信度 {finding.confidence}</Badge>
         {finding.fixable && !finding.insufficientEvidence && <Badge variant="secondary">可修复</Badge>}
         {finding.ignored && <Badge variant="outline">已忽略</Badge>}
+        {finding.ignored
+          ? onRestore !== undefined && (
+              <button
+                type="button"
+                className="text-[11px] text-primary underline underline-offset-2"
+                onClick={() => onRestore(finding)}
+              >
+                恢复
+              </button>
+            )
+          : onIgnore !== undefined && (
+              <button
+                type="button"
+                className="text-[11px] text-primary underline underline-offset-2"
+                onClick={() => onIgnore(finding)}
+              >
+                忽略
+              </button>
+            )}
         <button
           type="button"
           className="ml-auto text-[11px] text-primary underline underline-offset-2"
@@ -111,9 +132,12 @@ function LegacyRow({ issue }: { issue: DiagnosisIssue }): JSX.Element {
 
 export interface IssueListProps {
   report: DiagnosisReport;
+  /** 传入即可在单条 finding 上提供忽略 / 恢复（批量报告不传，保持只读） */
+  onIgnore?: (finding: RuleFinding) => void;
+  onRestore?: (finding: RuleFinding) => void;
 }
 
-export function IssueList({ report }: IssueListProps): JSX.Element {
+export function IssueList({ report, onIgnore, onRestore }: IssueListProps): JSX.Element {
   const findings = report.findings;
   if (findings !== undefined && findings.length > 0) {
     const ignoredCount = findings.filter((item) => item.ignored).length;
@@ -121,7 +145,12 @@ export function IssueList({ report }: IssueListProps): JSX.Element {
       <div className="space-y-2">
         <ul className="space-y-2">
           {findings.map((finding) => (
-            <FindingRow key={finding.id} finding={finding} />
+            <FindingRow
+              key={finding.id}
+              finding={finding}
+              {...(onIgnore === undefined ? {} : { onIgnore })}
+              {...(onRestore === undefined ? {} : { onRestore })}
+            />
           ))}
         </ul>
         {ignoredCount > 0 && (

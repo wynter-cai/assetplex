@@ -88,6 +88,31 @@ describe('IssueList', () => {
     expect(screen.getByText('已忽略 1 条')).toBeInTheDocument();
   });
 
+  it('提供忽略回调时：未忽略项可点「忽略」并回传该条', () => {
+    const ignored: string[] = [];
+    render(<IssueList report={report()} onIgnore={(item) => ignored.push(item.id)} />);
+    fireEvent.click(screen.getByRole('button', { name: '忽略' }));
+    expect(ignored).toEqual(['f1']);
+  });
+
+  it('已忽略项提供恢复回调时：可点「恢复」并回传该条', () => {
+    const restored: string[] = [];
+    render(
+      <IssueList
+        report={report({ findings: [finding({ ignored: true })] })}
+        onRestore={(item) => restored.push(item.id)}
+      />,
+    );
+    expect(screen.queryByRole('button', { name: '忽略' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '恢复' }));
+    expect(restored).toEqual(['f1']);
+  });
+
+  it('未提供回调时不渲染忽略 / 恢复按钮（批量报告只读）', () => {
+    render(<IssueList report={report()} />);
+    expect(screen.queryByRole('button', { name: '忽略' })).not.toBeInTheDocument();
+  });
+
   it('旧响应缺 findings：回退 issues，保留机械检查与准则链接', () => {
     render(
       <IssueList
