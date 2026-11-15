@@ -165,7 +165,12 @@ export function DistributionDialog({
         </div>
 
         {results.length > 0 && (
-          <div className="rounded-md border bg-muted/30 p-2 space-y-1" aria-label="分发结果">
+          <div
+            role="status"
+            aria-live="polite"
+            className="rounded-md border bg-muted/30 p-2 space-y-1"
+            aria-label="分发结果"
+          >
             {results.map((item) => (
               <div key={item.tool} className="text-xs">
                 <span className="font-medium">{TOOL_DISPLAY_NAME[item.tool] ?? item.tool}：</span>

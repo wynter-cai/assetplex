@@ -102,6 +102,8 @@ describe('DiagnosisPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: '开始诊断' }));
     await waitFor(() => expect(api.doctorDiagnose).toHaveBeenCalledTimes(1));
     expect(api.doctorDiagnose).toHaveBeenCalledWith({ kind: 'skill', hubRelativePath: 'skills/demo-skill/SKILL.md' });
+    // T12：完成后给读屏播报问题数
+    expect(await screen.findByRole('status')).toHaveTextContent(/诊断完成：2\s*个问题/);
   });
 
   it('报告渲染：结论徽标 + 逐条问题（严重度/机械检查标注/准则链接/建议）', async () => {

@@ -264,13 +264,17 @@ export function FixFlow(props: FixFlowProps): JSX.Element {
       {undoMessage !== '' && <p className="text-xs text-muted-foreground">{undoMessage}</p>}
 
       {rechecking && (
-        <p className="flex items-center gap-2 text-xs text-muted-foreground">
+        <p role="status" aria-live="polite" className="flex items-center gap-2 text-xs text-muted-foreground">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
           正在复检修复结果…
         </p>
       )}
       {!rechecking && recheckMessage !== '' && (
-        <div className="flex flex-wrap items-center gap-2">
+        <div
+          role="status"
+          aria-live="polite"
+          className="flex flex-wrap items-center gap-2"
+        >
           <p className={`text-xs ${recheckMessage.startsWith('复检失败') ? 'text-destructive' : 'text-muted-foreground'}`}>
             {recheckMessage}
           </p>

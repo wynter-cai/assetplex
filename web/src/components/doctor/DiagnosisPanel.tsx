@@ -137,6 +137,9 @@ export function DiagnosisPanel(props: DiagnosisPanelProps): JSX.Element | null {
 
       {state.kind === 'done' && (
         <>
+          <p role="status" aria-live="polite" className="sr-only">
+            {`诊断完成：${(state.report.findings ?? state.report.issues).filter((item) => !('ignored' in item && item.ignored)).length} 个问题`}
+          </p>
           <ReportView report={state.report} />
           {!state.report.mechanicalOnly && state.report.issues.some((issue) => issue.fixable) && (
             <FixFlow

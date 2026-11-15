@@ -227,6 +227,8 @@ describe('DistributionDialog 立即同步', () => {
 
     expect(await screen.findByText(/失败：目标目录不可写/)).toBeInTheDocument();
     expect(screen.getByText(/已写入 1 项/)).toBeInTheDocument();
+    // T12：结果区是可播报的具名状态区
+    expect(screen.getByRole('status', { name: '分发结果' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /重试失败项（1）/ }));
     await waitFor(() => expect(runSync).toHaveBeenLastCalledWith(['codex'], false, { backup: true }));
