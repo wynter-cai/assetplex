@@ -16,6 +16,7 @@ import Mcp from './pages/Mcp';
 import Settings from './pages/Settings';
 import Projects from './pages/Projects';
 import Duplicates from './pages/Duplicates';
+import Governance from './pages/Governance';
 import Activities from './pages/Activities';
 import Onboarding from './pages/Onboarding';
 import { FirstRunGate } from './components/onboarding/FirstRunGate';
@@ -40,6 +41,8 @@ export default function App(): JSX.Element {
         <Route path="/vault/:category" element={<Vault />} />
         <Route path="/projects" element={<Projects />} />
         <Route path="/duplicates" element={<Duplicates />} />
+        {/* 治理临时容器页：一期只有体检与待办视图，治理中心落地后替换内容不改 URL */}
+        <Route path="/governance" element={<Governance />} />
         <Route path="/connections" element={<Connections />} />
         {/* 活动页：操作时间线（add-activity-log） */}
         <Route path="/activities" element={<Activities />} />
