@@ -75,7 +75,7 @@
 ## T6【P1】其它入口改为深链
 
 - [ ] `web/src/lib/use-home-dashboard.ts`：`homeFixTargetPath` 返回 `/vault/<kind>?asset=<encodeURIComponent(hubPath)>`（保持纯函数可测；未知类别回退 `/vault`）
-- [ ] 首页待办 / 治理页问题行：新增「在资产库中打开」深链（治理页就地展开行为不变）
+- [ ] 首页待办 / 质量中心问题行：新增「在资产库中打开」深链（质量中心不就地展开资产问题报告）
 - **测试**：`web/src/components/home/TodayQueue.test.tsx`、`web/src/pages/Governance.test.tsx` 增补 href 断言；`use-home-dashboard` 单测覆盖编码
 - **验证**：`npx vitest run src/components/home src/pages/Governance.test.tsx` 全绿
 
