@@ -26,7 +26,9 @@ import {
   sanitizeDoctorEntries,
   type DoctorCacheEntry,
   type DoctorCacheStore,
+  type DoctorLastRunStore,
 } from './doctor-cache.js';
+import { persistDoctorLastRun } from './doctor-last-run.js';
 import {
   type DiagnosisCoverage,
   type DiagnosisIssue,
@@ -166,6 +168,8 @@ export interface DiagnoseDeps {
   config: AiClassifyConfig | null;
   /** 规则集：null/缺省 = 规则集未加载，本轮无规则结论（findings 为空，coverage 全零） */
   ruleSet?: DiagnosisRuleSet | null;
+  /** 上次运行摘要记录：缺省不写（既有调用零改动；路由层注入 Node 实现） */
+  lastRunStore?: DoctorLastRunStore;
   now?: () => string;
 }
 
@@ -220,7 +224,7 @@ export async function diagnoseAsset(
   const findings = staticResult.findings;
   const config = deps.config;
   if (config === null || !isAiConfigComplete(config)) {
-    return mechanicalOnlyReport(
+    const report = mechanicalOnlyReport(
       input,
       mechanical,
       findings,
@@ -228,14 +232,17 @@ export async function diagnoseAsset(
       rulesVersion,
       now,
     );
+    persistDoctorLastRun(deps, input, report, content, null, now);
+    return report;
   }
 
   const criteria = deps.getCriteria();
+  const criteriaHash = hashCriteria(criteria);
   const { block, used, skipped } = assembleCriteriaPromptBlock(criteria, input.kind);
   const key = computeDoctorCacheKey({
     kind: input.kind,
     content,
-    criteriaHash: hashCriteria(criteria),
+    criteriaHash,
     model: config.model,
   });
 
@@ -266,7 +273,7 @@ export async function diagnoseAsset(
   }
 
   const hasHigh = mechanical.some((issue) => issue.severity === 'high') || findings.some((finding) => finding.severity === 'high');
-  return {
+  const report: DiagnosisReport = {
     kind: input.kind,
     hubRelativePath: input.hubRelativePath,
     overall: mergeOverall(modelPart.overall, hasHigh),
@@ -283,4 +290,6 @@ export async function diagnoseAsset(
     model: modelPart.model,
     generatedAt: modelPart.generatedAt,
   };
+  persistDoctorLastRun(deps, input, report, content, criteriaHash, now);
+  return report;
 }
