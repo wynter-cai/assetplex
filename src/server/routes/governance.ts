@@ -20,11 +20,16 @@ import {
 } from '../../core/governance-suggestions.js';
 import {
   collectDimensionIssues,
+  collectGovernanceQueue,
   HEALTH_DIMENSION_IDS,
   sortHealthIssues,
+  type GovernanceAssetInput,
   type HealthDimensionId,
   type HealthIssueRef,
 } from '../../core/governance-health.js';
+import { assetDeepLink, buildQualityOverview, type QualityCoverage } from '../../core/quality-overview.js';
+import { ruleAppliesToKind } from '../../core/diagnosis-static.js';
+import { loadRuleRegistryFromFile, resolveRuleSetFile } from '../../core/diagnosis-rules.js';
 import {
   createGovernanceSnapshot,
   nodeRead,
@@ -59,6 +64,47 @@ function parseInteger(
   const value = Number(raw);
   if (!Number.isSafeInteger(value) || value < min || value > max) return null;
   return value;
+}
+
+/**
+ * 概览覆盖度（refactor-governance-center T2）：按需加载口径如实披露。
+ * 忽略清单接口尚未就绪 → ignoredCount 固定 0（依赖表约定的降级，不伪造数字）。
+ */
+function overviewCoverage(assets: GovernanceAssetInput[], aiConfigured: boolean): QualityCoverage {
+  let rulesVersion = '';
+  let evaluatedRules = 0;
+  let skippedRules = 0;
+  let noChannelRules = 0;
+  try {
+    const file = resolveRuleSetFile();
+    if (file !== null) {
+      const { ruleSet } = loadRuleRegistryFromFile(file);
+      rulesVersion = ruleSet.version;
+      const kinds = [...new Set(assets.map((asset) => asset.kind))];
+      for (const rule of ruleSet.rules) {
+        if (rule.category === 'mcp') {
+          noChannelRules += 1;
+          continue;
+        }
+        const applies = kinds.some((kind) => ruleAppliesToKind(rule, kind));
+        if (!applies) continue;
+        if (rule.mode === 'static' || aiConfigured) evaluatedRules += 1;
+        else skippedRules += 1;
+      }
+    }
+  } catch {
+    // 规则集致命错误：概览仍返回健康分与聚类，覆盖度按未知披露（不 500 整页）
+    rulesVersion = '';
+  }
+  return {
+    rulesVersion,
+    evaluatedRules,
+    skippedRules,
+    skippedReasons: skippedRules > 0 ? [{ reason: 'no-ai-config', count: skippedRules }] : [],
+    noChannelRules,
+    ignoredCount: 0,
+    semanticEvaluated: aiConfigured && assets.some((asset) => asset.semanticEvaluated),
+  };
 }
 
 export function createGovernanceRoutes(deps: GovernanceRouteDeps = {}): Hono {
@@ -112,6 +158,29 @@ export function createGovernanceRoutes(deps: GovernanceRouteDeps = {}): Hono {
     return c.json(health);
   });
 
+  /**
+   * 全局体检报告概览（refactor-governance-center T2）：问题按类型聚类 + 影响面排序。
+   * 待处理总数直接取与首页待办同源的去重队列总数，禁止二次计算。
+   */
+  routes.get('/overview', async (c) => {
+    const refresh = c.req.query('refresh');
+    if (refresh !== undefined && refresh !== '' && refresh !== '0' && refresh !== '1') {
+      return c.json({ error: 'refresh 只允许 0 或 1' }, 400);
+    }
+    const snapshot = await load(refresh === '1');
+    const queue = collectGovernanceQueue(snapshot.assets, snapshot.groups, Number.MAX_SAFE_INTEGER);
+    const aiConfigured = snapshot.health.qualityMode === 'mechanical+ai';
+    return c.json(
+      buildQualityOverview({
+        health: snapshot.health,
+        queue,
+        coverage: overviewCoverage(snapshot.assets, aiConfigured),
+        ...(deps.now === undefined ? {} : { now: deps.now }),
+        cached: snapshot.health.cached,
+      }),
+    );
+  });
+
   routes.get('/issues', async (c) => {
     const dimension = c.req.query('dimension');
     if (!isDimensionId(dimension)) {
@@ -135,7 +204,21 @@ export function createGovernanceRoutes(deps: GovernanceRouteDeps = {}): Hono {
       items = items.filter((item) => SEVERITY_RANK[item.severity] <= floorRank);
     }
 
-    return c.json({ dimension, total: items.length, items: items.slice(offset, offset + limit) });
+    return c.json({
+      dimension,
+      total: items.length,
+      items: items.slice(offset, offset + limit).map((item) => ({
+        ...item,
+        // 规则编号与置信度在快照层尚不可得：按标题口径如实标注，前端不得自造
+        ruleId: null,
+        keySource: 'title',
+        confidence: 'medium',
+        source: item.source ?? 'rule',
+        ignored: false,
+        evidence: [],
+        deepLink: assetDeepLink(item.kind, item.hubRelativePath),
+      })),
+    });
   });
 
   // 一键整改子路由：复用同一份资产快照，写库后清空健康分缓存

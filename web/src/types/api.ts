@@ -980,6 +980,63 @@ export interface HealthIssueRef {
   hubRelativePath: string;
   assetName: string;
   fixable: boolean;
+  /** 问题来源（质量中心追加，可选）：rule = 机械/静态，llm = 语义 */
+  source?: FindingSource;
+}
+
+// ========== 质量中心概览（refactor-governance-center T2） ==========
+
+export type ClusterKeySource = 'rule' | 'title';
+
+export interface QualityClusterAssetRef {
+  hubRelativePath: string;
+  assetName: string;
+  kind: DoctorAssetKind;
+  severity: DiagnosisSeverity;
+  confidence: DiagnosisConfidence;
+  source: FindingSource;
+  fixable: boolean;
+  ignored: boolean;
+  deepLink: string;
+}
+
+export interface QualityIssueCluster {
+  key: string;
+  keySource: ClusterKeySource;
+  ruleId: string | null;
+  title: string;
+  category: string;
+  severity: DiagnosisSeverity;
+  mode: 'static' | 'llm';
+  assetCount: number;
+  hitCount: number;
+  severityDistribution: Record<DiagnosisSeverity, number>;
+  fixableAssetCount: number;
+  estimatedCalls: number;
+  cachedCount: number;
+  impactScore: number;
+  samples: QualityClusterAssetRef[];
+}
+
+export interface QualityCoverage {
+  rulesVersion: string;
+  evaluatedRules: number;
+  skippedRules: number;
+  skippedReasons: Array<{ reason: string; count: number }>;
+  noChannelRules: number;
+  ignoredCount: number;
+  semanticEvaluated: boolean;
+}
+
+/** GET /api/governance/overview */
+export interface QualityOverview {
+  health: GovernanceHealth;
+  clusters: QualityIssueCluster[];
+  sortRule: 'impact-desc-calls-asc';
+  pendingTotal: number;
+  coverage: QualityCoverage;
+  generatedAt: string;
+  cached: boolean;
 }
 
 export interface HealthDimension {

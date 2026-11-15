@@ -9,7 +9,7 @@
  * Scenario 1/2/4、边界（零资产 / 数据缺失）
  */
 
-import type { DiagnosisIssue, DiagnosisSeverity, DoctorAssetKind } from './types.js';
+import type { DiagnosisIssue, DiagnosisSeverity, DoctorAssetKind, FindingSource } from './types.js';
 import type { AssetDistributionInfo, DistributionStatus } from './distribution-status.js';
 
 // ============ 契约类型（对应 api-contract.ts） ============
@@ -28,6 +28,11 @@ export interface HealthIssueRef {
   hubRelativePath: string;
   assetName: string;
   fixable: boolean;
+  /**
+   * 问题来源（refactor-governance-center 追加，可选不破坏既有响应）：
+   * 机械/静态 → rule；AI 语义 → llm；分发/唯一性等结构性项不填。
+   */
+  source?: FindingSource;
 }
 
 export interface HealthDimension {
@@ -186,6 +191,7 @@ function toIssueRef(
   asset: GovernanceAssetInput,
   issue: DiagnosisIssue,
   index: number,
+  source?: FindingSource,
 ): HealthIssueRef {
   return {
     id: `${dimension}:${asset.hubRelativePath}:${issue.criterion}:${index}`,
@@ -195,6 +201,7 @@ function toIssueRef(
     hubRelativePath: asset.hubRelativePath,
     assetName: asset.name,
     fixable: issue.fixable,
+    ...(source === undefined ? {} : { source }),
   };
 }
 
@@ -214,13 +221,22 @@ export function collectDimensionIssues(
   const issues: HealthIssueRef[] = [];
 
   if (dimension === 'completeness' || dimension === 'quality') {
-    const pick =
-      dimension === 'completeness'
-        ? (asset: GovernanceAssetInput): DiagnosisIssue[] =>
-            asset.mechanicalIssues.filter((i) => COMPLETENESS_CRITERIA.has(i.criterion))
-        : (asset: GovernanceAssetInput): DiagnosisIssue[] => [...asset.mechanicalIssues, ...asset.semanticIssues];
+    if (dimension === 'completeness') {
+      for (const asset of assets) {
+        asset.mechanicalIssues
+          .filter((i) => COMPLETENESS_CRITERIA.has(i.criterion))
+          .forEach((issue, index) => issues.push(toIssueRef(dimension, asset, issue, index, 'rule')));
+      }
+      return issues;
+    }
+    // 规范性 = 机械 + 语义：逐批标注来源，供质量中心聚类如实展示
     for (const asset of assets) {
-      pick(asset).forEach((issue, index) => issues.push(toIssueRef(dimension, asset, issue, index)));
+      asset.mechanicalIssues.forEach((issue, index) =>
+        issues.push(toIssueRef(dimension, asset, issue, index, 'rule')),
+      );
+      asset.semanticIssues.forEach((issue, index) =>
+        issues.push(toIssueRef(dimension, asset, issue, index, 'llm')),
+      );
     }
     return issues;
   }

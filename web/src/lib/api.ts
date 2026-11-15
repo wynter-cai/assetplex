@@ -73,6 +73,7 @@ import type {
   GithubClassifyResult,
   GovernanceHealth,
   GovernanceIssueList,
+  QualityOverview,
   GovernanceIssueQuery,
   RemediationApplyRequest,
   RemediationApplyResponse,
@@ -369,6 +370,9 @@ export const api = {
     if (query.offset !== undefined) params.set('offset', String(query.offset));
     return request<GovernanceIssueList>(`/governance/issues?${params.toString()}`);
   },
+  /** 质量中心全局概览（聚类 + 影响面排序 + 待处理总数同源） */
+  getQualityOverview: (refresh = false) =>
+    request<QualityOverview>(`/governance/overview${refresh ? '?refresh=1' : ''}`),
   getRemediationPlan: (body: RemediationPlanRequest = {}) =>
     request<RemediationPlan>('/governance/remediation/plan', {
       method: 'POST',
