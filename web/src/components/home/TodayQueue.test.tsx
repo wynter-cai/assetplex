@@ -104,7 +104,7 @@ describe('TodayQueue — 今日待办', () => {
     expect(screen.queryByText('一键修复')).not.toBeInTheDocument();
   });
 
-  it('Scenario 2.2 / 2.4：可修复项额外给出「去资产库修改」，类别不可映射回退 /vault', () => {
+  it('Scenario 2.2 / 2.4：每行都给「在资产库中打开」深链，类别不可映射回退 /vault（T6）', () => {
     renderQueue(
       queue([
         issue({ id: 'A', kind: 'rule', fixable: true }),
@@ -113,15 +113,19 @@ describe('TodayQueue — 今日待办', () => {
       ]),
     );
     const rows = screen.getAllByTestId('queue-item');
-    expect(within(rows[0]).getByRole('link', { name: '去资产库修改' })).toHaveAttribute(
+    expect(within(rows[0]).getByRole('link', { name: '在资产库中打开' })).toHaveAttribute(
       'href',
-      '/vault/rule',
+      '/vault/rule?asset=identity%2FA.md',
     );
-    expect(within(rows[1]).getByRole('link', { name: '去资产库修改' })).toHaveAttribute(
+    expect(within(rows[1]).getByRole('link', { name: '在资产库中打开' })).toHaveAttribute(
       'href',
       '/vault',
     );
-    expect(within(rows[2]).queryByRole('link', { name: '去资产库修改' })).not.toBeInTheDocument();
+    // 不可修复也要能直达详情看证据
+    expect(within(rows[2]).getByRole('link', { name: '在资产库中打开' })).toHaveAttribute(
+      'href',
+      '/vault/rule?asset=identity%2FC.md',
+    );
   });
 
   it('Scenario 2.3：点「查看」就地展开体检报告，不跳页', async () => {

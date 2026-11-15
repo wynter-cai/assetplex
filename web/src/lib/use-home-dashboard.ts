@@ -22,22 +22,29 @@ export function formatHomeTimestamp(iso: string | null): string {
   return date.toLocaleString('zh-CN', { hour12: false });
 }
 
-/** 待办行「去资产库修改」：未建类别页的 kind 回退 /vault（spec Scenario 2.4） */
-export function homeFixTargetPath(kind: DoctorAssetKind): HomeFixTargetPath {
-  switch (kind) {
-    case 'identity':
-      return '/vault/identity';
-    case 'skill':
-      return '/vault/skill';
-    case 'rule':
-      return '/vault/rule';
-    case 'agent':
-      return '/vault/agent';
-    case 'memory':
-      return '/vault/memory';
-    default:
-      return '/vault';
-  }
+/**
+ * 待办行「在资产库中打开」：带上资产路径走深链（refactor-asset-pipeline T6），
+ * 未建类别页的 kind 回退 /vault（spec Scenario 2.4）。
+ */
+export function homeFixTargetPath(kind: DoctorAssetKind, hubPath?: string): HomeFixTargetPath {
+  const base = ((): string => {
+    switch (kind) {
+      case 'identity':
+        return '/vault/identity';
+      case 'skill':
+        return '/vault/skill';
+      case 'rule':
+        return '/vault/rule';
+      case 'agent':
+        return '/vault/agent';
+      case 'memory':
+        return '/vault/memory';
+      default:
+        return '/vault';
+    }
+  })() as HomeFixTargetPath;
+  if (hubPath === undefined || hubPath === '' || base === '/vault') return base;
+  return `${base}?asset=${encodeURIComponent(hubPath)}` as HomeFixTargetPath;
 }
 
 export interface HomeDashboardView {

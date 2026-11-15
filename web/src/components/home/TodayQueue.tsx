@@ -93,11 +93,12 @@ export function TodayQueue({ issues }: TodayQueueProps): JSX.Element | null {
                   <p className="text-13 font-medium leading-snug">{issue.title}</p>
                   <p className="text-12 text-muted-foreground">{issue.assetName}</p>
                 </div>
-                {issue.fixable && (
-                  <Link to={homeFixTargetPath(issue.kind)} className={LINK_CLASS}>
-                    去资产库修改
-                  </Link>
-                )}
+                <Link
+                  to={homeFixTargetPath(issue.kind, issue.hubRelativePath)}
+                  className={LINK_CLASS}
+                >
+                  在资产库中打开
+                </Link>
                 <Button
                   variant="ghost"
                   size="sm"
