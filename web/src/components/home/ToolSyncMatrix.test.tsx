@@ -2,7 +2,7 @@
  * 首页工具与同步矩阵测试（refactor-home-action-panel T8）
  *
  * spec: specs/home-dashboard.spec.md Requirement 4
- * 断言重点：五种状态文案、漂移处数、未安装不可点、深链 /connections?tool=、
+ * 断言重点：五种状态文案、不一致处数与说明、未安装不可点、深链 /connections?tool=、
  * 无同步记录不冒充分数、一个工具都没有时的空态。
  */
 
@@ -31,7 +31,7 @@ function renderMatrix(tools: HomeToolRow[]): ReturnType<typeof render> {
 }
 
 describe('ToolSyncMatrix — 工具与同步', () => {
-  it('Scenario 4.1：五种状态各显示真实取值，漂移行带「N 处」', () => {
+  it('Scenario 4.1：五种状态各显示真实取值，不一致行带「N 处」与说明', () => {
     renderMatrix([
       row({ toolId: 'a', toolName: '工具甲', state: 'synced' }),
       row({ toolId: 'b', toolName: '工具乙', state: 'drift', driftAssetCount: 3 }),
@@ -44,8 +44,11 @@ describe('ToolSyncMatrix — 工具与同步', () => {
     expect(within(syncedRow).getByText('已同步')).toBeInTheDocument();
 
     const driftRow = screen.getByTestId('tool-row-b');
-    expect(within(driftRow).getByText('有漂移')).toBeInTheDocument();
+    expect(within(driftRow).getByText('与资产库不一致')).toBeInTheDocument();
     expect(within(driftRow).getByText('3 处')).toBeInTheDocument();
+    expect(
+      screen.getByText('工具里的版本被手动改过或缺失，重新同步会用资产库版本覆盖'),
+    ).toBeInTheDocument();
 
     expect(within(screen.getByTestId('tool-row-c')).getByText('未连接')).toBeInTheDocument();
     expect(within(screen.getByTestId('tool-row-d')).getByText('未安装')).toBeInTheDocument();

@@ -3,7 +3,6 @@ import {
   Package,
   Plug,
   RefreshCw,
-  Repeat,
   Settings,
   FolderGit2,
   Compass,
@@ -88,8 +87,7 @@ export const NAV_GROUPS: NavGroup[] = [
     icon: Plug,
     children: [
       { to: '/connections', label: '工具连接', icon: Plug },
-      { to: '/sync', label: '分发与漂移', icon: RefreshCw },
-      { to: '/swap', label: '切换工具', icon: Repeat },
+      { to: '/sync', label: '分发与同步', icon: RefreshCw },
       { to: '/projects', label: '项目工作区', icon: FolderGit2 },
     ],
     sublistLabel: '连接与同步子项',

@@ -156,3 +156,13 @@ describe('Sync 未安装目标（Scenario 6）', () => {
     expect(screen.getByText('请先选择目标工具')).toBeInTheDocument();
   });
 });
+
+describe('Sync 与资产库不一致说明', () => {
+  it('页面说明不一致的成因与重新同步的覆盖语义', async () => {
+    renderPage();
+    await screen.findByRole('button', { name: /执行同步/ });
+    expect(
+      screen.getByText(/工具里的版本被手动改过或缺失，重新同步会用资产库版本覆盖/),
+    ).toBeInTheDocument();
+  });
+});

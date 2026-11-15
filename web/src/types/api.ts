@@ -684,113 +684,35 @@ export interface DiscoveredFiles {
   mcps: DiscoveredFileEntry[];
 }
 
-// ========== 工具热切换(enable-tool-hot-swap) ==========
+// ========== 工具类别支持矩阵与分发回滚 ==========
 
-/** 切换包覆盖的六类资产(不含 preference) */
+/** 资产类别（不含 preference） */
 export type SwapCategory = 'identity' | 'rule' | 'skill' | 'mcp' | 'memory' | 'agent';
-
-/** 单个投放项在预览中的冲突判定 */
-export type SwapConflictStatus = 'none' | 'exists' | 'differs';
 
 /** 目标工具对某类别的支持情况 */
 export type SwapCategorySupport =
   | { supported: true }
   | { supported: false; reason: string };
 
-/** 预览中的单个资产项 */
-export interface SwapPreviewItem {
-  category: SwapCategory;
-  hubRelativePath: string;
-  targetPath: string;
-  strategy: 'symlink' | 'copy' | 'native-import' | 'per-project';
-  conflict: SwapConflictStatus;
-  /** differs 项默认 false，需显式勾选覆盖 */
-  defaultOverwrite: boolean;
-  support: SwapCategorySupport;
-}
-
-/** 按类别分组的预览 */
-export interface SwapCategoryGroup {
-  category: SwapCategory;
-  support: SwapCategorySupport;
-  items: SwapPreviewItem[];
-  counts: { total: number; new: number; willOverwrite: number; unchanged: number; skipped: number };
-}
-
-/** 一次切换预览 */
-export interface SwapPreview {
-  tool: string;
-  toolInstalled: boolean;
-  groups: SwapCategoryGroup[];
-  /** 生成时间戳，执行时回传做 staleness 校验 */
-  generatedAt: string;
-}
-
-/** 覆盖决策 */
-export interface SwapOverwriteDecision {
-  hubRelativePath: string;
-  overwrite: boolean;
-}
-
-/** 切换候选目标 */
+/** 候选目标（资产医生分发确认、资产分发对话框共用） */
 export interface SwapToolCandidate {
   name: string;
   displayName: string;
   installed: boolean;
   supportMatrix: Record<SwapCategory, SwapCategorySupport>;
-  /** 项目级工具（syncStrategy='per-project'），前端据此渲染能力说明而非六类徽章（D3/I7） */
+  /** 项目级工具（syncStrategy='per-project'），前端据此渲染能力说明而非类别徽章（D3/I7） */
   projectLevel: boolean;
   /** 项目级工具的已配置项目数；非项目级工具不填（K3） */
   projectCount?: number;
 }
 
-/** 回读验证结果(诚实边界:已写入并校验) */
-export interface SwapVerifyResult {
-  passed: boolean;
-  exists: boolean;
-  parseable: boolean;
-  matchesSource: boolean;
-  hubRelativePath: string;
-  failure?: string;
-}
-
-/** 执行结果单项 */
-export interface SwapItemResult {
-  hubRelativePath: string;
-  category: SwapCategory;
-  action: 'written' | 'skipped' | 'failed';
-  reason?: string;
-  verify?: SwapVerifyResult;
-}
-
-/** 执行结果 */
-export interface SwapExecuteResult {
-  tool: string;
-  swapId: string;
-  success: boolean;
-  counts: { written: number; skipped: number; failed: number };
-  items: SwapItemResult[];
-  rollbackAvailable: boolean;
-  createdAt: string;
-}
-
-/** 回滚结果 */
+/** 回滚一次分发的结果 */
 export interface SwapRollbackResult {
   swapId: string;
   restored: number;
   removed: number;
   success: boolean;
   error?: string;
-}
-
-/** 切换历史单条 */
-export interface SwapHistoryEntry {
-  swapId: string;
-  tool: string;
-  createdAt: string;
-  counts: { written: number; skipped: number; failed: number };
-  rolledBack: boolean;
-  rollbackAvailable: boolean;
 }
 
 // ========== 裁决准则元资产(add-llm-conflict-arbitration) ==========

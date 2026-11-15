@@ -63,11 +63,7 @@ import type {
   WorkspacesResponse,
   UpdateWorkspacesInput,
   SwapToolCandidate,
-  SwapPreview,
-  SwapOverwriteDecision,
-  SwapExecuteResult,
   SwapRollbackResult,
-  SwapHistoryEntry,
   GithubDiscoverResult,
   GithubSkillPreview,
   GithubCurateItemInput,
@@ -443,24 +439,13 @@ export const api = {
       assetCounts?: ToolAssetCounts | null;
     }>(`/tools/${encodeURIComponent(toolName)}/detail`),
 
-  // Swap（工具热切换 enable-tool-hot-swap）
+  // 类别支持矩阵与分发回滚（资产医生修复分发、资产分发对话框共用）
   getSwapTools: () => request<{ tools: SwapToolCandidate[] }>('/swap/tools'),
-  swapPreview: (tool: string) =>
-    request<SwapPreview>('/swap/preview', {
-      method: 'POST',
-      body: JSON.stringify({ tool }),
-    }),
-  swapExecute: (tool: string, previewGeneratedAt: string, overwriteDecisions: SwapOverwriteDecision[]) =>
-    request<SwapExecuteResult>('/swap/execute', {
-      method: 'POST',
-      body: JSON.stringify({ tool, previewGeneratedAt, overwriteDecisions }),
-    }),
   swapRollback: (swapId: string) =>
     request<SwapRollbackResult>('/swap/rollback', {
       method: 'POST',
       body: JSON.stringify({ swapId }),
     }),
-  getSwapHistory: () => request<{ history: SwapHistoryEntry[] }>('/swap/history'),
 
   // GitHub 技能发现（add-github-skill-source：发现/预览/入库/打标，均显式手动触发）
   github: {

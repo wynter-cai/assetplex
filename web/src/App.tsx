@@ -4,7 +4,6 @@ import Home from './pages/Home';
 import Vault from './pages/Vault';
 import Connections from './pages/Connections';
 import Sync from './pages/Sync';
-import Swap from './pages/Swap';
 import Import from './pages/Import';
 import Discover from './pages/Discover';
 import Settings from './pages/Settings';
@@ -47,10 +46,10 @@ export default function App(): JSX.Element {
         <Route path="/skills" element={<Navigate to="/vault/skill" replace />} />
         <Route path="/mcp" element={<Navigate to="/vault/mcp" replace />} />
         <Route path="/tools" element={<Navigate to="/connections" replace />} />
+        <Route path="/swap" element={<Navigate to="/sync" replace />} />
         <Route path="/legacy/dashboard" element={<Navigate to="/" replace />} />
 
         <Route path="/sync" element={<Sync />} />
-        <Route path="/swap" element={<Swap />} />
         <Route path="/import" element={<Import />} />
         <Route path="/discover" element={<Discover />} />
 

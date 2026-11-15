@@ -163,13 +163,12 @@ describe('Sidebar — 子项内容（Scenario 1.3/1.4）', () => {
     );
   });
 
-  it('连接与同步子项为工具连接 / 分发与漂移 / 切换工具 / 项目工作区', () => {
+  it('连接与同步子项为工具连接 / 分发与同步 / 项目工作区', () => {
     renderSidebar('/connections');
     const list = screen.getByRole('navigation', { name: '连接与同步子项' });
     const expected: Array<[string, string]> = [
       ['工具连接', '/connections'],
-      ['分发与漂移', '/sync'],
-      ['切换工具', '/swap'],
+      ['分发与同步', '/sync'],
       ['项目工作区', '/projects'],
     ];
     for (const [label, to] of expected) {
@@ -179,11 +178,11 @@ describe('Sidebar — 子项内容（Scenario 1.3/1.4）', () => {
 });
 
 describe('Sidebar — 命中与展开（Scenario 2.1–2.4）', () => {
-  it('深链 /swap 自动展开「连接与同步」并高亮「切换工具」', () => {
-    renderSidebar('/swap');
+  it('深链 /projects 自动展开「连接与同步」并高亮「项目工作区」', () => {
+    renderSidebar('/projects');
     const groupButton = screen.getByRole('button', { name: /连接与同步/ });
     expect(groupButton).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByRole('link', { name: '切换工具' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: '项目工作区' })).toHaveAttribute(
       'aria-current',
       'page',
     );
@@ -252,7 +251,7 @@ describe('Sidebar — 命中与展开（Scenario 2.1–2.4）', () => {
 
     const groupButton = screen.getByRole('button', { name: /连接与同步/ });
     fireEvent.click(groupButton);
-    expect(screen.queryByRole('link', { name: '切换工具' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: '项目工作区' })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('link', { name: '活动' }));
     expect(screen.getByRole('button', { name: /连接与同步/ })).toHaveAttribute(
@@ -266,7 +265,7 @@ describe('Sidebar — 命中与展开（Scenario 2.1–2.4）', () => {
       'aria-expanded',
       'true',
     );
-    expect(screen.getByRole('link', { name: '分发与漂移' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: '分发与同步' })).toHaveAttribute(
       'aria-current',
       'page',
     );

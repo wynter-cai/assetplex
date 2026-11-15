@@ -2,7 +2,7 @@
  * 首页工具与同步矩阵（refactor-home-action-panel T8）
  *
  * spec: 设计文档/changes/refactor-home-action-panel/specs/home-dashboard.spec.md
- * Requirement 4：工具名 + 真实状态 + 最近同步时间；漂移行显示「N 处」；
+ * Requirement 4：工具名 + 真实状态 + 最近同步时间；与资产库不一致的行显示「N 处」；
  * 未安装置灰不可点；已安装行深链 /connections?tool=<toolId>；无记录不冒充实时。
  */
 
@@ -13,7 +13,7 @@ import type { HomeToolRow, HomeToolState } from '@/types/api';
 
 const STATE_LABEL: Record<HomeToolState, string> = {
   synced: '已同步',
-  drift: '有漂移',
+  drift: '与资产库不一致',
   not_connected: '未连接',
   not_installed: '未安装',
   unknown: '状态暂不可用',
@@ -60,6 +60,7 @@ export interface ToolSyncMatrixProps {
 
 export function ToolSyncMatrix({ tools }: ToolSyncMatrixProps): JSX.Element {
   const hasFailedTool = tools.some((tool) => tool.state === 'unknown');
+  const hasDrift = tools.some((tool) => tool.state === 'drift');
 
   return (
     <section aria-label="工具与同步" data-testid="tool-sync-matrix" className="rounded-xl border bg-card">
@@ -69,6 +70,12 @@ export function ToolSyncMatrix({ tools }: ToolSyncMatrixProps): JSX.Element {
           <span className="text-12 text-muted-foreground">部分工具状态暂不可用</span>
         )}
       </header>
+
+      {hasDrift && (
+        <p className="border-t px-4 py-2 text-12 text-muted-foreground">
+          工具里的版本被手动改过或缺失，重新同步会用资产库版本覆盖
+        </p>
+      )}
 
       {tools.length === 0 ? (
         <div className="space-y-2 px-4 pb-4">

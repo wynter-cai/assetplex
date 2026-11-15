@@ -102,6 +102,10 @@ export default function Sync(): JSX.Element {
         }
       />
 
+      <p className="text-xs text-muted-foreground">
+        工具里的版本被手动改过或缺失，重新同步会用资产库版本覆盖。
+      </p>
+
       <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[300px_1fr]">
         {/* 左栏：目标工具选择 */}
         <Card className="flex min-h-0 flex-col">

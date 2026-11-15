@@ -2,7 +2,7 @@
  * 旧 URL 重定向测试（refactor-home-action-panel T13）
  *
  * spec: specs/navigation.spec.md Requirement 4 Scenario 4.2 / 4.3
- * 断言：六条旧地址逐条映射到新地址；跳转为替换式（不新增历史记录）；未知路径行为不变（落 `/`）。
+ * 断言：旧地址逐条映射到新地址；跳转为替换式（不新增历史记录）；未知路径行为不变（落 `/`）。
  * 页面与布局全部打桩，只验证路由映射本身。
  */
 
@@ -26,7 +26,6 @@ vi.mock('./pages/Home', () => ({ default: (): JSX.Element => <div>page-home</div
 vi.mock('./pages/Vault', () => ({ default: (): JSX.Element => <div>page-vault</div> }));
 vi.mock('./pages/Connections', () => ({ default: (): JSX.Element => <div>page-connections</div> }));
 vi.mock('./pages/Sync', () => ({ default: (): JSX.Element => <div>page-sync</div> }));
-vi.mock('./pages/Swap', () => ({ default: (): JSX.Element => <div>page-swap</div> }));
 vi.mock('./pages/Import', () => ({ default: (): JSX.Element => <div>page-import</div> }));
 vi.mock('./pages/Discover', () => ({ default: (): JSX.Element => <div>page-discover</div> }));
 vi.mock('./pages/Settings', () => ({ default: (): JSX.Element => <div>page-settings</div> }));
@@ -68,6 +67,7 @@ const REDIRECTS: ReadonlyArray<readonly [string, string]> = [
   ['/skills', '/vault/skill'],
   ['/mcp', '/vault/mcp'],
   ['/tools', '/connections'],
+  ['/swap', '/sync'],
   ['/legacy/dashboard', '/'],
 ];
 
