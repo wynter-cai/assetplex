@@ -53,6 +53,9 @@ import type {
   ArbitrationResponse,
   DiagnosisReport,
   DiagnosisRuleListResponse,
+  DiagnosisRuleListView,
+  RuleValidateResponse,
+  IgnoreListResponse,
   DiagnoseEstimate,
   DoctorAssetKind,
   DoctorSummaryResponse,
@@ -388,7 +391,15 @@ export const api = {
       body: JSON.stringify(body),
     }),
   /** 规则清单（与诊断引擎同一份规则集，含版本与计数） */
-  getDiagnosisRules: () => request<DiagnosisRuleListResponse>('/diagnosis/rules'),
+  getDiagnosisRules: () => request<DiagnosisRuleListView | DiagnosisRuleListResponse>('/diagnosis/rules'),
+  /** 保存用户规则前的校验（零写库；坏条只告警） */
+  validateUserRules: (body: { content: string; targetPath: string }) =>
+    request<RuleValidateResponse>('/diagnosis/rules/validate', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  /** 忽略清单（含内容变更后自动失效条数） */
+  getDiagnosisIgnores: () => request<IgnoreListResponse>('/diagnosis/ignore'),
   /** 忽略一条 finding（按路径 + 规则绑定；内容变更后自动失效并重新提示） */
   ignoreDiagnosisFinding: (body: {
     kind: DoctorAssetKind;

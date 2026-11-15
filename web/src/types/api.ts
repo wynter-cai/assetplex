@@ -842,6 +842,54 @@ export interface DiagnosisRuleListResponse {
   modeCounts: Record<DiagnosisRuleMode, number>;
 }
 
+// ========== 规则来源与用户规则（refactor-governance-center T7） ==========
+
+export type RuleOrigin = 'builtin' | 'user';
+
+export type RuleLoadWarningReason =
+  | 'missing-field'
+  | 'invalid-category'
+  | 'invalid-severity'
+  | 'invalid-mode'
+  | 'duplicate-id'
+  | 'invalid-applies-to'
+  | 'unparsable';
+
+export interface RuleLoadWarning {
+  originLabel: string;
+  ruleId: string | null;
+  reason: RuleLoadWarningReason;
+}
+
+export interface RuleWithOrigin extends DiagnosisRule {
+  origin: RuleOrigin;
+  overridesBuiltin: boolean;
+  originLabel: string;
+}
+
+/** GET /api/diagnosis/rules 扩展视图（含用户规则来源时） */
+export interface DiagnosisRuleListView extends DiagnosisRuleListResponse {
+  rules: RuleWithOrigin[];
+  sources: { builtinCount: number; userCount: number; overriddenRuleIds: string[] };
+  loadPolicy: 'category-on-demand';
+  userRules: { directory: string; loaded: number; warnings: RuleLoadWarning[] };
+}
+
+/** POST /api/diagnosis/rules/validate：保存前校验，零写库 */
+export interface RuleValidateResponse {
+  ok: boolean;
+  errors: Array<{ line: number | null; ruleId: string | null; message: string }>;
+  warnings: RuleLoadWarning[];
+  effectiveRules: number;
+}
+
+/** GET /api/diagnosis/ignore 响应 */
+export interface IgnoreListResponse {
+  items: IgnoredFinding[];
+  /** 内容已变更、自动失效的条数 */
+  expired: number;
+}
+
 /** 问题来源：静态规则 / 模型语义 */
 export type FindingSource = 'rule' | 'llm';
 

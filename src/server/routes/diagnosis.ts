@@ -13,6 +13,11 @@
 import { Hono } from 'hono';
 import { summarizeRuleSet } from '../../core/diagnosis-rules.js';
 import {
+  buildRuleListView,
+  validateUserRuleFile,
+  type UserRulesMergeResult,
+} from '../../core/diagnosis-user-rules.js';
+import {
   addIgnore,
   countExpiredIgnores,
   hashIgnoredContent,
@@ -26,12 +31,14 @@ import {
   type DoctorAssetKind,
   type IgnoredFinding,
 } from '../../core/types.js';
-import { loadRouteRuleSet } from '../lib/rule-registry.js';
+import { loadRouteRuleSet, USER_RULES_DIR } from '../lib/rule-registry.js';
 import { isHubInternalPath, nodeRead } from './doctor.js';
 
 export interface DiagnosisRouteDeps {
   /** 规则集：缺省按构建产物 / 仓库定义位置加载；显式 null 表示本轮无规则可用 */
   ruleSet?: DiagnosisRuleSet | null;
+  /** 用户规则合并结果（含来源 / 覆盖 / 告警）：规则清单页展示用；缺省时退化为只读版本 */
+  userRules?: UserRulesMergeResult | null;
   /** 忽略清单存储：缺省 Node 实现（~/.assetplex/diagnosis-ignores.json） */
   ignoreStore?: DiagnosisIgnoreStore;
   /** 资产正文读取（忽略生效判定用）；缺省 Node 实现 */
@@ -110,7 +117,32 @@ export function createDiagnosisRoutes(deps: DiagnosisRouteDeps = {}): Hono {
     if (registry.ruleSet === null) {
       return c.json({ error: '规则集未加载：未找到 diagnosis-rules.yaml' }, 422);
     }
-    return c.json(summarizeRuleSet(registry.ruleSet));
+    // 有用户规则合并结果时给出完整视图（来源 / 覆盖 / 告警），否则退化为只读版本
+    const view = deps.userRules === undefined || deps.userRules === null ? null : buildRuleListView(deps.userRules, USER_RULES_DIR);
+    return c.json(view ?? summarizeRuleSet(registry.ruleSet));
+  });
+
+  /**
+   * 保存前校验（T7）：零写库。
+   * 单条坏规则只告警（保存后会被跳过），整文件不可解析或无有效规则才判不通过。
+   */
+  routes.post('/rules/validate', async (c) => {
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: '请求体必须是 JSON' }, 400);
+    }
+    if (typeof body !== 'object' || body === null) return c.json({ error: '请求体必须是 JSON 对象' }, 400);
+    const p = body as Record<string, unknown>;
+    if (typeof p['content'] !== 'string') return c.json({ error: 'content 必须是字符串' }, 400);
+    if (typeof p['targetPath'] !== 'string' || p['targetPath'].trim() === '') {
+      return c.json({ error: 'targetPath 必须是非空字符串' }, 400);
+    }
+    if (!isHubInternalPath(p['targetPath'])) {
+      return c.json({ error: 'targetPath 必须是 Hub 内相对路径' }, 403);
+    }
+    return c.json(validateUserRuleFile(p['content'], p['targetPath'], registry.ruleSet));
   });
 
   routes.post('/ignore', async (c) => {

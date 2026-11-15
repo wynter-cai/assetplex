@@ -13,12 +13,17 @@ import { AlertTriangle, ListChecks } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { IgnoreListSection } from '@/components/quality/IgnoreListSection';
+import { UserRulesEditor } from '@/components/quality/UserRulesEditor';
 import { api } from '@/lib/api';
 import type {
   DiagnosisRule,
   DiagnosisRuleCategory,
+  DiagnosisRuleListView,
   DiagnosisRuleMode,
   DiagnosisSeverity,
+  RuleWithOrigin,
 } from '@/types/api';
 
 type CategoryFilter = DiagnosisRuleCategory | 'all';
@@ -54,7 +59,9 @@ function severityVariant(severity: DiagnosisSeverity): 'destructive' | 'warning'
   return 'secondary';
 }
 
-function RuleCard({ rule }: { rule: DiagnosisRule }): JSX.Element {
+type RuleView = DiagnosisRule & Partial<Pick<RuleWithOrigin, 'origin' | 'overridesBuiltin' | 'originLabel'>>;
+
+function RuleCard({ rule }: { rule: RuleView }): JSX.Element {
   const [copied, setCopied] = useState(false);
 
   const copyId = (): void => {
@@ -76,6 +83,11 @@ function RuleCard({ rule }: { rule: DiagnosisRule }): JSX.Element {
           <Badge variant={severityVariant(rule.severity)}>{SEVERITY_LABEL[rule.severity]}</Badge>
           <Badge variant="secondary">{MODE_LABEL[rule.mode]}</Badge>
           <Badge variant="outline">{CATEGORY_LABEL[rule.category]}</Badge>
+          {rule.origin === 'user' && (
+            <Badge variant="secondary" title={rule.originLabel}>
+              {rule.overridesBuiltin ? '用户规则（覆盖内置）' : '用户规则'}
+            </Badge>
+          )}
           {rule.category === 'cross' && rule.appliesTo !== undefined && (
             <span className="text-xs text-muted-foreground">
               适用于 {rule.appliesTo.map((kind) => CATEGORY_LABEL[kind]).join(' / ')}
@@ -95,16 +107,28 @@ function RuleCard({ rule }: { rule: DiagnosisRule }): JSX.Element {
 
 export default function QualityRules(): JSX.Element {
   const [filter, setFilter] = useState<CategoryFilter>('all');
+  const [search, setSearch] = useState('');
   const rulesQuery = useQuery({
     queryKey: ['diagnosis-rules'],
     queryFn: () => api.getDiagnosisRules(),
   });
 
   const data = rulesQuery.data ?? null;
+  const view = (data as Partial<DiagnosisRuleListView> | null) ?? null;
+  const keyword = search.trim().toLowerCase();
   const visibleCategories =
     data === null ? [] : CATEGORY_ORDER.filter((category) => data.counts[category] > 0);
   const visibleRules =
-    data === null ? [] : data.rules.filter((rule) => filter === 'all' || rule.category === filter);
+    data === null
+      ? []
+      : (data.rules as RuleView[]).filter(
+          (rule) =>
+            (filter === 'all' || rule.category === filter) &&
+            (keyword === '' ||
+              rule.id.toLowerCase().includes(keyword) ||
+              rule.signal.toLowerCase().includes(keyword) ||
+              rule.recommendation.toLowerCase().includes(keyword)),
+        );
 
   return (
     <div className="space-y-4 p-6">
@@ -114,12 +138,25 @@ export default function QualityRules(): JSX.Element {
           规则清单
         </h1>
         <p className="text-sm text-muted-foreground">
-          诊断报告里的每一条问题都来自这里的规则；规则集随版本内置，不是用户配置。
+          诊断报告里的每一条问题都来自这里的规则：内置规则随版本只读，你可以在下方追加或覆盖自己的规则。
         </p>
         {data !== null && (
           <p className="text-xs text-muted-foreground" data-testid="rule-set-summary">
             规则集 v{data.version} · 共 {data.rules.length} 条（静态 {data.modeCounts.static} · AI{' '}
             {data.modeCounts.llm}）· 跨资产通用 {data.counts.cross} 条单列计数
+            {view?.sources !== undefined && (
+              <>
+                {' '}
+                · 内置 {view.sources.builtinCount} 条 · 用户 {view.sources.userCount} 条 · 覆盖{' '}
+                {view.sources.overriddenRuleIds.length} 条
+              </>
+            )}
+          </p>
+        )}
+        {view?.userRules !== undefined && view.userRules.warnings.length > 0 && (
+          <p className="flex items-start gap-1 text-xs text-destructive" data-testid="rule-warnings">
+            <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+            {view.userRules.directory} 有 {view.userRules.warnings.length} 条坏规则已被跳过（保存前校验或修正后可恢复）
           </p>
         )}
       </header>
@@ -148,6 +185,13 @@ export default function QualityRules(): JSX.Element {
       {data !== null && (
         <>
           <div className="flex flex-wrap items-center gap-1.5">
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="按编号 / 判定信号 / 改法搜索"
+              aria-label="搜索规则"
+              className="h-8 w-64 text-xs"
+            />
             <Button
               size="sm"
               variant={filter === 'all' ? 'default' : 'outline'}
@@ -168,10 +212,17 @@ export default function QualityRules(): JSX.Element {
           </div>
 
           <div className="space-y-2" data-testid="rule-list">
-            {visibleRules.map((rule) => (
-              <RuleCard key={rule.id} rule={rule} />
-            ))}
+            {visibleRules.length === 0 ? (
+              <Card>
+                <CardContent className="p-4 text-sm text-muted-foreground">没有匹配的规则。</CardContent>
+              </Card>
+            ) : (
+              visibleRules.map((rule) => <RuleCard key={rule.id} rule={rule} />)
+            )}
           </div>
+
+          <UserRulesEditor />
+          <IgnoreListSection />
         </>
       )}
     </div>

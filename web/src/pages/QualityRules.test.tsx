@@ -76,6 +76,7 @@ describe('QualityRules 规则清单', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.spyOn(api, 'getDiagnosisRules').mockResolvedValue(DATA);
+    vi.spyOn(api, 'getDiagnosisIgnores').mockResolvedValue({ items: [], expired: 0 });
   });
 
   it('展示规则集版本、总数与静态/AI 口径', async () => {
@@ -137,5 +138,60 @@ describe('QualityRules 规则清单', () => {
     renderPage();
     expect(await screen.findByText('规则清单读取失败')).toBeInTheDocument();
     expect(screen.queryByTestId('rule-list')).not.toBeInTheDocument();
+  });
+
+  it('按编号 / 信号搜索，搜不到时给空态（Scenario 5.1）', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    const search = await screen.findByLabelText('搜索规则');
+    await user.type(search, 'SK-11');
+    expect(screen.getByTestId('rule-card-SK-11')).toBeInTheDocument();
+    expect(screen.queryByTestId('rule-card-SK-04')).not.toBeInTheDocument();
+
+    await user.clear(search);
+    await user.type(search, '不存在的词');
+    expect(screen.getByText('没有匹配的规则。')).toBeInTheDocument();
+  });
+
+  it('用户规则显示来源徽章与坏规则告警条（Scenario 5.7）', async () => {
+    vi.spyOn(api, 'getDiagnosisRules').mockResolvedValue({
+      ...DATA,
+      rules: [
+        { ...DATA.rules[0], origin: 'user', overridesBuiltin: true, originLabel: 'diagnosis-rules/a.yaml' },
+        { ...DATA.rules[1], origin: 'user', overridesBuiltin: false, originLabel: 'diagnosis-rules/a.yaml' },
+        { ...DATA.rules[2], origin: 'builtin', overridesBuiltin: false, originLabel: 'builtin:diagnosis-rules.yaml' },
+      ],
+      sources: { builtinCount: 2, userCount: 2, overriddenRuleIds: ['SK-04'] },
+      loadPolicy: 'category-on-demand',
+      userRules: {
+        directory: 'diagnosis-rules',
+        loaded: 1,
+        warnings: [{ originLabel: 'diagnosis-rules/a.yaml', ruleId: 'USER-02', reason: 'missing-field' }],
+      },
+    } as never);
+
+    renderPage();
+    const overridden = await screen.findByTestId('rule-card-SK-04');
+    expect(within(overridden).getByText('用户规则（覆盖内置）')).toBeInTheDocument();
+    expect(screen.getByTestId('rule-set-summary')).toHaveTextContent('内置 2 条');
+    expect(screen.getByTestId('rule-warnings')).toHaveTextContent('1 条坏规则已被跳过');
+  });
+
+  it('忽略清单可就地恢复，并标注已失效条数（Scenario 5.5 / 5.7）', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(api, 'getDiagnosisIgnores').mockResolvedValue({
+      items: [{ ruleId: 'SK-04', hubRelativePath: 'skills/demo/SKILL.md', contentHash: 'h', ignoredAt: '2026-11-01T00:00:00.000Z' }],
+      expired: 1,
+    });
+    const restore = vi.spyOn(api, 'restoreDiagnosisFinding').mockResolvedValue({
+      ruleId: 'SK-04',
+      hubRelativePath: 'skills/demo/SKILL.md',
+      restored: true,
+    });
+
+    renderPage();
+    expect(await screen.findByText(/1 条因资产内容变更已自动失效/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '恢复提示' }));
+    expect(restore).toHaveBeenCalledWith({ hubRelativePath: 'skills/demo/SKILL.md', ruleId: 'SK-04' });
   });
 });

@@ -29,6 +29,7 @@ import { createArbitrationRoutes } from './routes/arbitration.js';
 import { createDoctorRoutes } from './routes/doctor.js';
 import { createDoctorFixRoutes } from './routes/doctor-fix.js';
 import { createDiagnosisRoutes } from './routes/diagnosis.js';
+import { loadMergedRuleSet } from './lib/rule-registry.js';
 import { createGovernanceRoutes } from './routes/governance.js';
 import { createHomeRoutes } from './routes/home.js';
 import { createActivityRoutes } from './routes/activity.js';
@@ -64,6 +65,9 @@ export async function startServer(options: ServerOptions = {}): Promise<void> {
   // 健康检查
   app.get('/api/health', (c) => c.json({ status: 'ok', version: '0.1.0' }));
 
+  // 诊断规则：内置 + <Hub>/diagnosis-rules 用户规则合并一次，所有诊断入口共用同一份
+  const mergedRules = loadMergedRuleSet();
+
   // API 路由
   app.route('/api/hub', hubRoutes);
   app.route('/api/tools', toolsRoutes);
@@ -82,11 +86,25 @@ export async function startServer(options: ServerOptions = {}): Promise<void> {
   app.route('/api/arbitration', createArbitrationRoutes());
   app.route(
     '/api/doctor',
-    createDoctorRoutes({ lastRunStore: nodeDoctorLastRunStore, ignoreStore: nodeDiagnosisIgnoreStore }),
+    createDoctorRoutes({
+      lastRunStore: nodeDoctorLastRunStore,
+      ignoreStore: nodeDiagnosisIgnoreStore,
+      ruleSet: mergedRules.ruleSet,
+    }),
   );
-  app.route('/api/doctor', createDoctorFixRoutes());
-  app.route('/api/diagnosis', createDiagnosisRoutes({ ignoreStore: nodeDiagnosisIgnoreStore }));
-  app.route('/api/governance', createGovernanceRoutes({ ignoreStore: nodeDiagnosisIgnoreStore }));
+  app.route('/api/doctor', createDoctorFixRoutes({ ruleSet: mergedRules.ruleSet }));
+  app.route(
+    '/api/diagnosis',
+    createDiagnosisRoutes({
+      ignoreStore: nodeDiagnosisIgnoreStore,
+      ruleSet: mergedRules.ruleSet,
+      userRules: mergedRules.userRules,
+    }),
+  );
+  app.route(
+    '/api/governance',
+    createGovernanceRoutes({ ignoreStore: nodeDiagnosisIgnoreStore, ruleSet: mergedRules.ruleSet }),
+  );
   app.route('/api/home', createHomeRoutes());
   app.route('/api/activity', createActivityRoutes());
   app.route('/api/onboarding', createOnboardingRoutes());
