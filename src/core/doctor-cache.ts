@@ -31,14 +31,18 @@ export interface DoctorCacheStore {
   save(entries: Record<string, DoctorCacheEntry>): void;
 }
 
-/** 诊断缓存 key：四要素规范化拼接后 sha256 */
+/** 诊断缓存 key：类别 + 正文 + 准则集 + 模型（+ 规则集版本）规范化拼接后 sha256 */
 export function computeDoctorCacheKey(input: {
   kind: string;
   content: string;
   criteriaHash: string;
   model: string;
+  /** 规则集版本：传入即纳入 key，规则升级后缓存自然失效（spec Scenario 6.2） */
+  rulesVersion?: string;
 }): string {
-  const canonical = [input.kind, input.content, input.criteriaHash, input.model].join('\u0000');
+  const canonical = [input.kind, input.content, input.criteriaHash, input.model, input.rulesVersion ?? ''].join(
+    '\u0000',
+  );
   return createHash('sha256').update(canonical, 'utf-8').digest('hex');
 }
 

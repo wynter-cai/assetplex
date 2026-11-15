@@ -82,7 +82,7 @@ export function ruleAppliesToKind(rule: DiagnosisRule, kind: RuleAssetCategory):
 }
 
 /** 规则标题取自判定信号的首句（来自注册表，不由模型生成） */
-function ruleTitle(rule: DiagnosisRule): string {
+export function ruleTitle(rule: DiagnosisRule): string {
   const first = rule.signal.split(/[，,。；;]/)[0] ?? rule.signal;
   return first.length > 40 ? `${first.slice(0, 40)}…` : first;
 }
