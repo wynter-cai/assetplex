@@ -3,16 +3,10 @@ import { AppLayout } from './components/layout/AppLayout';
 import Home from './pages/Home';
 import Vault from './pages/Vault';
 import Connections from './pages/Connections';
-import Tools from './pages/Tools';
-import Dashboard from './pages/Dashboard';
 import Sync from './pages/Sync';
 import Swap from './pages/Swap';
 import Import from './pages/Import';
-import Identity from './pages/Identity';
-import Skills from './pages/Skills';
 import Discover from './pages/Discover';
-import Rules from './pages/Rules';
-import Mcp from './pages/Mcp';
 import Settings from './pages/Settings';
 import Projects from './pages/Projects';
 import Duplicates from './pages/Duplicates';
@@ -47,17 +41,18 @@ export default function App(): JSX.Element {
         {/* 活动页：操作时间线（add-activity-log） */}
         <Route path="/activities" element={<Activities />} />
 
-        {/* 旧版路由 */}
-        <Route path="/legacy/dashboard" element={<Dashboard />} />
-        <Route path="/tools" element={<Tools />} />
+        {/* 旧 URL 重定向（refactor-home-action-panel T13）：替换式跳转，不新增历史记录 */}
+        <Route path="/identity" element={<Navigate to="/vault/identity" replace />} />
+        <Route path="/rules" element={<Navigate to="/vault/rule" replace />} />
+        <Route path="/skills" element={<Navigate to="/vault/skill" replace />} />
+        <Route path="/mcp" element={<Navigate to="/vault/mcp" replace />} />
+        <Route path="/tools" element={<Navigate to="/connections" replace />} />
+        <Route path="/legacy/dashboard" element={<Navigate to="/" replace />} />
+
         <Route path="/sync" element={<Sync />} />
         <Route path="/swap" element={<Swap />} />
         <Route path="/import" element={<Import />} />
-        <Route path="/identity" element={<Identity />} />
-        <Route path="/skills" element={<Skills />} />
         <Route path="/discover" element={<Discover />} />
-        <Route path="/rules" element={<Rules />} />
-        <Route path="/mcp" element={<Mcp />} />
 
         <Route path="/settings" element={<Settings />} />
         <Route path="*" element={<Navigate to="/" replace />} />
