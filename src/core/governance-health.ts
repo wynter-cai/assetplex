@@ -264,6 +264,74 @@ export function collectDimensionIssues(
   return issues;
 }
 
+// ============ 跨维度待办队列（首页「今日待办」与「待治理」共用） ============
+
+/** 跨维度去重后的待办集合 */
+export interface GovernanceIssueQueue {
+  /** 去重后的条目总数（全量，不受 items 截断影响） */
+  total: number;
+  bySeverity: Record<DiagnosisSeverity, number>;
+  /** 严重度降序的前 N 条 */
+  items: HealthIssueRef[];
+}
+
+/**
+ * 维度族：完整性与规范性共用同一批机械项，必须互相去重；
+ * 分发与唯一性的 id 结构天然不同，各自成族。
+ */
+const DIMENSION_FAMILY: Record<HealthDimensionId, string> = {
+  completeness: 'content',
+  quality: 'content',
+  distribution: 'distribution',
+  uniqueness: 'uniqueness',
+};
+
+/** 维度前缀与结尾序号只是定位用，不参与「检查项」身份 */
+const DIMENSION_PREFIX = /^(?:completeness|quality|distribution|uniqueness):/;
+const TRAILING_INDEX = /:\d+$/;
+
+/**
+ * 去重键 = 维度族 + Hub 相对路径 + 检查项 + 发现内容。
+ *
+ * HealthIssueRef 不含 criterion 字段（既有响应结构不动），id 去掉维度前缀与
+ * 结尾序号后恰好是「路径 + 检查项」，与 title（发现内容）一起构成稳定身份。
+ */
+function queueKey(dimension: HealthDimensionId, issue: HealthIssueRef): string {
+  const identity = issue.id.replace(DIMENSION_PREFIX, '').replace(TRAILING_INDEX, '');
+  return `${DIMENSION_FAMILY[dimension]}\u0000${identity}\u0000${issue.title}`;
+}
+
+/**
+ * 收集首页待办：四个维度同源收集 → 去重 → 严重度降序。
+ *
+ * `total` 为去重后的全量，`items` 只截断前 limit 条；调用方不得把四维
+ * issueCount 相加当作待治理数（规范性已包含完整性的机械项）。
+ */
+export function collectGovernanceQueue(
+  assets: GovernanceAssetInput[],
+  duplicateGroups: HealthDuplicateGroup[],
+  limit: number,
+): GovernanceIssueQueue {
+  const pool = scorableAssets(assets);
+  const seen = new Set<string>();
+  const unique: HealthIssueRef[] = [];
+
+  for (const dimension of HEALTH_DIMENSION_IDS) {
+    for (const issue of collectDimensionIssues(pool, duplicateGroups, dimension)) {
+      const key = queueKey(dimension, issue);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      unique.push(issue);
+    }
+  }
+
+  const bySeverity: Record<DiagnosisSeverity, number> = { high: 0, medium: 0, low: 0 };
+  for (const issue of unique) bySeverity[issue.severity] += 1;
+
+  const safeLimit = Number.isFinite(limit) ? Math.max(0, Math.floor(limit)) : 0;
+  return { total: unique.length, bySeverity, items: sortHealthIssues(unique).slice(0, safeLimit) };
+}
+
 // ============ 主函数 ============
 
 /**
