@@ -281,3 +281,94 @@ export interface DiagnosisIssue {
   /** 是否可生成改写草案 */
   fixable: boolean;
 }
+
+// ========== 规则注册表与证据（add-diagnosis-rules，共享基座） ==========
+
+/**
+ * 规则集覆盖的七类资产：比 DoctorAssetKind 多出 mcp（医生一期不诊断 mcp，但规则集含 11 条 MCP 规则）
+ */
+export const RULE_ASSET_CATEGORIES = [
+  'identity',
+  'skill',
+  'rule',
+  'mcp',
+  'command',
+  'agent',
+  'memory',
+] as const;
+export type RuleAssetCategory = (typeof RULE_ASSET_CATEGORIES)[number];
+
+/** cross = 跨资产通用规则：在 appliesTo 的每个类别下展示，但全库只计一次 */
+export const RULE_CATEGORIES = [...RULE_ASSET_CATEGORIES, 'cross'] as const;
+export type RuleCategory = (typeof RULE_CATEGORIES)[number];
+
+/** static = 零模型调用；llm = 语义增量（只能从候选规则中选且必须带证据） */
+export const RULE_MODES = ['static', 'llm'] as const;
+export type RuleMode = (typeof RULE_MODES)[number];
+
+export const DIAGNOSIS_CONFIDENCES = ['high', 'medium', 'low'] as const;
+export type DiagnosisConfidence = (typeof DIAGNOSIS_CONFIDENCES)[number];
+
+/** 一条可稳定引用的检查项（诊断、治理分类页、编写指南共用同一份） */
+export interface DiagnosisRule {
+  /** 稳定编号，如 SK-04、SEC-01；永不复用 */
+  id: string;
+  category: RuleCategory;
+  /** category=cross 时必填，列出适用资产类别；其余规则缺省为 [category] */
+  appliesTo?: RuleAssetCategory[];
+  severity: DiagnosisSeverity;
+  mode: RuleMode;
+  signal: string;
+  recommendation: string;
+  source: string;
+}
+
+export interface DiagnosisRuleSet {
+  /** 语义变更必须递增（spec Scenario 6.4） */
+  version: string;
+  updatedAt: string;
+  rules: DiagnosisRule[];
+}
+
+/** line 为 null 表示无法定位到具体行（缺失类问题），前端标注「片段序号」 */
+export interface FindingEvidence {
+  /** 库内相对路径，禁止绝对路径与用户名 */
+  hubRelativePath: string;
+  line: number | null;
+  /** 片段，长度 ≤ 200 字，必须能在原文中定位 */
+  snippet: string;
+  snippetIndex?: number;
+}
+
+/** rule = 静态规则命中；llm = AI 语义增量 */
+export type FindingSource = 'rule' | 'llm';
+
+/** 一次诊断产出的一条问题，必须绑定 ruleId */
+export interface RuleFinding {
+  /** 报告内唯一，用于忽略 / 恢复与前端 key */
+  id: string;
+  ruleId: string;
+  category: RuleCategory;
+  severity: DiagnosisSeverity;
+  confidence: DiagnosisConfidence;
+  source: FindingSource;
+  /** 规则一句话标题（来自注册表，不由模型生成） */
+  title: string;
+  finding: string;
+  /** AI 未参与时允许为空串 */
+  impact: string;
+  suggestion: string;
+  evidence: FindingEvidence[];
+  /** true = 证据不足：不计分、不可修复、不进建议 */
+  insufficientEvidence: boolean;
+  fixable: boolean;
+  /** 命中忽略清单后仍在响应中返回，供「已忽略 N 条 / 恢复」入口使用 */
+  ignored: boolean;
+}
+
+/** 本轮到底查了什么、没查什么 */
+export interface DiagnosisCoverage {
+  evaluatedRules: number;
+  skippedRules: number;
+  skippedReasons: Array<{ mode: RuleMode; reason: 'no-ai-config' | 'budget' | 'timeout'; count: number }>;
+}

@@ -1,0 +1,522 @@
+version: "1.0.0"
+changeId: add-diagnosis-rules
+updatedAt: "2026-11-15"
+severityScale:
+  high: "P0：安全或功能失效，须立即处理"
+  medium: "P1：显著降低触发率、可维护性或执行稳定性"
+  low: "P2：可维护性与长期质量优化项"
+categories:
+  identity: "人设 / 身份"
+  rule: "规则"
+  skill: "技能"
+  mcp: "MCP 服务器与配置"
+  command: "斜杠命令"
+  agent: "子代理"
+  memory: "长期记忆"
+  cross: "跨资产通用"
+rules:
+  - id: ID-01
+    category: identity
+    severity: high
+    mode: llm
+    signal: "全文找不到「你是 / 你负责 / 角色」类陈述，或只有「AI 助手」这类无领域、无职能的泛称"
+    recommendation: "补一句「职能 + 领域 + 优化目标」，并写明最容易被误判成的「不是什么」"
+    source: "identity-rules-authoring.md §4.1 ID-01"
+  - id: ID-02
+    category: identity
+    severity: medium
+    mode: llm
+    signal: "未出现受众、知识水平、决策权、使用场景中的任何一项"
+    recommendation: "补「为谁、在什么场景、用来支持什么决定」；不写受众等于默认面向所有人"
+    source: "identity-rules-authoring.md §4.1 ID-02"
+  - id: ID-03
+    category: identity
+    severity: high
+    mode: llm
+    signal: "没有可验收的完成标准，只有「高质量 / 有帮助 / 专业」类表述"
+    recommendation: "改成可数契约：输出字段、条数、长度上限、判定条件"
+    source: "identity-rules-authoring.md §4.1 ID-03"
+  - id: ID-04
+    category: identity
+    severity: medium
+    mode: llm
+    signal: "语气只用形容词描述；语言、长度、格式、称呼四项中显式声明少于两项"
+    recommendation: "把语气翻译成可观察项，例如「中文；先结论后论据；正文不超过 300 字；称呼用你」"
+    source: "identity-rules-authoring.md §4.1 ID-04"
+  - id: ID-05
+    category: identity
+    severity: high
+    mode: llm
+    signal: "否定型约束少于 2 条，或只写「不做什么」而没写越界时改做什么"
+    recommendation: "列「不做 X 则改做 Y」，并补拒绝与转交条件"
+    source: "identity-rules-authoring.md §4.1 ID-05"
+  - id: ID-06
+    category: identity
+    severity: medium
+    mode: llm
+    signal: "未规定信息不足时的行为，提问、停下、声明假设三种策略一个都没有"
+    recommendation: "写明触发条件与默认动作，例如「歧义超过两处先提问，不自行假设」"
+    source: "identity-rules-authoring.md §4.1 ID-06"
+  - id: ID-07
+    category: identity
+    severity: low
+    mode: static
+    signal: "正文没有代码块、没有「示例 / 例：」小节、没有 before 与 after 对照"
+    recommendation: "补 1 至 3 个示例，覆盖正常、边界、拒绝三类情形"
+    source: "identity-rules-authoring.md §4.1 ID-07"
+  - id: ID-08
+    category: identity
+    severity: medium
+    mode: static
+    signal: "正文超过 120 行或估算超过 1500 tokens；或相似度高于 0.9 的重复段落达到 2 处以上"
+    recommendation: "删掉「删了也不影响行为」的段落，合并重复表述"
+    source: "identity-rules-authoring.md §4.1 ID-10"
+  - id: ID-09
+    category: identity
+    severity: high
+    mode: static
+    signal: "命中绝对路径、工单编号、具体日期、客户或项目代号、只在某个仓库成立的命令"
+    recommendation: "把项目相关内容迁到 rules 或对话；身份只保留跨项目稳定内容"
+    source: "identity-rules-authoring.md §4.1 ID-09"
+  - id: RU-01
+    category: rule
+    severity: high
+    mode: static
+    signal: "单文件超过 200 行（Claude 口径）或 500 行（Cursor 口径），估算超过 3000 tokens，或多文件拼接超过 32 KiB"
+    recommendation: "把局部内容下沉到路径规则，把多步流程拆成技能；常驻文件只留「删了会犯错」的行"
+    source: "identity-rules-authoring.md §4.2 RU-01、§2.2.5"
+  - id: RU-02
+    category: rule
+    severity: medium
+    mode: static
+    signal: "超过 200 行但没有任何二级标题，或存在单段超过 15 行，或同类规则散落在 3 处以上"
+    recommendation: "按命令、风格、测试、提交、安全分组，同类规则合并到同一标题下"
+    source: "identity-rules-authoring.md §4.2 RU-02"
+  - id: RU-03
+    category: rule
+    severity: high
+    mode: llm
+    signal: "规则缺动作动词，或缺对象（文件 / 命令 / 字段），或缺验收标准（命令、退出码、阈值）"
+    recommendation: "改写成「触发条件 + 具体动作 + 可验证完成标准」三段式"
+    source: "identity-rules-authoring.md §4.2 RU-03、§2.2.4"
+  - id: RU-04
+    category: rule
+    severity: medium
+    mode: static
+    signal: "单条规则包含 3 个以上动作，或一句话跨 2 个以上主题（按顿号、逗号、并且连接的分句计数）"
+    recommendation: "一条一动作，超过就拆条编号"
+    source: "identity-rules-authoring.md §4.2 RU-04"
+  - id: RU-05
+    category: rule
+    severity: high
+    mode: static
+    signal: "命中「如适用 / 必要时 / 适当 / 尽量 / 酌情 / 视情况」且同一句没有给出判定条件或默认动作"
+    recommendation: "补判定条件与默认动作，或直接删除该条"
+    source: "identity-rules-authoring.md §4.2 RU-05"
+  - id: RU-06
+    category: rule
+    severity: medium
+    mode: static
+    signal: "带生效方式元数据的规则被设为始终生效，正文却只对某个目录或技术栈成立；或全局规则出现项目专属路径"
+    recommendation: "改为按路径生效（globs），或移到子目录规则文件"
+    source: "identity-rules-authoring.md §4.2 RU-08"
+  - id: RU-07
+    category: rule
+    severity: medium
+    mode: llm
+    signal: "存在互斥要求（必须、建议、禁止并用）却没有优先级标注，也没有「冲突时以哪条为准」的说明"
+    recommendation: "加优先级标签并写明裁决顺序；无法裁决时合并成一条"
+    source: "identity-rules-authoring.md §4.2 RU-11"
+  - id: SK-01
+    category: skill
+    severity: high
+    mode: static
+    signal: "目录内没有 SKILL.md（大小写必须精确），或 frontmatter 不以三个连字符开头或未闭合或 YAML 解析失败，或缺 name 或 description"
+    recommendation: "按规范补 SKILL.md 与必填字段；文件名大小写错误会导致资产完全不被加载"
+    source: "skills-authoring.md §4 C01"
+  - id: SK-02
+    category: skill
+    severity: high
+    mode: static
+    signal: "name 不符合小写字母数字连字符、长度超过 64、含 anthropic 或 claude 保留词；目录名含空格下划线大写；name 与目录名不一致"
+    recommendation: "改为 kebab-case 并与目录同名；保留词与空格目录在换工具分发时会失效"
+    source: "skills-authoring.md §4 C02"
+  - id: SK-03
+    category: skill
+    severity: high
+    mode: static
+    signal: "description 为空、超过 1024 字符、含尖括号，或没有「Use when / 当用户 / 适用于」触发子句，或以 I can 或 you can 或 helps with 开头"
+    recommendation: "改成「做什么 + 何时用」的第三人称句式，把用户真实会说的词写进去"
+    source: "skills-authoring.md §4 C03"
+  - id: SK-04
+    category: skill
+    severity: medium
+    mode: static
+    signal: "命中泛化词表（helper、utils、tools、various、general、通用、各种、相关任务），且具体名词、文件类型、场景名少于 2 个"
+    recommendation: "至少写 2 个具体触发词，并补一句「即使用户没说 X，提到 Y 时也用」"
+    source: "skills-authoring.md §4 C04"
+  - id: SK-05
+    category: skill
+    severity: low
+    mode: static
+    signal: "与同库另一技能的 description 相似度高于 0.85，或关键词重合度高于 0.8，且职责未显式区分"
+    recommendation: "在描述里写明与相近技能的分工边界，或合并为一个技能"
+    source: "skills-authoring.md §4 C05"
+  - id: SK-06
+    category: skill
+    severity: medium
+    mode: llm
+    signal: "正文只写正向触发条件，没有「不要用于 / 不适用于 / Do NOT use」类负向边界"
+    recommendation: "补负向边界与转交对象，减少抢触发"
+    source: "skills-authoring.md §4 C06"
+  - id: SK-07
+    category: skill
+    severity: medium
+    mode: llm
+    signal: "正文出现 3 个以上互不依赖的动作域，或核心动词超过 2 个（例如跑测试加改状态加发通知）"
+    recommendation: "按动作域拆分技能，用技能间引用编排"
+    source: "skills-authoring.md §4 C07"
+  - id: SK-08
+    category: skill
+    severity: medium
+    mode: static
+    signal: "正文超过 500 行或 3000 词，且没有拆到 references 目录；或不足 50 行且无流程、无引用、无示例"
+    recommendation: "超长就拆到一层可达的参考文件；过短则确认它是否本不该是技能"
+    source: "skills-authoring.md §4 C08"
+  - id: SK-09
+    category: skill
+    severity: medium
+    mode: static
+    signal: "正文引用的文件不存在，或引用链深度超过 1 层，或超过 100 行的参考文件没有目录，或使用反斜杠路径与绝对路径"
+    recommendation: "引用改为相对路径加正斜杠，并写明「何时读它」；参考文件加目录"
+    source: "skills-authoring.md §4 C09"
+  - id: SK-10
+    category: skill
+    severity: medium
+    mode: llm
+    signal: "没有定义输出格式、模板、字段或示例中的任一项，也没有声明「输出形态由调用方决定」"
+    recommendation: "给一个可复制的输出骨架，字段名写全"
+    source: "skills-authoring.md §4 C10"
+  - id: SK-11
+    category: skill
+    severity: medium
+    mode: llm
+    signal: "没有失败处理段落；或删除、迁移、发布、付款等破坏性动作没有二次确认、备份、回滚说明"
+    recommendation: "补失败分支（重试、降级、拒绝、回报什么）；破坏性动作补确认与回滚"
+    source: "skills-authoring.md §4 C11"
+  - id: SK-12
+    category: skill
+    severity: low
+    mode: static
+    signal: "命中反斜杠路径；或枚举多个选项却没有「默认使用 X」；或同一概念出现 2 种以上叫法"
+    recommendation: "统一为正斜杠路径与单一术语；多选项必须给出默认值"
+    source: "skills-authoring.md §4 C12"
+  - id: SK-13
+    category: skill
+    severity: medium
+    mode: llm
+    signal: "既无触发条件也无多步流程，内容属于模型常识；或与库内某条规则高度重复；或只服务一次性任务"
+    recommendation: "降级为规则、合并到既有技能，或干脆不进库"
+    source: "skills-authoring.md §4 C13"
+  - id: SK-14
+    category: skill
+    severity: low
+    mode: llm
+    signal: "scripts 目录下的脚本裸抛异常、错误信息只有堆栈没有下一步，或常量是无注释的魔法数字；或 SKILL.md 没说清该运行还是只该读"
+    recommendation: "脚本补错误处理与可执行的下一步提示；正文写明运行方式"
+    source: "skills-authoring.md §4 C14"
+  - id: SK-15
+    category: skill
+    severity: low
+    mode: static
+    signal: "使用仅某个工具支持的扩展字段却没有标注「仅 X 可用」；name 用中文；或目录名含空格下划线且未声明跨工具限制"
+    recommendation: "标注适用工具，或改用标准字段；跨工具分发前先做降级"
+    source: "skills-authoring.md §4 C15"
+  - id: MC-01
+    category: mcp
+    severity: high
+    mode: static
+    signal: "启动命令或镜像 tag 使用 latest、不带精确版本（npx -y 包名、uvx 包名、docker latest）；或没有 lockfile"
+    recommendation: "固定到精确版本，升级按依赖变更审查"
+    source: "sdlc-mcp-authoring.md §4.2 MCP-02"
+  - id: MC-02
+    category: mcp
+    severity: medium
+    mode: static
+    signal: "配置里没有来源 URL、维护者或审核日期；或来源指向短链、粘贴站、无名仓库"
+    recommendation: "补来源与审核记录，只安装审过的 server"
+    source: "sdlc-mcp-authoring.md §4.2 MCP-03"
+  - id: MC-03
+    category: mcp
+    severity: high
+    mode: static
+    signal: "工具描述出现「ignore previous」「you must」「crucial」「always」等祈使句或系统提示口吻，或引用其他 server 的工具名"
+    recommendation: "视为投毒迹象：停用该 server 并核对上游版本哈希"
+    source: "sdlc-mcp-authoring.md §4.2 MCP-04、mcp-scan E001-E003"
+  - id: MC-04
+    category: mcp
+    severity: medium
+    mode: llm
+    signal: "工具描述不足 3 句，或没有写「何时不该用」，或参数无含义说明"
+    recommendation: "补「做什么、何时用与不用、每个参数含义与影响、注意事项」"
+    source: "sdlc-mcp-authoring.md §4.2 MCP-05"
+  - id: MC-05
+    category: mcp
+    severity: low
+    mode: static
+    signal: "工具名没有服务前缀（search、list 这类通用名），或同类 list 前缀工具超过 3 个且无过滤参数"
+    recommendation: "加服务前缀，把薄封装合并为面向任务的复合工具"
+    source: "sdlc-mcp-authoring.md §4.2 MCP-06"
+  - id: MC-06
+    category: mcp
+    severity: medium
+    mode: static
+    signal: "输入 schema 参数全是自由文本字符串，没有 required、enum、format 约束"
+    recommendation: "补类型、必填与枚举约束；输入校验是服务端硬要求"
+    source: "sdlc-mcp-authoring.md §4.2 MCP-07"
+  - id: MC-07
+    category: mcp
+    severity: high
+    mode: static
+    signal: "删除、发送、支付、发布类工具与只读工具同权，没有审批模式或确认步骤"
+    recommendation: "为破坏性与外发工具单独设审批模式，默认不自动执行"
+    source: "sdlc-mcp-authoring.md §4.2 MCP-08"
+  - id: MC-08
+    category: mcp
+    severity: high
+    mode: static
+    signal: "同一可用能力池里同时存在私密数据读取、不可信内容摄入、对外发送或写入三类工具，且无隔离"
+    recommendation: "拆到不同会话或智能体，或去掉其中一类能力"
+    source: "sdlc-mcp-authoring.md §4.2 MCP-09、TF001"
+  - id: MC-09
+    category: mcp
+    severity: medium
+    mode: static
+    signal: "没有工具描述哈希基线文件，也没有把扫描接入定期检查"
+    recommendation: "首次扫描记录基线，之后变更即告警，用于发现 rug pull"
+    source: "sdlc-mcp-authoring.md §4.2 MCP-10"
+  - id: MC-10
+    category: mcp
+    severity: high
+    mode: llm
+    signal: "配置或代码把上游 token 直接转发给下游 API（token passthrough）"
+    recommendation: "改为按目标服务单独授权，禁止透传"
+    source: "sdlc-mcp-authoring.md §4.2 MCP-11"
+  - id: MC-11
+    category: mcp
+    severity: low
+    mode: static
+    signal: "server 仍有高权限配置，但没有显式禁用开关，也没有使用记录"
+    recommendation: "无用的 server 显式禁用而不是留着"
+    source: "sdlc-mcp-authoring.md §4.2 MCP-12"
+  - id: CMD-01
+    category: command
+    severity: medium
+    mode: static
+    signal: "一个命令文件包含 3 个以上不相关目标动词（评审加修复加发布）"
+    recommendation: "一个命令只做一件事，名字即动作"
+    source: "sdlc-mcp-authoring.md §4.3 CMD-01"
+  - id: CMD-02
+    category: command
+    severity: high
+    mode: static
+    signal: "缺 description，或 description 只写摘要（A command that 开头）而没有触发时机"
+    recommendation: "写成「何时该调用」，并给出用户会说的原话"
+    source: "sdlc-mcp-authoring.md §4.3 CMD-02"
+  - id: CMD-03
+    category: command
+    severity: low
+    mode: static
+    signal: "描述或标题出现 I can help、You can use this 等第一或第二人称"
+    recommendation: "改为第三人称陈述句"
+    source: "sdlc-mcp-authoring.md §4.3 CMD-03"
+  - id: CMD-04
+    category: command
+    severity: medium
+    mode: static
+    signal: "引用了参数占位符（$ARGUMENTS 或方括号参数）却没有定义类型、必填性与缺参行为"
+    recommendation: "显式写参数契约与缺参时的默认动作"
+    source: "sdlc-mcp-authoring.md §4.3 CMD-04"
+  - id: CMD-05
+    category: command
+    severity: medium
+    mode: llm
+    signal: "正文没有验收步骤，不说明跑哪些检查、满足什么条件算完成"
+    recommendation: "末尾补验收命令与成功判据"
+    source: "sdlc-mcp-authoring.md §4.3 CMD-05"
+  - id: CMD-06
+    category: command
+    severity: medium
+    mode: static
+    signal: "正文超过 500 行且没有参考文件拆分"
+    recommendation: "细节外置，正文只留流程与验收"
+    source: "sdlc-mcp-authoring.md §4.3 CMD-06"
+  - id: CMD-07
+    category: command
+    severity: medium
+    mode: static
+    signal: "放在与当前工具不匹配的目录（例如在 Cursor 项目里用别家的 skills 目录），或规则文件后缀不是该工具要求的扩展名"
+    recommendation: "按目标工具的正确目录与格式放置，跨工具时做迁移而非照搬"
+    source: "sdlc-mcp-authoring.md §4.3 CMD-08"
+  - id: AGT-01
+    category: agent
+    severity: medium
+    mode: llm
+    signal: "提示词覆盖 3 个以上互不相关职责，或名称是 helper、assistant 这类泛称"
+    recommendation: "一个子代理一个焦点，名称体现职责"
+    source: "sdlc-mcp-authoring.md §4.4 AGT-01"
+  - id: AGT-02
+    category: agent
+    severity: medium
+    mode: static
+    signal: "description 超过 3 句，或全部子代理描述合计接近 15000 tokens"
+    recommendation: "描述只写「何时委派 + 产出什么」，细节放系统提示"
+    source: "sdlc-mcp-authoring.md §4.4 AGT-02"
+  - id: AGT-03
+    category: agent
+    severity: high
+    mode: static
+    signal: "只读用途的子代理却带写文件、改代码或无限 Bash 权限"
+    recommendation: "按用途给最小工具集，只读任务禁写权限"
+    source: "sdlc-mcp-authoring.md §4.4 AGT-03"
+  - id: AGT-04
+    category: agent
+    severity: medium
+    mode: llm
+    signal: "未说明返回结构、是否落盘、是否只回摘要"
+    recommendation: "写明输出契约与交付形态"
+    source: "sdlc-mcp-authoring.md §4.4 AGT-04"
+  - id: AGT-05
+    category: agent
+    severity: low
+    mode: llm
+    signal: "纯检索或解析类子代理仍指定最强最贵的模型"
+    recommendation: "按任务难度分级选模型，探索类用便宜模型"
+    source: "sdlc-mcp-authoring.md §4.4 AGT-05"
+  - id: AGT-06
+    category: agent
+    severity: low
+    mode: static
+    signal: "同目录存在同名子代理，或团队共用子代理放在个人目录"
+    recommendation: "保证命名唯一；团队资产放项目级目录"
+    source: "sdlc-mcp-authoring.md §4.4 AGT-07"
+  - id: AGT-07
+    category: agent
+    severity: low
+    mode: llm
+    signal: "提示词要求把全部日志或全部文件内容贴回主会话"
+    recommendation: "只回结论与关键证据，细节留在子代理上下文"
+    source: "sdlc-mcp-authoring.md §4.4 AGT-08"
+  - id: AGT-08
+    category: agent
+    severity: low
+    mode: llm
+    signal: "没有任何「何时不要用我」的说明或触发反例"
+    recommendation: "补负向边界与一个反例"
+    source: "sdlc-mcp-authoring.md §4.4 AGT-09"
+  - id: MEM-01
+    category: memory
+    severity: medium
+    mode: llm
+    signal: "正文出现多步流程、编号 SOP 或清单式教程"
+    recommendation: "流程迁到技能或路径规则；记忆只留每次都需要的事实"
+    source: "sdlc-mcp-authoring.md §4.5 MEM-01"
+  - id: MEM-02
+    category: memory
+    severity: low
+    mode: llm
+    signal: "大段框架介绍、逐个目录解释、模型读文件就能知道的内容"
+    recommendation: "删掉可推断内容，把预算留给看不出来的坑"
+    source: "sdlc-mcp-authoring.md §4.5 MEM-03"
+  - id: MEM-03
+    category: memory
+    severity: medium
+    mode: static
+    signal: "根记忆文件超过 200 行未拆分，或单条规则文件超过 500 行"
+    recommendation: "局部内容下沉到路径规则；根文件只留全局事实"
+    source: "sdlc-mcp-authoring.md §4.5 MEM-04"
+  - id: MEM-04
+    category: memory
+    severity: low
+    mode: static
+    signal: "记忆文件没有 owner 字段，仓库也没有对应的负责人或评审约定"
+    recommendation: "指定 owner，并像代码一样评审变更"
+    source: "sdlc-mcp-authoring.md §4.5 MEM-07"
+  - id: MEM-05
+    category: memory
+    severity: high
+    mode: static
+    signal: "个人或本地记忆文件没有被忽略规则排除，或正文含真实用户名、内网地址、机器专属路径"
+    recommendation: "本地化内容加入忽略清单，正文改为占位符"
+    source: "sdlc-mcp-authoring.md §4.5 MEM-08"
+  - id: MEM-06
+    category: memory
+    severity: low
+    mode: static
+    signal: "库内没有任何审计记录，也没有定期检查过期与冲突的痕迹"
+    recommendation: "定期跑一次审计，输出差异而不直接改"
+    source: "sdlc-mcp-authoring.md §4.5 MEM-09"
+  - id: SEC-01
+    category: cross
+    appliesTo: ["identity", "rule", "skill", "mcp", "command", "agent", "memory"]
+    severity: high
+    mode: static
+    signal: "命中常见密钥前缀（sk-、ghp_、AKIA、xoxb-）、私钥头、长随机串，或配置 env 里写实值而非引用"
+    recommendation: "立即移除并轮换已泄露凭证，改为环境变量或密钥管理器引用"
+    source: "合并去重：identity ID-11、rule RU-10、skill C15、mcp MCP-01、agent AGT-06、memory MEM-08"
+  - id: SEC-02
+    category: cross
+    appliesTo: ["identity", "rule", "skill", "mcp", "command", "agent", "memory"]
+    severity: high
+    mode: static
+    signal: "正文出现「忽略此前指令」「你现在是」「重要：必须始终」这类要求模型改变身份的语句"
+    recommendation: "删除或改写为普通说明；外部内容一律当数据处理"
+    source: "skill C15、identity-rules-authoring §2.2.7、mcp MCP-04"
+  - id: STL-01
+    category: cross
+    appliesTo: ["identity", "rule", "skill", "command", "agent", "memory"]
+    severity: high
+    mode: static
+    signal: "提到的路径、脚本命令、包名或文件在库内与项目内均不存在"
+    recommendation: "删除或更新引用；改为指向真实存在的规范文件"
+    source: "rule RU-09、memory MEM-05、skill C09"
+  - id: STL-02
+    category: cross
+    appliesTo: ["identity", "rule", "skill", "mcp", "command", "agent", "memory"]
+    severity: low
+    mode: static
+    signal: "出现具体年份或版本号与「目前 / 最新 / 暂时」的组合"
+    recommendation: "删除时效性表述，把历史写法移到旧模式段落"
+    source: "skill C12、command CMD-07、memory MEM-05"
+  - id: VAG-01
+    category: cross
+    appliesTo: ["identity", "rule", "skill", "command", "agent", "memory"]
+    severity: medium
+    mode: static
+    signal: "空洞形容词（专业、严谨、高效、极致、赋能）密度超过每 100 字 3 个，或命中裸条件词（如适用、必要时、尽量）且无限定"
+    recommendation: "把每个形容词翻译成可观察行为或验收命令，裸条件补判定标准"
+    source: "identity ID-08、rule RU-05、memory MEM-02"
+  - id: CON-01
+    category: cross
+    appliesTo: ["identity", "rule", "skill", "mcp", "command", "agent", "memory"]
+    severity: high
+    mode: llm
+    signal: "同一主题在不同文件或章节取值不一致（包管理器、测试框架、缩进、语言、提交格式），或身份规定的语气与规则相冲突"
+    recommendation: "指定唯一事实源，其他位置改为引用；删除过时一方"
+    source: "rule RU-06、identity ID-12、memory MEM-06"
+  - id: CAR-01
+    category: cross
+    appliesTo: ["rule", "memory"]
+    severity: medium
+    mode: llm
+    signal: "常驻文件里出现多步流程、长篇教程、一次性任务，或把「必须 / 禁止」写进记忆当作硬门禁"
+    recommendation: "流程迁技能，硬门禁改 hook 或权限配置，记忆只留事实"
+    source: "rule RU-12、memory MEM-01"
+  - id: DUP-01
+    category: cross
+    appliesTo: ["identity", "rule", "skill", "mcp", "command", "agent", "memory"]
+    severity: medium
+    mode: static
+    signal: "同类别两资产正文归一化后完全一致，或 token 集合相似度高于 0.85"
+    recommendation: "保留一处并归档其余，合并前逐组确认"
+    source: "add-asset-governance 重复治理、rule RU-07"
