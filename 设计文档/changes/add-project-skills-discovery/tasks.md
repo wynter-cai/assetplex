@@ -1,6 +1,7 @@
 # Tasks: add-project-skills-discovery
 
-> **状态（2026-11-11 复核）：T1-T4、T6-T8 已随后续变更落地，补齐勾选；T5（沉淀回归锁定）与 T9（真实 storage 回环 + 浏览器实测）未验证，保持未勾。**
+> **状态（2026-11-15 收尾）：T1-T8 已落地；T5（沉淀回归锁定）已补齐用例并通过；T9 的后端/前端全量、双端 tsc、双端构建与 API 回环已完成并记录（见文末实测记录），仅浏览器实测待补。**
+> 此前复核（2026-11-11）：T1-T4、T6-T8 随后续变更落地，补齐勾选；T5、T9 未验证。
 > 复核证据：`src/core/workspaces.ts`、`src/server/lib/node-workspaces.ts`、`src/server/routes/workspaces.ts`、
 > `skills-inventory.ts` 的 `project` 来源与 `workspaceDirs` 扫描、`WorkspaceSettingsCard.tsx`、
 > `web/src/types/api.ts` 的 `workspaceName/workspacePath`，以及 `tests/unit/core/workspaces.test.ts`、
@@ -52,8 +53,10 @@
 - 验证方式：RED→GREEN，全量测试通过
 
 ### T5: 沉淀 project 技能回归锁定
-- [ ] 补测试（skill-curation 既有测试文件内追加）：project 技能单条沉淀成功、frontmatter `source: project:<绝对路径>`、再沉淀 400、批量部分失败语义；确认 curation 代码零改动通过（若需改动仅限必要最小行并说明）
-- 验证方式：全量测试通过
+- [x] 补测试（skill-curation 既有测试文件内追加）：project 技能单条沉淀成功、frontmatter `source: project:<绝对路径>`、再沉淀 400、批量部分失败语义；确认 curation 代码零改动通过（若需改动仅限必要最小行并说明）
+  - 落地：`tests/unit/core/skill-curation.test.ts`「项目技能（project）沉淀回归」新增 2 例——①沉淀成功后再次沉淀返回 400，且源文件与库内副本均不变；②批量含 project 技能的部分失败语义（成功项不回滚，不存在项与再沉淀项逐条计入 `failed`）。原有 2 例已覆盖单条成功与 `source` 溯源。
+  - 结论：curation 代码零改动，新增用例直接绿（实现已在位，属「Red 无法先失败」的补锁场景）。
+- 验证方式：全量测试通过（后端 1365 passed / 1 skipped）
 
 ## Phase 3: 前端（组件测试先行）
 
@@ -76,16 +79,34 @@
 ## Phase 4: 收尾
 
 ### T9: 全量验证与真实回环
-- [ ] 后端全量测试 + `tsc -b` + tsup build
-- [ ] 前端测试 + `tsc -b` + vite build，重启 http://127.0.0.1:17521
-- [ ] API 回环（对照 spec 场景，用真实 storage.json）：
-  - GET /api/workspaces 自动发现出本机 14 个工作区（含中文路径），errors 为空
-  - GET /api/skills?origin=project 非空；总数 = Zhihu 4 + Demo App 1 + Super Powers 62 经同名翻转/跨项目去重后的实际值（以 API 实测记录，不预设 67）
-  - 验证 marketplace 计数较基线 293 的下降 = 被 project 赢走的同名数；total 与各 origin 计数守恒
-  - PUT 手动根 `d:\demo` 与禁用某工作区的行为可逆验证，测后还原（workspaces.json 删除回默认）
-  - 选一个 project 技能（建议 douyin-knowledge-extraction）curate → 校验 vault 文件 source 行 → DELETE 清理
-- [ ] 浏览器实测：技能页「项目技能」筛选与计数、卡片项目徽章、详情路径与沉淀按钮、设置页工作区列表；完成后关闭标签页
-- [ ] 实测记录写入本文件；数据清理回基线（vault 31、总量恢复、workspaces.json 还原）
+- [x] 后端全量测试 + `tsc -b` + tsup build
+- [x] 前端测试 + `tsc -b` + vite build（本轮复用已在运行的 17521 服务：本任务零产品代码改动，构建产物已重建，未重启进程）
+- [x] API 回环（对照 spec 场景，用真实 storage.json；口径已按 `refactor-skill-origin-taxonomy` 修正——对外不再有 `origin`/`countByOrigin`，项目技能以「带 `workspaceName` 的卡片」识别）：
+  - GET /api/workspaces 自动发现出 5 个工作区（含 1 个中文路径），errors 为空；原文「14 个」为本机环境变化，非功能回归
+  - GET /api/skills 中项目技能卡片 69 张（Super Powers 62 / Zhihu 4 / 其余 3）；Zhihu 的 5 个工作区技能有 1 个与他源同名合并，故卡片数 69 ≠ 工作区技能数之和 70
+  - total 449，provenance 五值 `self 103 / marketplace 291 / plugin 38 / builtin 17 / github 0` 合计守恒；marketplace 现行 291
+  - PUT 可逆验证：手动根 `d:\demo` 返回 200（不存在→errors 提示 1 条）、移除后复原；`autoDiscover:false` → 工作区 0、项目卡片 0，恢复后 5/69；禁用任一项 → 项目卡片 68，恢复后 69；`roots:["relative/path"]` → 400 且配置不变
+  - 项目技能 curate 回环：库内 +1（IN 34→35、total 仍 449），vault 文件 `source: project:<原 SKILL.md 绝对路径>`，源文件未动；DELETE 清理后 IN 回 34、total 449、该技能重新以项目卡片出现
+- [ ] 浏览器实测：技能页「项目技能」筛选与计数、卡片项目徽章、详情路径与沉淀按钮、设置页工作区列表；完成后关闭标签页（本轮执行环境无浏览器工具，待补）
+- [x] 实测记录写入本文件；数据清理回基线（本轮 vault 库内 34 条、total 449、workspaces.json 已还原为默认）
+
+#### T9 实测记录（2026-11-15）
+
+| 项 | 实测结果 |
+|---|---|
+| 后端测试 | `node node_modules/vitest/vitest.mjs run` → 128 文件 / 1365 passed + 1 skipped |
+| 后端类型检查 | `node node_modules/typescript/bin/tsc -b` → 0 错 |
+| 后端构建 | `node node_modules/tsup/dist/cli-default.js` → 成功（dist/index.js 638.45 KB） |
+| 前端测试 | `web` 下 `node node_modules/vitest/vitest.mjs run` → 79 文件 / 612 passed |
+| 前端类型检查 | `web` 下 `node node_modules/typescript/bin/tsc -b` → 0 错 |
+| 前端构建 | `web` 下 `node node_modules/vite/bin/vite.js build` → 成功（index 805.44 kB，gzip 243.19 kB，仅 chunk 体积提示） |
+| 工作区发现 | 5 个工作区（中文路径 1 个）、`errors: []`、`truncated: false`、`maxWorkspaces: 100` |
+| 项目技能盘点 | 项目卡片 69 张；total 449；provenance 合计 449（self 103 / marketplace 291 / plugin 38 / builtin 17 / github 0） |
+| 配置回环 | 非法路径 400；手动根增删、自动发现开关、单项禁用均可逆；`workspaces.json` 已还原默认 |
+| 沉淀回环 | curate 后 IN 34→35 且 source 行正确，DELETE 后 IN 回 34、vault 目录已清理 |
+| 基线说明 | 本轮 vault 库内 34 条（原文 31 已被后续变更抬高，非本变更造成） |
+
+> 差异说明：本变更新增测试后，`tests/unit/core/skill-curation.test.ts` 由 18 例增至 20 例；其余数字为当前仓库基线。
 
 ## 优先级说明
 

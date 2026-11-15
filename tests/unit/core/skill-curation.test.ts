@@ -233,6 +233,40 @@ describe('项目技能（project）沉淀回归', () => {
     expect(card.variants).toContain(projectSkillPath);
   });
 
+  it('同一项目技能沉淀成功后再次沉淀返回 400，源文件与保险箱副本均不变', () => {
+    const fs = new MemoryWriteFs();
+    addSkill(fs, 'd:/trae/ws1/.trae/skills', 'douyin-x', '项目版', '正文');
+    const deps = { fs, sources: PROJECT_SOURCES, store: new MemoryStore() };
+    curateVaultSkill({ id: 'douyin-x' }, deps);
+    const vaultRaw = fs.files.get('/hub/skills/douyin-x/SKILL.md') ?? '';
+
+    // 沉淀后同名合并主本已翻为 vault，再沉淀命中已收藏分支
+    expectCurateError(() => curateVaultSkill({ id: 'douyin-x' }, deps), 400, '无需收藏');
+    expect(fs.files.get('/hub/skills/douyin-x/SKILL.md')).toBe(vaultRaw);
+    expect(fs.files.get(projectSkillPath)).toContain('正文');
+  });
+
+  it('批量沉淀含项目技能：成功项不回滚，再沉淀与不存在项逐条计入失败', () => {
+    const fs = new MemoryWriteFs();
+    addSkill(fs, 'd:/trae/ws1/.trae/skills', 'douyin-x', '抖音知识提取', '正文');
+    const deps = { fs, sources: PROJECT_SOURCES, store: new MemoryStore() };
+
+    const first = curateVaultSkills({ ids: ['douyin-x', 'ghost'] }, deps);
+    expect(first.created.map((s) => s.name)).toEqual(['douyin-x']);
+    expect(first.created[0]?.origin).toBe('vault');
+    expect(first.failed.map((f) => f.id)).toEqual(['ghost']);
+
+    const second = curateVaultSkills({ ids: ['douyin-x'] }, deps);
+    expect(second.created).toHaveLength(0);
+    expect(second.failed).toHaveLength(1);
+    expect(second.failed[0]?.id).toBe('douyin-x');
+    expect(second.failed[0]?.error).toContain('我的库');
+
+    // 首次成功项仍在保险箱且来源为 project，项目内源文件未被移动
+    expect(fs.files.get('/hub/skills/douyin-x/SKILL.md')).toContain(`source: project:${projectSkillPath}`);
+    expect(fs.files.get(projectSkillPath)).toContain('正文');
+  });
+
   it('保险箱已存在同名时项目技能沉淀被拒（400），源文件不动', () => {
     const fs = new MemoryWriteFs();
     addSkill(fs, 'd:/trae/ws1/.trae/skills', 'douyin-x', '项目版', '正文');
