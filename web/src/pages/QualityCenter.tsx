@@ -1,59 +1,103 @@
 /**
- * 质量中心页（refactor-governance-center T1，由原治理临时容器页平移）
+ * 质量中心首页：全局体检报告（refactor-governance-center T3）
  *
- * 本任务只做入口与命名迁移：内容仍是「体检与待办视图」——健康分卡 + 四维问题清单，
- * 点条目就地展开体检报告。只读复用 `/governance/health` 与 `/governance/issues`。
- * 体检报告聚类、跨类别批量、规则与忽略分别由 T3 / T5 / T7 落位。
+ * 只回答「整体怎么样、先改哪一类」：四维分数 + 按影响面排序的问题聚类。
+ * 聚类展开只给资产库深链，不内嵌诊断面板、不提供任何修复动作。
  *
- * spec: 设计文档/changes/refactor-governance-center/specs/governance-center.spec.md Scenario 1.1
+ * spec: 设计文档/changes/refactor-governance-center/specs/governance-center.spec.md Requirement 2 / 7
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import { AlertTriangle, Boxes } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { ClusterList } from '@/components/quality/ClusterList';
 import { HomeHero } from '@/components/home/HomeHero';
-import { DimensionIssues } from '@/components/governance/DimensionIssues';
 import { api } from '@/lib/api';
 
 export default function QualityCenter(): JSX.Element {
-  const navigate = useNavigate();
-  // 只读缓存口径：本页不做「重新体检」，避免与首页争抢重算时机
-  const healthQuery = useQuery({
-    queryKey: ['governance-health'],
-    queryFn: () => api.getGovernanceHealth(false),
-    retry: 1,
+  // 只读聚合：打开页面不触发任何诊断或模型调用
+  const overviewQuery = useQuery({
+    queryKey: ['quality-overview'],
+    queryFn: () => api.getQualityOverview(false),
   });
 
-  const dimensions = healthQuery.data?.dimensions ?? null;
+  const overview = overviewQuery.data ?? null;
 
   return (
     <div className="space-y-6 p-6">
-      <header>
-        <h1 className="text-xl font-semibold">质量中心建设中</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          当前只提供体检与待办视图：健康分 + 四维问题清单，点条目可展开该资产的体检报告。
-          筛选、批量整改等能力将在质量中心正式版提供。
+      <header className="space-y-1">
+        <h1 className="text-xl font-semibold">体检报告</h1>
+        <p className="text-sm text-muted-foreground">
+          质量中心 · 全库问题按类型聚类，先看整体、再决定先改哪一类。具体修改在资产详情完成。
         </p>
+        {overview !== null && (
+          <p className="text-xs text-muted-foreground" data-testid="pending-total">
+            待处理 {overview.pendingTotal} 项（与首页同源）
+          </p>
+        )}
       </header>
 
-      <HomeHero
-        // 健康分接口能返回数据即说明 Hub 已初始化；零资产由 grade === 'empty' 分支单独呈现
-        hubInitialized={true}
-        health={healthQuery.data ?? null}
-        healthLoading={healthQuery.isLoading}
-        healthError={healthQuery.isError}
-        onStartOnboarding={() => navigate('/onboarding')}
-      />
+      {overviewQuery.isLoading && (
+        <p className="text-sm text-muted-foreground">体检报告读取中…</p>
+      )}
 
-      <section className="space-y-3">
-        <h2 className="text-base font-semibold">四维问题清单</h2>
-        {dimensions === null ? (
-          <p className="text-sm text-muted-foreground">体检数据暂不可用，问题清单读取不到。</p>
-        ) : (
-          dimensions.map((dimension) => (
-            <DimensionIssues key={dimension.id} dimension={dimension.id} label={dimension.label} />
-          ))
-        )}
-      </section>
+      {overviewQuery.isError && overview === null && (
+        <Card>
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 p-6">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              <div>
+                <h2 className="text-base font-semibold">体检报告读取失败</h2>
+                <p className="text-sm text-muted-foreground">
+                  这次没算出来，资产仍安全存储；请稍后重试。
+                </p>
+              </div>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => void overviewQuery.refetch()}>
+              重试
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {overview !== null && overview.health.totalAssets === 0 && (
+        <Card data-testid="quality-empty-assets">
+          <CardContent className="space-y-3 p-8 text-center">
+            <Boxes className="mx-auto h-10 w-10 text-primary" />
+            <h2 className="text-xl font-semibold">先把资产收进库再体检</h2>
+            <p className="text-sm text-muted-foreground">
+              库里还没有资产，暂时没有可体检的内容。先导入或创建资产，再回来看全局报告。
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <Button asChild>
+                <Link to="/vault">去资产库</Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link to="/onboarding">去新手引导</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {overview !== null && overview.health.totalAssets > 0 && (
+        <>
+          <HomeHero
+            hubInitialized={true}
+            health={overview.health}
+            healthLoading={false}
+            healthError={false}
+            showDimensionMeta
+          />
+          <ClusterList
+            clusters={overview.clusters}
+            coverage={overview.coverage}
+            lastCheckedAt={overview.generatedAt}
+          />
+        </>
+      )}
     </div>
   );
 }

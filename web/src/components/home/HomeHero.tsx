@@ -29,6 +29,8 @@ export interface HomeHeroProps {
   onConfigureAi?: () => void;
   /** 一键整改入口（打开两段式确认弹窗，不代表跳过确认） */
   onStartRemediation?: () => void;
+  /** 体检报告页追加显示维度权重与受影响资产数（质量中心 T3） */
+  showDimensionMeta?: boolean;
 }
 
 const GRADE_LABEL: Record<HealthGrade, string> = {
@@ -80,6 +82,7 @@ export function HomeHero({
   onOpenIssues,
   onConfigureAi,
   onStartRemediation,
+  showDimensionMeta = false,
 }: HomeHeroProps): JSX.Element {
   if (!hubInitialized) {
     return (
@@ -203,33 +206,63 @@ export function HomeHero({
         </div>
 
         <div className="space-y-2">
-          {health.dimensions.map((dimension) => (
-            <button
-              key={dimension.id}
-              type="button"
-              data-testid={`dimension-${dimension.id}`}
-              onClick={() => onOpenIssues?.(dimension.id)}
-              className="w-full text-left rounded-md px-2 py-1.5 hover:bg-muted/60 transition-colors"
-            >
-              <div className="flex items-center justify-between text-xs mb-1">
-                <span className="font-medium">{dimension.label}</span>
-                <span className="text-muted-foreground">
-                  {applicabilityText(dimension)}
-                  {dimension.applicability === 'applicable' && dimension.issueCount > 0
-                    ? ` · ${dimension.issueCount} 个问题`
-                    : ''}
-                </span>
-              </div>
-              <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                {dimension.applicability === 'applicable' && (
-                  <div
-                    className={`h-full rounded-full ${barTone(dimension.score ?? 0)}`}
-                    style={{ width: `${dimension.score ?? 0}%` }}
-                  />
-                )}
-              </div>
-            </button>
-          ))}
+          {health.dimensions.map((dimension) => {
+            const content = (
+              <>
+                <div className="flex items-center justify-between gap-2 text-xs mb-1">
+                  <span className="font-medium">{dimension.label}</span>
+                  <span className="text-muted-foreground">
+                    {showDimensionMeta && (
+                      <span>
+                        权重 {dimension.weight}%
+                        {dimension.applicability === 'applicable'
+                          ? ` · 受影响 ${dimension.evaluatedAssets} 个`
+                          : ''}
+                        {' · '}
+                      </span>
+                    )}
+                    {applicabilityText(dimension)}
+                    {dimension.applicability === 'applicable' && dimension.issueCount > 0
+                      ? ` · ${dimension.issueCount} 个问题`
+                      : ''}
+                  </span>
+                </div>
+                <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                  {dimension.applicability === 'applicable' && (
+                    <div
+                      className={`h-full rounded-full ${barTone(dimension.score ?? 0)}`}
+                      style={{ width: `${dimension.score ?? 0}%` }}
+                    />
+                  )}
+                </div>
+              </>
+            );
+
+            // 未提供下钻回调时不渲染可点击外壳，避免看似能点却没反应
+            if (onOpenIssues === undefined) {
+              return (
+                <div
+                  key={dimension.id}
+                  data-testid={`dimension-${dimension.id}`}
+                  className="w-full rounded-md px-2 py-1.5 text-left"
+                >
+                  {content}
+                </div>
+              );
+            }
+
+            return (
+              <button
+                key={dimension.id}
+                type="button"
+                data-testid={`dimension-${dimension.id}`}
+                onClick={() => onOpenIssues(dimension.id)}
+                className="w-full text-left rounded-md px-2 py-1.5 hover:bg-muted/60 transition-colors"
+              >
+                {content}
+              </button>
+            );
+          })}
         </div>
 
         {health.qualityMode === 'mechanical-only' && onConfigureAi !== undefined && (
