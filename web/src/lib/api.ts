@@ -52,6 +52,7 @@ import type {
   ArbitrationRequest,
   ArbitrationResponse,
   DiagnosisReport,
+  DiagnosisRuleListResponse,
   DiagnoseEstimate,
   DoctorAssetKind,
   DoctorSummaryResponse,
@@ -373,6 +374,8 @@ export const api = {
   /** 质量中心全局概览（聚类 + 影响面排序 + 待处理总数同源） */
   getQualityOverview: (refresh = false) =>
     request<QualityOverview>(`/governance/overview${refresh ? '?refresh=1' : ''}`),
+  /** 规则清单（与诊断引擎同一份规则集，含版本与计数） */
+  getDiagnosisRules: () => request<DiagnosisRuleListResponse>('/diagnosis/rules'),
   getRemediationPlan: (body: RemediationPlanRequest = {}) =>
     request<RemediationPlan>('/governance/remediation/plan', {
       method: 'POST',

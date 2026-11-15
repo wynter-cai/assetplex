@@ -15,6 +15,7 @@ import {
   RULE_CATEGORIES,
   RULE_MODES,
   type DiagnosisRule,
+  type DiagnosisRuleListResponse,
   type DiagnosisRuleSet,
   type RuleAssetCategory,
   type RuleCategory,
@@ -235,6 +236,23 @@ export function parseRuleRegistry(text: string, sourceLabel = RULES_FILE_NAME): 
     ruleSet: { version: version.trim(), updatedAt: doc.scalars['updatedAt'] ?? '', rules },
     warnings,
   };
+}
+
+/**
+ * 规则清单响应（add-diagnosis-rules T7）：计数与清单同源，
+ * cross 单列且不计入七类（spec「定义与数据口径」）。
+ */
+export function summarizeRuleSet(ruleSet: DiagnosisRuleSet): DiagnosisRuleListResponse {
+  const counts = Object.fromEntries(RULE_CATEGORIES.map((category) => [category, 0])) as Record<
+    RuleCategory,
+    number
+  >;
+  const modeCounts = Object.fromEntries(RULE_MODES.map((mode) => [mode, 0])) as Record<RuleMode, number>;
+  for (const rule of ruleSet.rules) {
+    counts[rule.category] += 1;
+    modeCounts[rule.mode] += 1;
+  }
+  return { ...ruleSet, counts, modeCounts };
 }
 
 /** 读取并解析规则集文件；文件缺失视为不可恢复（由调用方决定 422 或降级） */

@@ -10,6 +10,7 @@ import Settings from './pages/Settings';
 import Projects from './pages/Projects';
 import Duplicates from './pages/Duplicates';
 import QualityCenter from './pages/QualityCenter';
+import QualityRules from './pages/QualityRules';
 import QualityPlaceholder from './pages/QualityPlaceholder';
 import Activities from './pages/Activities';
 import Onboarding from './pages/Onboarding';
@@ -54,7 +55,7 @@ export default function App(): JSX.Element {
           path="/quality/batch"
           element={<QualityPlaceholder title="跨类别批量" />}
         />
-        <Route path="/quality/rules" element={<QualityPlaceholder title="规则与忽略" />} />
+        <Route path="/quality/rules" element={<QualityRules />} />
         <Route path="/quality/criteria" element={<CriteriaView />} />
         <Route path="/connections" element={<Connections />} />
         {/* 活动页：操作时间线（add-activity-log） */}

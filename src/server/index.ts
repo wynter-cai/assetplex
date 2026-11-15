@@ -28,6 +28,7 @@ import { criteriaRoutes } from './routes/criteria.js';
 import { createArbitrationRoutes } from './routes/arbitration.js';
 import { createDoctorRoutes } from './routes/doctor.js';
 import { createDoctorFixRoutes } from './routes/doctor-fix.js';
+import { createDiagnosisRoutes } from './routes/diagnosis.js';
 import { createGovernanceRoutes } from './routes/governance.js';
 import { createHomeRoutes } from './routes/home.js';
 import { createActivityRoutes } from './routes/activity.js';
@@ -81,6 +82,7 @@ export async function startServer(options: ServerOptions = {}): Promise<void> {
   app.route('/api/arbitration', createArbitrationRoutes());
   app.route('/api/doctor', createDoctorRoutes({ lastRunStore: nodeDoctorLastRunStore }));
   app.route('/api/doctor', createDoctorFixRoutes());
+  app.route('/api/diagnosis', createDiagnosisRoutes());
   app.route('/api/governance', createGovernanceRoutes());
   app.route('/api/home', createHomeRoutes());
   app.route('/api/activity', createActivityRoutes());

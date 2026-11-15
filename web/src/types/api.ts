@@ -810,6 +810,38 @@ export interface DiagnosisIssue {
 
 export type DiagnosisConfidence = 'high' | 'medium' | 'low';
 
+/** 规则集覆盖的七类资产（比医生类别多 mcp） */
+export type RuleAssetCategory = 'identity' | 'skill' | 'rule' | 'mcp' | 'command' | 'agent' | 'memory';
+
+/** 规则类别：七类资产 + cross（跨资产通用，计数单列、不计入七类） */
+export type DiagnosisRuleCategory = RuleAssetCategory | 'cross';
+
+/** static = 零模型调用；llm = 语义增量 */
+export type DiagnosisRuleMode = 'static' | 'llm';
+
+/** 一条可稳定引用的检查项（add-diagnosis-rules T7） */
+export interface DiagnosisRule {
+  /** 稳定编号，如 SK-04；永不复用 */
+  id: string;
+  category: DiagnosisRuleCategory;
+  /** category=cross 时列出适用类别 */
+  appliesTo?: RuleAssetCategory[];
+  severity: DiagnosisSeverity;
+  mode: DiagnosisRuleMode;
+  signal: string;
+  recommendation: string;
+  source: string;
+}
+
+/** GET /api/diagnosis/rules：规则清单与计数同源 */
+export interface DiagnosisRuleListResponse {
+  version: string;
+  updatedAt: string;
+  rules: DiagnosisRule[];
+  counts: Record<DiagnosisRuleCategory, number>;
+  modeCounts: Record<DiagnosisRuleMode, number>;
+}
+
 /** 问题来源：静态规则 / 模型语义 */
 export type FindingSource = 'rule' | 'llm';
 

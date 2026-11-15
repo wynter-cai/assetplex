@@ -330,6 +330,14 @@ export interface DiagnosisRuleSet {
   rules: DiagnosisRule[];
 }
 
+/** GET /api/diagnosis/rules：治理中心分类页与编写指南共用同一份规则清单 */
+export interface DiagnosisRuleListResponse extends DiagnosisRuleSet {
+  /** 按类别计数；cross 单列，不计入七类（spec 统计口径） */
+  counts: Record<RuleCategory, number>;
+  /** 按 mode 计数，用于「静态 / AI」口径披露 */
+  modeCounts: Record<RuleMode, number>;
+}
+
 /** line 为 null 表示无法定位到具体行（缺失类问题），前端标注「片段序号」 */
 export interface FindingEvidence {
   /** 库内相对路径，禁止绝对路径与用户名 */
