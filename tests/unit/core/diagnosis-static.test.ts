@@ -203,6 +203,24 @@ describe('误报回归：样本基线暴露的三处硬伤', () => {
     expect(ids(run('skill', 'skills/demo-skill/SKILL.md', content))).not.toContain('SK-03');
   });
 
+  it('SK-03 认可「用户说 / Use for / Invoke when」等其余触发写法', () => {
+    const samples = [
+      '用户说要批量重命名文件时按此流程处理。',
+      'Use for batch renaming files.',
+      'Invoke when the user wants to rename files.',
+    ];
+    for (const desc of samples) {
+      const content = `---\nname: demo-skill\ndescription: ${desc}\n---\n\n## 流程\n1. 重命名\n`;
+      expect(ids(run('skill', 'skills/demo-skill/SKILL.md', content))).not.toContain('SK-03');
+    }
+  });
+
+  it('SK-03 不把行内代码里的尖括号当标签', () => {
+    const content =
+      '---\nname: demo-skill\ndescription: Use when 执行 `git <branch>` 需要先确认分支。\n---\n\n## 流程\n1. 确认\n';
+    expect(ids(run('skill', 'skills/demo-skill/SKILL.md', content))).not.toContain('SK-03');
+  });
+
   it('SK-03 仍对没有任何触发子句的描述报错', () => {
     const content = '---\nname: demo-skill\ndescription: 一个导出 CSV 的技能。\n---\n\n## 流程\n1. 读取 CSV\n';
     expect(ids(run('skill', 'skills/demo-skill/SKILL.md', content))).toContain('SK-03');
