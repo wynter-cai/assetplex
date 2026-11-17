@@ -154,8 +154,29 @@
 
 ## 基线
 
-- 待 T0 填写：后端测试数 / 前端测试数 / typecheck 结果 / 构建时长
+- 接手基线：后端 1373 passed + 1 skipped；前端 649 passed；双端 tsc 0；双构建成功；隐私终检 0 命中
+- T13-T16 完成后（T17 收口实测）：后端 **1380 passed + 1 skipped**；前端 **662 passed**；双端 tsc 0；tsup + vite 构建成功；`privacy-check.mjs` 0 命中（扫 282 个 commit）
 
 ## 验收记录
 
-- 待 T17 填写：逐 Requirement 的 Scenario 通过情况
+> 证据以自动化用例为主；标注「人工」的条目尚未做浏览器逐条走查。
+
+| Requirement | 结果 | 证据 |
+|---|---|---|
+| R1 全貌看板（1.1-1.5） | 通过 | `tests/unit/core/skill-catalog.test.ts`、`skills-last-modified.test.ts`、`SkillCatalogBoard.test.tsx` |
+| R2 分类维度与依据（2.1-2.5） | 通过 | `skill-catalog.test.ts`（五值覆盖 / unknown / 依据优先级）、`SkillCard`、`SkillDetail` 用例 |
+| R3 展开与筛选（3.1-3.4） | 通过 | `SkillCatalogBoard.test.tsx`（展开/收起/`aria-expanded`）、`SkillsViewFilters.test.tsx`（三维叠加、组合空态） |
+| R4 单个与子集诊断（4.1-4.6） | 通过 | `skills-batch-diagnosis.test.ts`、`SkillDiagnosisDialog.test.tsx`（预估、机械降级、二次确认、超限） |
+| R5 结果聚合（5.1-5.4） | 通过 | `SkillDiagnosisResults.test.tsx`（排序、失败重试、口径披露）、摘要回写用例 |
+| R6 批量分发（6.1-6.5） | 通过 | `skill-distribution.test.ts`、`skill-distribution-execute.test.ts`（零写入、冲突跳过、409、回滚映射）、`SkillDistributionDialog.test.tsx` |
+| R7 降级与空态（7.1-7.6） | 通过（7.5 组合场景人工待补） | `SkillsDegradation.test.tsx`（7.1-7.4）、看板/预估/预览各自失败用例（7.5）、`SkillDistributionImpactTable` statusUnknown（7.6） |
+
+### 与 tasks.md 的已知偏差
+
+- T13 `overwritten` 预检恒为 0：引擎预览只有 `none/exists/differs` 三态，没有「本工具托管」信号，`differs` 一律计冲突（默认不覆盖），与「冲突默认不覆盖」口径一致
+- T15 占位文案实际在 `SkillsView.tsx`（不在 `SkillsBatchBar`），已在原处替换
+- R7.4 分发超限在前端以常量 100 拦截（预览接口不返回 limits）
+
+### 提交清单
+
+- T13 `48a8fad`、T14 `05bde1e`、T15 `6797d8a`、T16 `67f05e2`、术语修正 `e9c78af`、文档回写（本 commit）
