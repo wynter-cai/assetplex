@@ -89,6 +89,64 @@ describe('SkillCard 卡面徽章减负（spec skill-card-badges）', () => {
   });
 });
 
+/** spec refactor-skill-catalog T9/R1.2：问题数 / 未体检 / 已过期状态标记 */
+describe('SkillCard 体检状态标记', () => {
+  const catalogBase: Partial<SkillInfo> = {
+    provenanceGroup: 'self',
+    provenanceBasis: 'directory',
+    functionBasis: 'keyword',
+  };
+
+  it('从未体检显示「未体检」，不显示 0 个问题', () => {
+    renderCard(skill(catalogBase));
+    expect(screen.getByTestId('skill-diagnosis-marker')).toHaveTextContent('未体检');
+    expect(screen.queryByText(/0 个问题/)).not.toBeInTheDocument();
+  });
+
+  it('有摘要显示结论与问题数合计，徽章总数仍 ≤2', () => {
+    const { container } = renderCard(
+      skill({
+        ...catalogBase,
+        diagnosis: {
+          overall: 'needs-attention',
+          issueCounts: { high: 1, medium: 1, low: 1 },
+          mechanicalOnly: false,
+          rulesVersion: '1.0.0',
+          model: 'demo-model',
+          checkedAt: '2026-11-10T09:00:00.000Z',
+          stale: false,
+        },
+      }),
+    );
+    expect(screen.getByTestId('skill-diagnosis-marker')).toHaveTextContent('需关注 · 3 个问题');
+    expect(container.querySelectorAll('.rounded-full:not([data-function])').length).toBeLessThanOrEqual(2);
+  });
+
+  it('正文变化后摘要显示「已过期」，不冒充当前结论', () => {
+    renderCard(
+      skill({
+        ...catalogBase,
+        diagnosis: {
+          overall: 'at-risk',
+          issueCounts: { high: 2, medium: 0, low: 0 },
+          mechanicalOnly: true,
+          rulesVersion: '1.0.0',
+          model: '',
+          checkedAt: '2026-11-08T09:00:00.000Z',
+          stale: true,
+        },
+      }),
+    );
+    expect(screen.getByTestId('skill-diagnosis-marker')).toHaveTextContent('已过期 · 有风险');
+  });
+
+  it('状态未知（非 catalog 条目）不渲染标记，常驻徽章仍 ≤2', () => {
+    const { container } = renderCard(skill());
+    expect(screen.queryByTestId('skill-diagnosis-marker')).not.toBeInTheDocument();
+    expect(container.querySelectorAll('.rounded-full:not([data-function])').length).toBeLessThanOrEqual(2);
+  });
+});
+
 /** spec inline-function-confirm：展开 → 应用/取消 → 撤销 */
 describe('SkillCard 调整分类确认流', () => {
   beforeEach(() => {

@@ -2,7 +2,7 @@
  * 技能视图共享标签映射与排序（SkillsView / SkillDetail 共用）
  */
 
-import type { SkillFunction, SkillFunctionSource, SkillProvenance, LibraryStatus } from '@/types/api';
+import type { SkillClassificationBasis, SkillFunction, SkillFunctionSource, SkillProvenance, SkillProvenanceGroup, LibraryStatus } from '@/types/api';
 
 export const FUNCTION_LABELS: Record<SkillFunction, string> = {
   coding: '编码开发',
@@ -30,6 +30,22 @@ export const LIBRARY_STATUS_LABELS: Record<LibraryStatus | 'all', string> = {
   all: '全部',
   in: '我的库',
   out: '未收藏',
+};
+
+/** 来源三分组标签（看板聚合视图；条目的出处仍显示五值细分标签） */
+export const PROVENANCE_GROUP_LABELS: Record<SkillProvenanceGroup, string> = {
+  self: '自建',
+  platform: '平台自带',
+  imported: '导入',
+};
+
+/** 分类依据标签（refactor-skill-catalog R2.3：依据可查） */
+export const CLASSIFICATION_BASIS_LABELS: Record<SkillClassificationBasis, string> = {
+  directory: '目录判定',
+  metadata: '元数据',
+  keyword: '关键词',
+  ai: 'AI',
+  manual: '手动',
 };
 
 /** 分类来源标注（spec add-skill-ai-classification：手动 / AI / 关键词） */

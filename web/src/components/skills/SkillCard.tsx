@@ -2,6 +2,7 @@
  * 技能卡：复选框 + 职能/出处徽章 + 右上角「调整分类」入口（点击才展开确认区）
  * spec refactor-design-system skill-card-badges（卡面常驻徽章 ≤2）；
  * spec inline-function-confirm（改分类必须显式确认、成功可撤销）。
+ * spec refactor-skill-catalog R1.2/T9：问题数/未体检/已过期状态标记（纯文本，不占徽章位）。
  */
 
 import { Sparkles, Tag } from 'lucide-react';
@@ -12,7 +13,48 @@ import { cn } from '@/lib/utils';
 import { FUNCTION_LABELS, FUNCTION_ORDER, provenanceBadgeLabel } from './skill-labels';
 import { FunctionDot } from './FunctionDot';
 import { useFunctionChange } from './use-function-change';
-import type { SkillInfo, SkillFunction } from '@/types/api';
+import type { DiagnosisOverall, SkillDiagnosisSummaryView, SkillInfo, SkillFunction } from '@/types/api';
+
+const OVERALL_LABELS: Record<DiagnosisOverall, string> = {
+  healthy: '健康',
+  'needs-attention': '需关注',
+  'at-risk': '有风险',
+};
+
+const OVERALL_DOT: Record<DiagnosisOverall, string> = {
+  healthy: 'bg-emerald-500',
+  'needs-attention': 'bg-amber-500',
+  'at-risk': 'bg-destructive',
+};
+
+function issueTotal(summary: SkillDiagnosisSummaryView): number {
+  return summary.issueCounts.high + summary.issueCounts.medium + summary.issueCounts.low;
+}
+
+/** 摘要状态标记文案；非 catalog 来源（状态未知）返回 null，不冒充「未体检」 */
+function diagnosisMarkerText(skill: SkillInfo): string | null {
+  if (skill.provenanceGroup === undefined) return null;
+  const summary = skill.diagnosis;
+  if (summary === undefined) return '未体检';
+  if (summary.stale) return `已过期 · ${OVERALL_LABELS[summary.overall]}`;
+  const total = issueTotal(summary);
+  return total > 0 ? `${OVERALL_LABELS[summary.overall]} · ${total} 个问题` : OVERALL_LABELS[summary.overall];
+}
+
+function DiagnosisMarker({ skill }: { skill: SkillInfo }): JSX.Element | null {
+  const text = diagnosisMarkerText(skill);
+  if (text === null) return null;
+  const dot = skill.diagnosis === undefined ? 'bg-muted-foreground/50' : OVERALL_DOT[skill.diagnosis.overall];
+  return (
+    <span
+      data-testid="skill-diagnosis-marker"
+      className="ml-auto inline-flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground"
+    >
+      <span className={cn('h-1.5 w-1.5 shrink-0 rounded', dot)} aria-hidden="true" />
+      {text}
+    </span>
+  );
+}
 
 export function SkillCard({
   skill,
@@ -89,6 +131,7 @@ export function SkillCard({
         {provenanceBadgeLabel(skill) && (
           <Badge variant="outline" className="text-xs h-5 px-1">{provenanceBadgeLabel(skill)}</Badge>
         )}
+        <DiagnosisMarker skill={skill} />
       </div>
       {fn.open && (
         <div

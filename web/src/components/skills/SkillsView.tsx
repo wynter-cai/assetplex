@@ -76,6 +76,10 @@ export function SkillsView(): JSX.Element {
     retry: false,
   });
 
+  // 卡片与详情复用 catalog 的分类依据/摘要字段（T9）；catalog 失败时退回列表条目
+  const catalogById = new Map((catalog?.items ?? []).map((item) => [item.id, item] as const));
+  const withCatalogFields = (s: SkillInfo): SkillInfo => catalogById.get(s.id) ?? s;
+
   // 筛选/维度/搜索变化时清空勾选（勾选集合只对当前结果有意义）
   useEffect(() => {
     setCheckedIds(new Set());
@@ -309,7 +313,7 @@ export function SkillsView(): JSX.Element {
                   {group.items.map((skill) => (
                     <SkillCard
                       key={skill.id}
-                      skill={skill}
+                      skill={withCatalogFields(skill)}
                       active={selected?.id === skill.id}
                       checked={checkedIds.has(skill.id)}
                       onSelect={(s) => setSelected((prev) => (prev?.id === s.id ? null : s))}

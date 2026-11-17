@@ -333,3 +333,57 @@ describe('SkillDetail 调整分类确认流（spec inline-function-confirm）', 
   });
 });
 
+/** spec refactor-skill-catalog T9：最近更新、分类依据、摘要时间与过期提示 */
+describe('SkillDetail 分类依据与体检摘要', () => {
+  const catalogSkill = skill({
+    id: 'demo-a',
+    name: 'demo-a',
+    functionCategory: 'coding',
+    provenance: 'plugin',
+    inLibrary: true,
+    tool: 'hub',
+    provenanceGroup: 'platform',
+    provenanceBasis: 'metadata',
+    functionBasis: 'keyword',
+    lastModifiedAt: '2026-11-14T08:30:00.000Z',
+    diagnosis: {
+      overall: 'needs-attention',
+      issueCounts: { high: 1, medium: 2, low: 0 },
+      mechanicalOnly: true,
+      rulesVersion: '1.0.0',
+      model: '',
+      checkedAt: '2026-11-13T09:15:00.000Z',
+      stale: false,
+    },
+  });
+
+  beforeEach(() => {
+    vi.spyOn(api, 'getSkill').mockResolvedValue({ skill: catalogSkill, rawContent: '# demo-a' });
+  });
+
+  it('展示最近更新、来源与用途的分类依据', async () => {
+    renderDetail(catalogSkill);
+    expect(await screen.findByText('最近更新')).toBeInTheDocument();
+    expect(screen.getByText('平台自带 · 元数据')).toBeInTheDocument();
+    expect(screen.getByText('编码开发 · 关键词')).toBeInTheDocument();
+  });
+
+  it('展示摘要时间与问题数，机械降级有标注', async () => {
+    renderDetail(catalogSkill);
+    const checkedAt = await screen.findByText(/3 个问题/);
+    expect(checkedAt).toHaveTextContent('需关注');
+    expect(checkedAt).toHaveTextContent('仅机械检查');
+    expect(screen.queryByText(/已过期/)).not.toBeInTheDocument();
+  });
+
+  it('摘要过期时明确提示已过期且不计入看板合计', async () => {
+    const stale = {
+      ...catalogSkill,
+      diagnosis: catalogSkill.diagnosis === undefined ? undefined : { ...catalogSkill.diagnosis, stale: true },
+    };
+    vi.spyOn(api, 'getSkill').mockResolvedValue({ skill: stale, rawContent: '# demo-a' });
+    renderDetail(stale);
+    expect(await screen.findByText(/体检结果已过期/)).toBeInTheDocument();
+  });
+});
+

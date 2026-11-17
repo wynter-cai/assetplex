@@ -18,19 +18,86 @@ import { useEscapeKey } from '@/lib/use-escape-key';
 import { Markdown, stripFrontmatter } from '@/components/common/Markdown';
 import { SyncDistribute } from '@/components/common/SyncDistribute';
 import { DiagnosisPanel } from '@/components/doctor/DiagnosisPanel';
-import { FUNCTION_LABELS, FUNCTION_ORDER, PROVENANCE_LABELS, FUNCTION_SOURCE_LABELS, parseCurateSource, provenanceBadgeLabel } from './skill-labels';
+import { FUNCTION_LABELS, FUNCTION_ORDER, PROVENANCE_LABELS, FUNCTION_SOURCE_LABELS, PROVENANCE_GROUP_LABELS, CLASSIFICATION_BASIS_LABELS, parseCurateSource, provenanceBadgeLabel } from './skill-labels';
 import { FunctionDot } from './FunctionDot';
 import { useFunctionChange } from './use-function-change';
 import { DeleteConfirmDialog, CurateDialog } from './SkillDialogs';
 import { useAiClassify } from './use-ai-classify';
 import { AiConfigDialog } from './AiConfigDialog';
-import type { SkillInfo } from '@/types/api';
+import type { DiagnosisOverall, SkillInfo } from '@/types/api';
 
 interface SkillDetailProps {
   skill: SkillInfo;
   onClose: () => void;
   /** 收藏成功后回调（父组件切换详情到新库内技能） */
   onCurated: (skill: SkillInfo) => void;
+}
+
+const OVERALL_LABELS: Record<DiagnosisOverall, string> = {
+  healthy: '健康',
+  'needs-attention': '需关注',
+  'at-risk': '有风险',
+};
+
+/** ISO → 「2026-11-14 16:00」；解析不出来返回 null，不显示假时间 */
+function formatDateTime(iso: string | null | undefined): string | null {
+  if (iso === null || iso === undefined) return null;
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return null;
+  const pad = (n: number): string => String(n).padStart(2, '0');
+  return `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())} ${pad(at.getHours())}:${pad(at.getMinutes())}`;
+}
+
+/** 分类依据与上次体检（R1.5/R2.3/T9）：只在 catalog 条目带字段时渲染 */
+function ClassificationMeta({ skill }: { skill: SkillInfo }): JSX.Element | null {
+  const lastModified = formatDateTime(skill.lastModifiedAt);
+  const summary = skill.diagnosis;
+  const checkedAt = summary === undefined ? null : formatDateTime(summary.checkedAt);
+  if (lastModified === null && skill.provenanceBasis === undefined && summary === undefined) return null;
+
+  return (
+    <div className="space-y-1 text-xs">
+      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+        {lastModified !== null && (
+          <>
+            <dt className="text-muted-foreground">最近更新</dt>
+            <dd>{lastModified}</dd>
+          </>
+        )}
+        {skill.provenanceBasis !== undefined && (
+          <>
+            <dt className="text-muted-foreground">来源依据</dt>
+            <dd>
+              {skill.provenanceGroup !== undefined ? `${PROVENANCE_GROUP_LABELS[skill.provenanceGroup]} · ` : ''}
+              {CLASSIFICATION_BASIS_LABELS[skill.provenanceBasis]}
+              {skill.provenanceUncertain === 'unknown' && '（来源待确认）'}
+            </dd>
+          </>
+        )}
+        {skill.functionBasis !== undefined && (
+          <>
+            <dt className="text-muted-foreground">用途依据</dt>
+            <dd>
+              {FUNCTION_LABELS[skill.functionCategory]} · {CLASSIFICATION_BASIS_LABELS[skill.functionBasis]}
+            </dd>
+          </>
+        )}
+        {summary !== undefined && (
+          <>
+            <dt className="text-muted-foreground">上次体检</dt>
+            <dd>
+              {checkedAt ?? '时间未知'} · {OVERALL_LABELS[summary.overall]} ·{' '}
+              {summary.issueCounts.high + summary.issueCounts.medium + summary.issueCounts.low} 个问题
+              {summary.mechanicalOnly && '（仅机械检查）'}
+            </dd>
+          </>
+        )}
+      </dl>
+      {summary !== undefined && summary.stale && (
+        <p className="text-amber-600">体检结果已过期（正文已变更），不计入看板问题数合计</p>
+      )}
+    </div>
+  );
 }
 
 export function SkillDetail({ skill, onClose, onCurated }: SkillDetailProps): JSX.Element {
@@ -163,6 +230,8 @@ export function SkillDetail({ skill, onClose, onCurated }: SkillDetailProps): JS
             <p className="text-14">{skill.description}</p>
           </div>
         )}
+
+        <ClassificationMeta skill={skill} />
 
         {!isLoading && (
           <div className="flex flex-wrap items-center gap-2">
