@@ -78,7 +78,7 @@ describe('SkillDiagnosisDialog 预估（R4.2/R4.3）', () => {
     renderDialog();
     expect(screen.getByText(/成本估算中/)).toBeInTheDocument();
     expect(await screen.findByText(/共 3 项，3 条命中缓存不消耗，将调用 9 次模型/)).toBeInTheDocument();
-    expect(screen.getByText('未入库，收藏后可诊断')).toBeInTheDocument();
+    expect(screen.getByText('未收藏，收藏后可诊断')).toBeInTheDocument();
     expect(spy).toHaveBeenCalledWith(ids);
     expect(api.doctorDiagnose).not.toHaveBeenCalled();
   });

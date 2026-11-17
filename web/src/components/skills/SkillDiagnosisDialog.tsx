@@ -20,7 +20,7 @@ import { SkillDiagnosisResults, toSummaryInputs } from './SkillDiagnosisResults'
 import type { SkillDiagnoseEstimate, SkillUnDiagnosableReason } from '@/types/api';
 
 const UN_DIAGNOSABLE_LABEL: Record<SkillUnDiagnosableReason, string> = {
-  'not-in-library': '未入库，收藏后可诊断',
+  'not-in-library': '未收藏，收藏后可诊断',
   'missing-file': '文件读不到，不可诊断',
   'not-found': '技能已不存在',
 };
@@ -118,7 +118,7 @@ export function SkillDiagnosisDialog(props: SkillDiagnosisDialogProps): JSX.Elem
       .putSkillDiagnosisSummaries(items)
       .then((result) => {
         if (result.rejected.length > 0) {
-          toast.info('部分摘要未写入', { description: `${result.rejected.length} 个技能被拒绝（未入库或已删除）` });
+          toast.info('部分摘要未写入', { description: `${result.rejected.length} 个技能被拒绝（未收藏或已删除）` });
         }
       })
       .catch((err: unknown) => {
