@@ -8,11 +8,15 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, Loader2, Stethoscope } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { api } from '@/lib/api';
+import { toast } from '@/lib/toast-store';
+import { errorMessage } from '@/lib/error-message';
 import { useSkillDiagnosisPool, type DiagnosisRow } from './use-skill-diagnosis-pool';
+import { SkillDiagnosisResults, toSummaryInputs } from './SkillDiagnosisResults';
 import type { SkillDiagnoseEstimate, SkillUnDiagnosableReason } from '@/types/api';
 
 const UN_DIAGNOSABLE_LABEL: Record<SkillUnDiagnosableReason, string> = {
@@ -33,8 +37,10 @@ export interface SkillDiagnosisDialogProps {
   /** 本次所选技能 id；父组件只在非空时挂载 */
   ids: string[];
   onClose: () => void;
-  /** 执行完毕回调（T12 用于回写摘要并刷新看板） */
+  /** 执行完毕回调（父组件可刷新看板） */
   onCompleted?: (rows: DiagnosisRow[]) => void;
+  /** 结果行「去修复」：打开单技能详情并定位到资产医生 */
+  onOpenFix?: (row: DiagnosisRow) => void;
 }
 
 /** 发起条件：有目标、未超选择上限、未超调用硬上限 */
@@ -84,6 +90,8 @@ function EstimateLines({ estimate }: { estimate: SkillDiagnoseEstimate }): JSX.E
 export function SkillDiagnosisDialog(props: SkillDiagnosisDialogProps): JSX.Element {
   const [view, setView] = useState<View>({ kind: 'estimating' });
   const [attempt, setAttempt] = useState(0);
+  const [rows, setRows] = useState<DiagnosisRow[]>([]);
+  const queryClient = useQueryClient();
   const pool = useSkillDiagnosisPool();
 
   useEffect(() => {
@@ -102,18 +110,47 @@ export function SkillDiagnosisDialog(props: SkillDiagnosisDialogProps): JSX.Elem
     };
   }, [props.ids, attempt]);
 
+  /** 结果回写摘要（T12）：服务端算哈希；部分失败只提示不整体失败，随后刷新看板 */
+  const writeSummaries = (finished: DiagnosisRow[]): void => {
+    const items = toSummaryInputs(finished);
+    if (items.length === 0) return;
+    api
+      .putSkillDiagnosisSummaries(items)
+      .then((result) => {
+        if (result.rejected.length > 0) {
+          toast.info('部分摘要未写入', { description: `${result.rejected.length} 个技能被拒绝（未入库或已删除）` });
+        }
+      })
+      .catch((err: unknown) => {
+        toast.error('摘要回写失败', { description: errorMessage(err) });
+      })
+      .finally(() => {
+        void queryClient.invalidateQueries({ queryKey: ['skills'] });
+      });
+  };
+
   const start = (estimate: SkillDiagnoseEstimate): void => {
     setView({ kind: 'running', estimate });
-    void pool.run(estimate.targets).then((rows) => {
+    void pool.run(estimate.targets).then((finished) => {
+      setRows(finished);
       setView({ kind: 'done', estimate });
-      props.onCompleted?.(rows);
+      writeSummaries(finished);
+      props.onCompleted?.(finished);
+    });
+  };
+
+  /** 只重跑失败项，成功后合并结果并只回写这批 */
+  const retryFailed = (ids: string[]): void => {
+    const targets = rows.filter((row) => ids.includes(row.target.id)).map((row) => row.target);
+    if (targets.length === 0) return;
+    void pool.run(targets).then((retried) => {
+      setRows((prev) => prev.map((row) => retried.find((item) => item.target.id === row.target.id) ?? row));
+      writeSummaries(retried);
     });
   };
 
   const estimate = 'estimate' in view ? view.estimate : null;
   const blockReason = estimate === null ? null : launchBlockReason(estimate);
-  const failed = pool.rows.filter((row) => row !== null && row.error !== null).length;
-  const succeeded = pool.rows.filter((row) => row !== null && row.report !== null).length;
 
   return (
     <Dialog open onOpenChange={(open) => (open ? undefined : props.onClose())}>
@@ -160,7 +197,12 @@ export function SkillDiagnosisDialog(props: SkillDiagnosisDialogProps): JSX.Elem
           )}
 
           {view.kind === 'done' && (
-            <p className="text-xs font-medium">诊断完成：成功 {succeeded} · 失败 {failed}</p>
+            <SkillDiagnosisResults
+              rows={rows}
+              retrying={pool.running}
+              onRetryFailed={retryFailed}
+              onOpenFix={props.onOpenFix}
+            />
           )}
         </div>
 

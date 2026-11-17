@@ -4,7 +4,7 @@
  * spec: add-skill-agent-write-management / refactor-skill-origin-taxonomy
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Sparkles, FileText, Pencil, Archive, Tag } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -31,6 +31,8 @@ interface SkillDetailProps {
   onClose: () => void;
   /** 收藏成功后回调（父组件切换详情到新库内技能） */
   onCurated: (skill: SkillInfo) => void;
+  /** 从诊断结果「去修复」进入：挂载后滚动到资产医生面板（T12） */
+  focusDoctor?: boolean;
 }
 
 const OVERALL_LABELS: Record<DiagnosisOverall, string> = {
@@ -100,7 +102,7 @@ function ClassificationMeta({ skill }: { skill: SkillInfo }): JSX.Element | null
   );
 }
 
-export function SkillDetail({ skill, onClose, onCurated }: SkillDetailProps): JSX.Element {
+export function SkillDetail({ skill, onClose, onCurated, focusDoctor }: SkillDetailProps): JSX.Element {
   const fnChange = useFunctionChange(skill);
   // 确认区展开时 Esc 先收确认区（detail 的 Esc 关闭让位，避免一按就整页关掉）
   useEscapeKey(!fnChange.open, onClose);
@@ -121,6 +123,12 @@ export function SkillDetail({ skill, onClose, onCurated }: SkillDetailProps): JS
   const ai = useAiClassify(() => {
     void queryClient.invalidateQueries({ queryKey: ['skill', skill.id] });
   });
+
+  // 「去修复」入口：挂载后滚到资产医生（T12）；无该元素时静默跳过
+  useEffect(() => {
+    if (focusDoctor !== true) return;
+    document.getElementById('skill-doctor-panel')?.scrollIntoView({ block: 'start' });
+  }, [focusDoctor]);
 
   const refresh = (): void => {
     void queryClient.invalidateQueries({ queryKey: ['skills'] });
@@ -272,7 +280,9 @@ export function SkillDetail({ skill, onClose, onCurated }: SkillDetailProps): JS
 
         {/* 资产医生：advisory-only 体检入口；库内技能经 hubRoot 解析后才渲染（环境条目自动隐藏） */}
         {isLibrary && (
-          <DiagnosisPanel kind="skill" absolutePath={skill.path} />
+          <div id="skill-doctor-panel">
+            <DiagnosisPanel kind="skill" absolutePath={skill.path} />
+          </div>
         )}
 
         {skill.workspacePath && (

@@ -21,6 +21,7 @@ import { FUNCTION_LABELS, PROVENANCE_LABELS, FUNCTION_ORDER, PROVENANCE_ORDER } 
 import { useAiClassify } from './use-ai-classify';
 import { AiConfigDialog } from './AiConfigDialog';
 import type { SkillInfo, SkillFunction, SkillProvenance } from '@/types/api';
+import type { DiagnosisRow } from './use-skill-diagnosis-pool';
 
 /** 技能分类全貌主视图（资产库 /vault/skill 下渲染） */
 export function SkillsView(): JSX.Element {
@@ -41,6 +42,8 @@ export function SkillsView(): JSX.Element {
   // 本次所选（T10）：勾选集或某个分组行，与当前筛选可组合；暂存 ids 由预估/影响清单解释
   const [diagnosisIds, setDiagnosisIds] = useState<string[] | null>(null);
   const [distributionIds, setDistributionIds] = useState<string[] | null>(null);
+  /** 从诊断结果「去修复」进入详情时滚到资产医生（T12） */
+  const [focusDoctor, setFocusDoctor] = useState(false);
 
   /** 新建成功后打开新技能详情 */
   const handleCreated = (skill: SkillInfo): void => setSelected(skill);
@@ -127,6 +130,25 @@ export function SkillsView(): JSX.Element {
   const openDistribution = (ids: string[]): void => {
     if (ids.length === 0) return;
     setDistributionIds(ids);
+  };
+
+  /** 打开/收起技能详情（同卡再点收起）；切换选择时清掉「滚到医生」意图 */
+  const selectSkill = (next: SkillInfo): void => {
+    setFocusDoctor(false);
+    setSelected((prev) => (prev?.id === next.id ? null : next));
+  };
+
+  /** 诊断结果「去修复」：关结果面板，打开该技能详情并定位资产医生 */
+  const openFix = (row: DiagnosisRow): void => {
+    setDiagnosisIds(null);
+    const found =
+      data?.items.find((s) => s.id === row.target.id) ?? catalog?.items.find((s) => s.id === row.target.id);
+    if (found === undefined) {
+      toast.info('该技能已不在当前视图', { description: '请刷新后重试' });
+      return;
+    }
+    setFocusDoctor(true);
+    setSelected(withCatalogFields(found));
   };
 
   const applyBatch = (): void => {
@@ -236,7 +258,7 @@ export function SkillsView(): JSX.Element {
         loading={catalogFetching}
         {...(catalogError === null ? {} : { error: catalogError })}
         onRetry={() => void refetchCatalog()}
-        onOpenSkill={(s) => setSelected(s)}
+        onOpenSkill={selectSkill}
         onDiagnoseGroup={(skills) => openDiagnosis(skills.map((s) => s.id))}
         onDistributeGroup={(skills) => openDistribution(skills.map((s) => s.id))}
       />
@@ -287,7 +309,11 @@ export function SkillsView(): JSX.Element {
       )}
 
       {diagnosisIds !== null && (
-        <SkillDiagnosisDialog ids={diagnosisIds} onClose={() => setDiagnosisIds(null)} />
+        <SkillDiagnosisDialog
+          ids={diagnosisIds}
+          onClose={() => setDiagnosisIds(null)}
+          onOpenFix={openFix}
+        />
       )}
       {distributionIds !== null && (
         <p data-testid="distribution-selection" className="mb-3 text-xs text-muted-foreground">
@@ -344,7 +370,7 @@ export function SkillsView(): JSX.Element {
                       skill={withCatalogFields(skill)}
                       active={selected?.id === skill.id}
                       checked={checkedIds.has(skill.id)}
-                      onSelect={(s) => setSelected((prev) => (prev?.id === s.id ? null : s))}
+                      onSelect={selectSkill}
                       onCheckChange={(id, checked) =>
                         setCheckedIds((prev) => {
                           const next = new Set(prev);
@@ -369,7 +395,7 @@ export function SkillsView(): JSX.Element {
           onToggle={() => setEnvOpen((v) => !v)}
           environmentCount={environmentCount}
           selectedId={selected?.id ?? null}
-          onSelect={(s) => setSelected((prev) => (prev?.id === s.id ? null : s))}
+          onSelect={selectSkill}
         />
       )}
       </div>
@@ -381,6 +407,7 @@ export function SkillsView(): JSX.Element {
           skill={selected}
           onClose={() => setSelected(null)}
           onCurated={(s) => setSelected(s)}
+          focusDoctor={focusDoctor}
         />
       )}
 

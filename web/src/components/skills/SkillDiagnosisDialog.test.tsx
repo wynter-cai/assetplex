@@ -7,7 +7,8 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { SkillDiagnosisDialog } from './SkillDiagnosisDialog';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { SkillDiagnosisDialog, type SkillDiagnosisDialogProps } from './SkillDiagnosisDialog';
 import { api } from '@/lib/api';
 import type { SkillDiagnoseEstimate, DiagnosisReport } from '@/types/api';
 
@@ -43,19 +44,26 @@ function report(hubRelativePath: string): DiagnosisReport {
     cached: false,
     mechanicalOnly: false,
     model: 'demo-model',
+    rulesVersion: '1.5.0',
     generatedAt: '2026-11-17T02:00:00.000Z',
   };
 }
 
 const ids = ['demo-a', 'demo-b', 'demo-c'];
 
-function renderDialog(onCompleted = vi.fn()): void {
-  render(<SkillDiagnosisDialog ids={ids} onClose={vi.fn()} onCompleted={onCompleted} />);
+function renderDialog(overrides: Partial<SkillDiagnosisDialogProps> = {}): void {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(
+    <QueryClientProvider client={queryClient}>
+      <SkillDiagnosisDialog ids={ids} onClose={vi.fn()} {...overrides} />
+    </QueryClientProvider>,
+  );
 }
 
 beforeEach(() => {
   vi.restoreAllMocks();
   vi.spyOn(api, 'doctorDiagnose').mockImplementation(async (body) => report(body.hubRelativePath));
+  vi.spyOn(api, 'putSkillDiagnosisSummaries').mockResolvedValue({ saved: 2, rejected: [] });
 });
 
 describe('SkillDiagnosisDialog 预估（R4.2/R4.3）', () => {
@@ -126,7 +134,7 @@ describe('SkillDiagnosisDialog 发起与执行（R4.6 / T11）', () => {
   it('超阈值需二次确认：首次点击只出警示，确认后只对可诊断项执行', async () => {
     vi.spyOn(api, 'estimateSkillDiagnosis').mockResolvedValue(estimate({ willCall: 80, confirmRequired: true }));
     const onCompleted = vi.fn();
-    renderDialog(onCompleted);
+    renderDialog({ onCompleted });
     fireEvent.click(await screen.findByRole('button', { name: '发起诊断' }));
     expect(screen.getByText(/超过 50 次需确认/)).toBeInTheDocument();
     expect(api.doctorDiagnose).not.toHaveBeenCalled();
@@ -145,7 +153,63 @@ describe('SkillDiagnosisDialog 发起与执行（R4.6 / T11）', () => {
     });
     renderDialog();
     fireEvent.click(await screen.findByRole('button', { name: '发起诊断' }));
-    expect(await screen.findByText(/诊断完成：成功 1 · 失败 1/)).toBeInTheDocument();
+    expect(await screen.findByText(/成功 1 · 失败 1/)).toBeInTheDocument();
     expect(api.doctorDiagnose).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('SkillDiagnosisDialog 结果回写与重试（T12 / R5.3-R5.4）', () => {
+  it('完成后回写摘要：一次调用只提交成功项', async () => {
+    vi.spyOn(api, 'estimateSkillDiagnosis').mockResolvedValue(estimate({ willCall: 2 }));
+    renderDialog();
+    fireEvent.click(await screen.findByRole('button', { name: '发起诊断' }));
+    await waitFor(() => expect(api.putSkillDiagnosisSummaries).toHaveBeenCalledTimes(1));
+    const payload = vi.mocked(api.putSkillDiagnosisSummaries).mock.calls[0][0];
+    expect(payload.map((item) => item.id)).toEqual(['demo-a', 'demo-b']);
+    expect(payload[0]).toMatchObject({
+      overall: 'healthy',
+      rulesVersion: '1.5.0',
+      model: 'demo-model',
+      mechanicalOnly: false,
+      checkedAt: '2026-11-17T02:00:00.000Z',
+    });
+  });
+
+  it('失败项可只重试失败 id，重试成功后再回写一次摘要', async () => {
+    vi.spyOn(api, 'estimateSkillDiagnosis').mockResolvedValue(estimate({ willCall: 2 }));
+    let demoBFailures = 0;
+    vi.mocked(api.doctorDiagnose).mockImplementation(async (body) => {
+      if (body.hubRelativePath === 'skills/demo-b/SKILL.md' && demoBFailures === 0) {
+        demoBFailures += 1;
+        throw new Error('网络超时');
+      }
+      return report(body.hubRelativePath);
+    });
+    renderDialog();
+    fireEvent.click(await screen.findByRole('button', { name: '发起诊断' }));
+    await waitFor(() => expect(screen.getByText('网络超时')).toBeInTheDocument());
+    expect(vi.mocked(api.putSkillDiagnosisSummaries).mock.calls[0][0]).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole('button', { name: '重试失败项（1）' }));
+    await waitFor(() => expect(api.doctorDiagnose).toHaveBeenCalledTimes(3));
+    await waitFor(() => expect(api.putSkillDiagnosisSummaries).toHaveBeenCalledTimes(2));
+    expect(vi.mocked(api.putSkillDiagnosisSummaries).mock.calls[1][0].map((item) => item.id)).toEqual(['demo-b']);
+    expect(api.doctorDiagnose).toHaveBeenLastCalledWith({
+      kind: 'skill',
+      hubRelativePath: 'skills/demo-b/SKILL.md',
+    });
+    expect(screen.queryByText('网络超时')).not.toBeInTheDocument();
+  });
+
+  it('「去修复」只回调该技能行', async () => {
+    vi.spyOn(api, 'estimateSkillDiagnosis').mockResolvedValue(estimate({ willCall: 2 }));
+    const onOpenFix = vi.fn();
+    renderDialog({ onOpenFix });
+    fireEvent.click(await screen.findByRole('button', { name: '发起诊断' }));
+    await screen.findByText('成功 2 · 失败 0');
+    const fixButtons = await screen.findAllByRole('button', { name: /去修复/ });
+    fireEvent.click(fixButtons[0]);
+    expect(onOpenFix).toHaveBeenCalledTimes(1);
+    expect(onOpenFix.mock.calls[0][0]).toMatchObject({ target: { id: 'demo-a' } });
   });
 });
