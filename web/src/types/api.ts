@@ -389,6 +389,24 @@ export type SkillAssetScope = 'asset' | 'environment';
 /** 分类来源：手动覆盖 / AI 分类 / 关键词规则兜底 */
 export type SkillFunctionSource = 'manual' | 'ai' | 'keyword';
 
+/** 来源三分组（仅看板聚合视图；条目自身出处仍以五值为准） */
+export type SkillProvenanceGroup = 'self' | 'platform' | 'imported';
+
+/** 分类依据：目录 > 元数据 > 关键词；手动与 AI 为覆盖层 */
+export type SkillClassificationBasis = 'directory' | 'metadata' | 'keyword' | 'ai' | 'manual';
+
+/** 上次体检摘要展示投影（不含内容哈希与本机绝对路径） */
+export interface SkillDiagnosisSummaryView {
+  overall: DiagnosisOverall;
+  issueCounts: { high: number; medium: number; low: number };
+  mechanicalOnly: boolean;
+  rulesVersion: string;
+  model: string;
+  checkedAt: string;
+  /** true = 期间正文已变化，问题数不计入看板合计 */
+  stale: boolean;
+}
+
 export interface SkillInfo {
   id: string;
   name: string;
@@ -411,6 +429,83 @@ export interface SkillInfo {
   workspacePath?: string;
   /** 副本数（不含主本；contract: variants: number，不再透传路径数组） */
   variants: number;
+  /** 主 SKILL.md 最后修改时间（ISO）；读不到为 null（refactor-skill-catalog T2） */
+  lastModifiedAt?: string | null;
+  /** 看板增量字段：仅 GET /api/skills/catalog 下发，列表接口缺省 */
+  provenanceGroup?: SkillProvenanceGroup;
+  /** 目录与元数据均无法判定来源时标记；UI 必须显示「来源待确认」 */
+  provenanceUncertain?: 'unknown';
+  provenanceBasis?: SkillClassificationBasis;
+  functionBasis?: SkillClassificationBasis;
+  /** 上次体检摘要；非 catalog 条目或从未体检时为 undefined */
+  diagnosis?: SkillDiagnosisSummaryView;
+}
+
+/** 看板分组行（来源三组 + 待确认、用途九类） */
+export interface SkillCatalogGroup {
+  key: string;
+  label: string;
+  count: number;
+  /** 组内最近更新时间（ISO）；全组无有效时间为 null */
+  latestModifiedAt: string | null;
+  /** 组内摘要分布（failed 不计入，失败的诊断不写摘要） */
+  diagnosis: {
+    unchecked: number;
+    stale: number;
+    healthy: number;
+    needsAttention: number;
+    atRisk: number;
+  };
+}
+
+export interface SkillCatalogRecentItem {
+  id: string;
+  name: string;
+  provenance: SkillProvenance;
+  provenanceGroup: SkillProvenanceGroup;
+  lastModifiedAt: string;
+}
+
+export interface SkillCatalogDiagnosisTotals {
+  checked: number;
+  stale: number;
+  unchecked: number;
+  atRisk: number;
+  needsAttention: number;
+  healthy: number;
+  issues: { high: number; medium: number; low: number };
+}
+
+export interface SkillCatalogAiClassify {
+  aiConfigured: boolean;
+  pending: number;
+  cacheHits: number;
+  needCall: number;
+}
+
+/** GET /api/skills/catalog 概览（资产口径） */
+export interface SkillCatalogOverview {
+  generatedAt: string;
+  scope: 'asset';
+  total: number;
+  groups: {
+    provenance: SkillCatalogGroup[];
+    function: SkillCatalogGroup[];
+  };
+  countByProvenanceGroup: Record<SkillProvenanceGroup | 'unknown', number>;
+  recent: SkillCatalogRecentItem[];
+  diagnosis: SkillCatalogDiagnosisTotals;
+  aiClassify: SkillCatalogAiClassify;
+  /** 局部数据不可用：对应区域显示「统计暂不可用」，不得填 0 冒充 */
+  partial?: {
+    diagnosisUnavailable?: boolean;
+    aiClassifyUnavailable?: boolean;
+  };
+}
+
+/** GET /api/skills/catalog 完整响应 = 概览 + 当前筛选下的条目 */
+export interface SkillCatalogResult extends SkillCatalogOverview {
+  items: SkillInfo[];
 }
 
 /** AI 分类配置视图（apiKey 脱敏，明文永不回传） */

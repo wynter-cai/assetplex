@@ -32,6 +32,7 @@ import type {
   AgentTool,
   SkillListResult,
   SkillInfo,
+  SkillCatalogResult,
   SkillFunction,
   SkillProvenance,
   SkillAssetScope,
@@ -274,6 +275,17 @@ export const api = {
     if (params?.search) qs.set('search', params.search);
     const q = qs.toString();
     return request<SkillListResult>(`/skills${q ? `?${q}` : ''}`);
+  },
+  /** 技能分类全貌看板：概览计数 + 当前筛选下的条目（refactor-skill-catalog T8） */
+  getSkillCatalog: (params?: { scope?: SkillAssetScope | 'all'; function?: SkillFunction; provenance?: SkillProvenance; status?: LibraryStatus; search?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.scope) qs.set('scope', params.scope);
+    if (params?.function) qs.set('function', params.function);
+    if (params?.provenance) qs.set('provenance', params.provenance);
+    if (params?.status) qs.set('status', params.status);
+    if (params?.search) qs.set('search', params.search);
+    const q = qs.toString();
+    return request<SkillCatalogResult>(`/skills/catalog${q ? `?${q}` : ''}`);
   },
   overrideSkillFunction: (id: string, functionCategory: SkillFunction) =>
     request<{ skill: SkillInfo }>(`/skills/${encodeURIComponent(id)}/function`, {

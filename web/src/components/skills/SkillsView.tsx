@@ -13,6 +13,7 @@ import { SkillDetail } from './SkillDetail';
 import { SkillCreateDialog } from './SkillCreateDialog';
 import { SkillsToolbar, type SkillsDimension, type LibraryStatusFilter } from './SkillsToolbar';
 import { SkillsBatchBar } from './SkillsBatchBar';
+import { SkillCatalogBoard } from './SkillCatalogBoard';
 import { EnvSkillsPanel } from './EnvSkillsPanel';
 import { SkillsCheckupSection } from '@/components/doctor/SkillsCheckupSection';
 import { FUNCTION_LABELS, PROVENANCE_LABELS, FUNCTION_ORDER, PROVENANCE_ORDER } from './skill-labels';
@@ -53,6 +54,26 @@ export function SkillsView(): JSX.Element {
       }),
     // 切 tab/筛选时沿用上一份数据渲染，数字不闪 0（spec fix-scan-count-gaps）
     placeholderData: keepPreviousData,
+  });
+
+  // 看板统计与列表同筛选条件、分开发请求：统计失败只降级看板（spec R1.4）
+  const {
+    data: catalog,
+    isFetching: catalogFetching,
+    error: catalogError,
+    refetch: refetchCatalog,
+  } = useQuery({
+    queryKey: ['skills', 'catalog', functionFilter, provenanceFilter, statusFilter, search],
+    queryFn: () =>
+      api.getSkillCatalog({
+        scope: 'asset',
+        function: functionFilter ?? undefined,
+        provenance: provenanceFilter ?? undefined,
+        status: statusParam,
+        search: search || undefined,
+      }),
+    placeholderData: keepPreviousData,
+    retry: false,
   });
 
   // 筛选/维度/搜索变化时清空勾选（勾选集合只对当前结果有意义）
@@ -189,6 +210,14 @@ export function SkillsView(): JSX.Element {
             </Button>
           </div>
         }
+      />
+      <SkillCatalogBoard
+        overview={catalog}
+        items={catalog?.items ?? []}
+        loading={catalogFetching}
+        {...(catalogError === null ? {} : { error: catalogError })}
+        onRetry={() => void refetchCatalog()}
+        onOpenSkill={(s) => setSelected(s)}
       />
       <SkillsToolbar
         dimension={dimension}
