@@ -36,6 +36,9 @@ import type {
   SkillDiagnoseEstimate,
   SkillDiagnosisSummaryInput,
   PutSkillDiagnosisSummariesResponse,
+  SkillDistributionPreview,
+  SkillDistributionExecuteRequest,
+  SkillDistributionExecuteResponse,
   SkillFunction,
   SkillProvenance,
   SkillAssetScope,
@@ -301,6 +304,18 @@ export const api = {
     request<PutSkillDiagnosisSummariesResponse>('/skills/diagnosis-summary', {
       method: 'PUT',
       body: JSON.stringify({ items }),
+    }),
+  /** 批量分发影响清单（零写入）；确认执行前必须先预览拿 token */
+  previewSkillDistribution: (ids: string[]) =>
+    request<SkillDistributionPreview>('/skills/distribution/preview', {
+      method: 'POST',
+      body: JSON.stringify({ ids }),
+    }),
+  /** 批量分发执行（冲突默认不覆盖；单工具失败不中断其他工具） */
+  executeSkillDistribution: (body: SkillDistributionExecuteRequest) =>
+    request<SkillDistributionExecuteResponse>('/skills/distribution/execute', {
+      method: 'POST',
+      body: JSON.stringify(body),
     }),
   overrideSkillFunction: (id: string, functionCategory: SkillFunction) =>
     request<{ skill: SkillInfo }>(`/skills/${encodeURIComponent(id)}/function`, {

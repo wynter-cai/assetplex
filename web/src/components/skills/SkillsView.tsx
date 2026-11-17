@@ -15,6 +15,7 @@ import { SkillsToolbar, type SkillsDimension, type LibraryStatusFilter } from '.
 import { SkillsBatchBar } from './SkillsBatchBar';
 import { SkillCatalogBoard } from './SkillCatalogBoard';
 import { SkillDiagnosisDialog } from './SkillDiagnosisDialog';
+import { SkillDistributionDialog } from './SkillDistributionDialog';
 import { EnvSkillsPanel } from './EnvSkillsPanel';
 import { SkillsCheckupSection } from '@/components/doctor/SkillsCheckupSection';
 import { FUNCTION_LABELS, PROVENANCE_LABELS, FUNCTION_ORDER, PROVENANCE_ORDER } from './skill-labels';
@@ -316,9 +317,14 @@ export function SkillsView(): JSX.Element {
         />
       )}
       {distributionIds !== null && (
-        <p data-testid="distribution-selection" className="mb-3 text-xs text-muted-foreground">
-          本次所选 {distributionIds.length} 个技能，分发影响清单接入中…
-        </p>
+        <SkillDistributionDialog
+          ids={distributionIds}
+          onClose={() => setDistributionIds(null)}
+          onCompleted={() => {
+            void queryClient.invalidateQueries({ queryKey: ['skills'] });
+            void queryClient.invalidateQueries({ queryKey: ['distributions'] });
+          }}
+        />
       )}
 
       <p className="text-xs text-muted-foreground mb-3">

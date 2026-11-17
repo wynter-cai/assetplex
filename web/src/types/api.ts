@@ -548,6 +548,78 @@ export interface PutSkillDiagnosisSummariesResponse {
   rejected: Array<{ id: string; reason: 'not-found' | 'not-in-library' | 'invalid' }>;
 }
 
+/** 分发不可分原因（R6.5：逐条说明，不静默丢弃） */
+export type SkillDistributionIneligibleReason = 'not-in-library' | 'missing-file' | 'not-found';
+
+/** 单工具文件影响（POST /api/skills/distribution/preview 响应内） */
+export interface SkillDistributionFileImpact {
+  total: number;
+  created: number;
+  overwritten: number;
+  unchanged: number;
+  /** 目标已存在且非本工具托管，默认跳过，需显式勾选覆盖 */
+  conflicts: number;
+}
+
+export interface SkillDistributionToolImpact {
+  tool: string;
+  displayName: string;
+  installed: boolean;
+  supported: boolean;
+  /** installed=false / supported=false 时说明原因 */
+  skipReason?: string;
+  /** 默认勾选：仅「已安装、支持且已存在本次任一技能」的工具 */
+  defaultSelected: boolean;
+  /** 工具检测失败：状态未知，不可勾选，也不推断为未安装 */
+  statusUnknown?: boolean;
+  files: SkillDistributionFileImpact;
+  /** 示例目标路径（工具内相对路径），不含本机绝对路径 */
+  sampleTargets: string[];
+}
+
+/** POST /api/skills/distribution/preview 响应（零写入） */
+export interface SkillDistributionPreview {
+  token: string;
+  generatedAt: string;
+  expiresAt: string;
+  skills: Array<{ id: string; name: string; hubRelativePath: string }>;
+  ineligible: Array<{ id: string; name: string; reason: SkillDistributionIneligibleReason }>;
+  tools: SkillDistributionToolImpact[];
+  totals: {
+    tools: number;
+    files: number;
+    created: number;
+    overwritten: number;
+    unchanged: number;
+    conflicts: number;
+  };
+  backup: { policy: 'swap'; note: string };
+}
+
+/** POST /api/skills/distribution/execute 请求 */
+export interface SkillDistributionExecuteRequest {
+  token: string;
+  targets: Array<{ tool: string; overwriteConflicts: boolean }>;
+}
+
+export interface SkillDistributionResultItem {
+  skillId: string;
+  skillName: string;
+  tool: string;
+  action: 'written' | 'skipped' | 'failed';
+  reason?: string;
+  swapId?: string;
+}
+
+/** POST /api/skills/distribution/execute 响应 */
+export interface SkillDistributionExecuteResponse {
+  results: SkillDistributionResultItem[];
+  counts: { written: number; skipped: number; failed: number };
+  /** 有任一写入即可回滚；逐工具对应既有回滚接口的 swapId */
+  rollback: Array<{ tool: string; swapId: string }>;
+  distributionIndexRefreshed: boolean;
+}
+
 /** AI 分类配置视图（apiKey 脱敏，明文永不回传） */
 export interface AiClassifyConfigView {
   baseUrl: string;
