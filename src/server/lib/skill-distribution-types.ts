@@ -79,6 +79,23 @@ export interface DistributionTokenRecord {
   tools: ToolPreviewSnapshot[];
 }
 
+/** 执行结果：逐「技能 × 工具」一条 */
+export interface SkillDistributionResultItem {
+  skillId: string;
+  skillName: string;
+  tool: string;
+  action: 'written' | 'skipped' | 'failed';
+  reason?: string;
+  swapId?: string;
+}
+
+export interface SkillDistributionExecuteResponse {
+  results: SkillDistributionResultItem[];
+  counts: { written: number; skipped: number; failed: number };
+  rollback: Array<{ tool: string; swapId: string }>;
+  distributionIndexRefreshed: boolean;
+}
+
 /** 内存 token 快照表（进程内，过期即清理；服务重启后按 404 处理） */
 export class DistributionTokenStore {
   private readonly tokens = new Map<string, DistributionTokenRecord>();

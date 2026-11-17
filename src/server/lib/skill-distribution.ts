@@ -1,8 +1,8 @@
 /**
- * 技能批量分发预览编排（refactor-skill-catalog T13）
+ * 技能批量分发编排（refactor-skill-catalog T13 / T14）
  *
- * 复用资产写入引擎（原 SwapEngine，现 AssetWriteEngine）的逐工具预览，
- * 不新建第二条分发通道（proposal D5）：按所选技能过滤预览条目并生成影响清单。
+ * 复用资产写入引擎（原 SwapEngine，现 AssetWriteEngine）的逐工具预览/单资产范围执行，
+ * 不新建第二条分发通道（proposal D5）：过滤预览条目、生成影响清单、逐工具执行。
  * 响应中的目标路径一律为工具内相对路径，绝不回传本机绝对路径。
  */
 
@@ -11,17 +11,22 @@ import type { ToolAdapter } from '../../core/adapters/base.js';
 import { BaseAdapter } from '../../core/adapters/base.js';
 import type {
   AssetWriteEngine,
+  AssetWriteExecuteResult,
   AssetWritePreview,
   AssetWritePreviewItem,
 } from '../../core/asset-write.js';
+import { invalidateDistributionIndex } from '../../core/distribution-index.js';
 import type { ListSkillsResult, SkillFs } from '../../core/skills-inventory.js';
 import { computeSkillContentHash } from '../../core/skill-diagnosis-summary.js';
 import { hubRelativePathOf } from './skill-api.js';
 import type {
+  DistributionTokenRecord,
   IneligibleSkill,
   SelectedSkill,
+  SkillDistributionExecuteResponse,
   SkillDistributionFileImpact,
   SkillDistributionPreview,
+  SkillDistributionResultItem,
   SkillDistributionToolImpact,
   ToolPreviewSnapshot,
 } from './skill-distribution-types.js';
@@ -192,4 +197,103 @@ export async function buildDistributionPreview(input: {
     },
     snapshots: outcomes.map((o) => o.snapshot),
   };
+}
+
+function resultItem(
+  skill: SelectedSkill,
+  tool: string,
+  action: SkillDistributionResultItem['action'],
+  extra: { reason?: string; swapId?: string } = {},
+): SkillDistributionResultItem {
+  const item: SkillDistributionResultItem = { skillId: skill.id, skillName: skill.name, tool, action };
+  if (extra.reason !== undefined) item.reason = extra.reason;
+  if (extra.swapId !== undefined) item.swapId = extra.swapId;
+  return item;
+}
+
+/** 把引擎的逐文件结果摊平为逐技能结果（未命中任何条目按原因跳过） */
+function mapResultsBySkill(
+  skills: SelectedSkill[],
+  tool: string,
+  snapshot: ToolPreviewSnapshot,
+  executed: AssetWriteExecuteResult,
+): SkillDistributionResultItem[] {
+  return skills.map((skill) => {
+    const dir = skillDirOf(skill.hubRelativePath);
+    const mine = executed.items.filter((i) => isUnderSelectedSkill(i.hubRelativePath, [dir]));
+    const failed = mine.filter((i) => i.action === 'failed');
+    if (failed.length > 0) {
+      return resultItem(skill, tool, 'failed', { reason: failed.map((f) => f.reason ?? '写入失败').join('; ') });
+    }
+    if (mine.some((i) => i.action === 'written')) {
+      return resultItem(skill, tool, 'written', { swapId: executed.swapId });
+    }
+    const skipReason = mine.find((i) => i.reason !== undefined)?.reason;
+    if (skipReason !== undefined) return resultItem(skill, tool, 'skipped', { reason: skipReason });
+    return resultItem(skill, tool, 'skipped', {
+      reason: snapshot.supported ? '目标已一致，无需写入' : '该工具不支持技能类别',
+    });
+  });
+}
+
+/** 执行单个工具：预检状态 → 引擎单资产范围执行 → 摊平结果；异常不外抛 */
+async function executeTool(input: {
+  tool: string;
+  overwriteConflicts: boolean;
+  engine: AssetWriteEngine;
+  snapshot: ToolPreviewSnapshot | undefined;
+  skills: SelectedSkill[];
+}): Promise<{ items: SkillDistributionResultItem[]; swapId?: string }> {
+  const { snapshot, skills, tool } = input;
+  const skipAll = (reason: string) => ({ items: skills.map((s) => resultItem(s, tool, 'skipped', { reason })) });
+  if (snapshot === undefined) return skipAll('预览快照中不含该工具，请重新预览');
+  if (snapshot.statusUnknown || snapshot.previewGeneratedAt === '') {
+    return skipAll('工具状态暂不可用');
+  }
+  if (!snapshot.installed) return skipAll('工具未安装');
+  if (!snapshot.supported) return skipAll('该工具不支持技能类别');
+
+  try {
+    const executed = await input.engine.execute({
+      tool,
+      previewGeneratedAt: snapshot.previewGeneratedAt,
+      overwriteDecisions: input.overwriteConflicts
+        ? snapshot.conflictPaths.map((p) => ({ hubRelativePath: p, overwrite: true }))
+        : [],
+      onlyHubRelativePaths: skills.map((s) => s.hubRelativePath),
+    });
+    const swapId = executed.counts.written > 0 ? executed.swapId : undefined;
+    return { items: mapResultsBySkill(skills, tool, snapshot, executed), swapId };
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    return { items: skills.map((s) => resultItem(s, tool, 'failed', { reason })) };
+  }
+}
+
+/** 逐工具执行（单工具失败不中断其他工具），执行后失效分发索引缓存 */
+export async function executeDistribution(input: {
+  record: DistributionTokenRecord;
+  targets: Array<{ tool: string; overwriteConflicts: boolean }>;
+  engine: AssetWriteEngine;
+}): Promise<SkillDistributionExecuteResponse> {
+  const results: SkillDistributionResultItem[] = [];
+  const rollback: Array<{ tool: string; swapId: string }> = [];
+  for (const target of input.targets) {
+    const outcome = await executeTool({
+      tool: target.tool,
+      overwriteConflicts: target.overwriteConflicts,
+      engine: input.engine,
+      snapshot: input.record.tools.find((t) => t.tool === target.tool),
+      skills: input.record.skills,
+    });
+    results.push(...outcome.items);
+    if (outcome.swapId !== undefined) rollback.push({ tool: target.tool, swapId: outcome.swapId });
+  }
+  invalidateDistributionIndex();
+  const counts = {
+    written: results.filter((r) => r.action === 'written').length,
+    skipped: results.filter((r) => r.action === 'skipped').length,
+    failed: results.filter((r) => r.action === 'failed').length,
+  };
+  return { results, counts, rollback, distributionIndexRefreshed: true };
 }
