@@ -22,7 +22,7 @@ import type {
 } from '@/types/api';
 
 const INELIGIBLE_LABEL: Record<SkillDistributionIneligibleReason, string> = {
-  'not-in-library': '未入库，不可分发',
+  'not-in-library': '未收藏，不可分发',
   'missing-file': '文件缺失，不可分发',
   'not-found': '技能已不存在',
 };
