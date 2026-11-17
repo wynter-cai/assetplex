@@ -508,6 +508,46 @@ export interface SkillCatalogResult extends SkillCatalogOverview {
   items: SkillInfo[];
 }
 
+/** 子集诊断不可诊断原因（R4.3/R4.5：逐条说明，不静默丢弃） */
+export type SkillUnDiagnosableReason = 'not-in-library' | 'missing-file' | 'not-found';
+
+/** POST /api/skills/diagnose/estimate 响应（零模型零写库） */
+export interface SkillDiagnoseEstimate {
+  /** 请求条目数（去重后，含不可诊断项） */
+  total: number;
+  diagnosable: number;
+  unDiagnosable: Array<{ id: string; name: string; reason: SkillUnDiagnosableReason }>;
+  /** 命中未过期摘要，不消耗调用 */
+  cacheHits: number;
+  /** 预计真实调用次数；未配置 AI 时恒为 0 */
+  willCall: number;
+  aiConfigured: boolean;
+  mechanicalOnly: boolean;
+  overSelectionLimit: boolean;
+  overCallLimit: boolean;
+  /** willCall 超过确认阈值，需二次确认 */
+  confirmRequired: boolean;
+  limits: { maxSelection: number; confirmThreshold: number; maxCalls: number };
+  /** 执行目标清单：逐条调用 POST /api/doctor/diagnose */
+  targets: Array<{ id: string; name: string; hubRelativePath: string }>;
+}
+
+/** PUT /api/skills/diagnosis-summary 请求项（哈希由服务端计算，前端不回传） */
+export interface SkillDiagnosisSummaryInput {
+  id: string;
+  overall: DiagnosisOverall;
+  issueCounts: { high: number; medium: number; low: number };
+  mechanicalOnly: boolean;
+  rulesVersion: string;
+  model: string;
+  checkedAt: string;
+}
+
+export interface PutSkillDiagnosisSummariesResponse {
+  saved: number;
+  rejected: Array<{ id: string; reason: 'not-found' | 'not-in-library' | 'invalid' }>;
+}
+
 /** AI 分类配置视图（apiKey 脱敏，明文永不回传） */
 export interface AiClassifyConfigView {
   baseUrl: string;

@@ -13,8 +13,13 @@ import { Loader2, Stethoscope } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
+import {
+  DIAGNOSIS_CONCURRENCY,
+  useSkillDiagnosisPool,
+  type DiagnosisRow,
+} from '@/components/skills/use-skill-diagnosis-pool';
 import { ReportView } from './DiagnosisPanel';
-import type { DiagnosisOverall, DiagnosisReport, DiagnoseEstimate, DoctorAssetKind } from '@/types/api';
+import type { DiagnosisOverall, DiagnoseEstimate, DoctorAssetKind } from '@/types/api';
 
 export interface BatchCheckupAsset {
   label: string;
@@ -33,16 +38,9 @@ type BatchView =
   | { kind: 'estimateError'; message: string }
   | { kind: 'ready'; estimate: DiagnoseEstimate }
   | { kind: 'needConfirm'; estimate: DiagnoseEstimate }
-  | { kind: 'running'; estimate: DiagnoseEstimate; done: number }
+  | { kind: 'running'; estimate: DiagnoseEstimate }
   | { kind: 'done'; estimate: DiagnoseEstimate };
 
-interface BatchRow {
-  asset: BatchCheckupAsset;
-  report: DiagnosisReport | null;
-  error: string | null;
-}
-
-const CONCURRENCY = 4;
 const CONFIRM_THRESHOLD = 50;
 
 /** 排序口径：有风险 → 需关注 → 健康 → 失败（spec Scenario 5） */
@@ -50,14 +48,11 @@ const OVERALL_RANK: Record<DiagnosisOverall, number> = { 'at-risk': 0, 'needs-at
 
 export function BatchCheckup(props: BatchCheckupProps): JSX.Element {
   const [view, setView] = useState<BatchView>({ kind: 'closed' });
-  const [rows, setRows] = useState<BatchRow[]>([]);
   const [expanded, setExpanded] = useState<number | null>(null);
   const assetsRef = useRef<BatchCheckupAsset[]>([]);
-  const cursor = useRef(0);
-  const active = useRef(0);
+  const pool = useSkillDiagnosisPool();
 
   const open = (): void => {
-    setRows([]);
     setExpanded(null);
     setView({ kind: 'estimating' });
     props
@@ -72,54 +67,15 @@ export function BatchCheckup(props: BatchCheckupProps): JSX.Element {
       );
   };
 
-  const record = (index: number, row: BatchRow): void => {
-    setRows((prev) => {
-      const next = [...prev];
-      next[index] = row;
-      return next;
-    });
-  };
-
   const startRun = (estimate: DiagnoseEstimate): void => {
-    const total = assetsRef.current.length;
-    cursor.current = 0;
-    active.current = 0;
-    setRows([]);
     setExpanded(null);
-    setView({ kind: 'running', estimate, done: 0 });
-
-    const next = (): void => {
-      while (active.current < CONCURRENCY && cursor.current < total) {
-        const index = cursor.current;
-        cursor.current += 1;
-        active.current += 1;
-        const asset = assetsRef.current[index];
-        api
-          .doctorDiagnose({ kind: props.kind, hubRelativePath: asset.hubRelativePath })
-          .then((report) => {
-            record(index, { asset, report, error: null });
-            bump(estimate, total);
-          })
-          .catch((err: unknown) => {
-            record(index, { asset, report: null, error: err instanceof Error ? err.message : String(err) });
-            bump(estimate, total);
-          })
-          .finally(() => {
-            active.current -= 1;
-            next();
-          });
-      }
-    };
-
-    const bump = (est: DiagnoseEstimate, sum: number): void => {
-      setView((prev) => {
-        if (prev.kind !== 'running') return prev;
-        const done = prev.done + 1;
-        return done >= sum ? { kind: 'done', estimate: est } : { kind: 'running', estimate: est, done };
-      });
-    };
-
-    next();
+    setView({ kind: 'running', estimate });
+    const targets = assetsRef.current.map((asset, index) => ({
+      id: String(index),
+      name: asset.label,
+      hubRelativePath: asset.hubRelativePath,
+    }));
+    void pool.run(targets).then(() => setView({ kind: 'done', estimate }));
   };
 
   const onLaunchClick = (estimate: DiagnoseEstimate): void => {
@@ -140,13 +96,20 @@ export function BatchCheckup(props: BatchCheckupProps): JSX.Element {
   }
 
   const estimate = view.kind === 'ready' || view.kind === 'needConfirm' || view.kind === 'running' || view.kind === 'done' ? view.estimate : null;
-  const failedCount = rows.filter((r) => r.error !== null).length;
-  const okCount = rows.filter((r) => r.report !== null).length;
+  const completedRows = pool.rows.filter((row): row is DiagnosisRow => row !== null);
+  const failedCount = completedRows.filter((r) => r.error !== null).length;
+  const okCount = completedRows.filter((r) => r.report !== null).length;
 
   // 完成态排序：失败（report=null）恒最后；其余按 overall 三档
-  const orderedRows: Array<BatchRow & { sourceIndex: number }> = [];
+  const orderedRows: Array<DiagnosisRow & { sourceIndex: number }> = [];
   if (view.kind === 'done') {
-    const withIndex = assetsRef.current.map((asset, i) => ({ row: rows[i] ?? { asset, report: null, error: '未获得结果' }, sourceIndex: i }));
+    const withIndex = pool.rows.map((row, i) => {
+      const asset = assetsRef.current[i];
+      return {
+        row: row ?? { target: { id: String(i), name: asset?.label ?? '', hubRelativePath: '' }, report: null, error: '未获得结果' },
+        sourceIndex: i,
+      };
+    });
     withIndex.sort((a, b) => {
       const rankA = a.row.report === null ? 3 : OVERALL_RANK[a.row.report.overall];
       const rankB = b.row.report === null ? 3 : OVERALL_RANK[b.row.report.overall];
@@ -219,7 +182,7 @@ export function BatchCheckup(props: BatchCheckupProps): JSX.Element {
       {view.kind === 'running' && (
         <p className="flex items-center gap-2 text-xs text-muted-foreground">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          体检中 {view.done} / {assetsRef.current.length}（并发 ≤{CONCURRENCY}，单条失败不中断）
+          体检中 {pool.done} / {assetsRef.current.length}（并发 ≤{DIAGNOSIS_CONCURRENCY}，单条失败不中断）
         </p>
       )}
 
@@ -239,7 +202,7 @@ export function BatchCheckup(props: BatchCheckupProps): JSX.Element {
                   ) : (
                     <Badge variant="destructive">失败</Badge>
                   )}
-                  <span className="font-medium">{row.asset.label}</span>
+                  <span className="font-medium">{row.target.name}</span>
                   {row.error !== null && <span className="text-destructive truncate">{row.error}</span>}
                 </button>
                 {expanded === displayIndex && row.report !== null && <ReportView report={row.report} />}

@@ -33,6 +33,9 @@ import type {
   SkillListResult,
   SkillInfo,
   SkillCatalogResult,
+  SkillDiagnoseEstimate,
+  SkillDiagnosisSummaryInput,
+  PutSkillDiagnosisSummariesResponse,
   SkillFunction,
   SkillProvenance,
   SkillAssetScope,
@@ -287,6 +290,18 @@ export const api = {
     const q = qs.toString();
     return request<SkillCatalogResult>(`/skills/catalog${q ? `?${q}` : ''}`);
   },
+  /** 子集诊断预估（零模型零写库）；发起前必须调用，前端不得自行推算成本 */
+  estimateSkillDiagnosis: (ids: string[]) =>
+    request<SkillDiagnoseEstimate>('/skills/diagnose/estimate', {
+      method: 'POST',
+      body: JSON.stringify({ ids }),
+    }),
+  /** 批量诊断结果回写摘要（服务端算内容哈希；部分成功语义） */
+  putSkillDiagnosisSummaries: (items: SkillDiagnosisSummaryInput[]) =>
+    request<PutSkillDiagnosisSummariesResponse>('/skills/diagnosis-summary', {
+      method: 'PUT',
+      body: JSON.stringify({ items }),
+    }),
   overrideSkillFunction: (id: string, functionCategory: SkillFunction) =>
     request<{ skill: SkillInfo }>(`/skills/${encodeURIComponent(id)}/function`, {
       method: 'PUT',

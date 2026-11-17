@@ -14,6 +14,7 @@ import { SkillCreateDialog } from './SkillCreateDialog';
 import { SkillsToolbar, type SkillsDimension, type LibraryStatusFilter } from './SkillsToolbar';
 import { SkillsBatchBar } from './SkillsBatchBar';
 import { SkillCatalogBoard } from './SkillCatalogBoard';
+import { SkillDiagnosisDialog } from './SkillDiagnosisDialog';
 import { EnvSkillsPanel } from './EnvSkillsPanel';
 import { SkillsCheckupSection } from '@/components/doctor/SkillsCheckupSection';
 import { FUNCTION_LABELS, PROVENANCE_LABELS, FUNCTION_ORDER, PROVENANCE_ORDER } from './skill-labels';
@@ -286,9 +287,7 @@ export function SkillsView(): JSX.Element {
       )}
 
       {diagnosisIds !== null && (
-        <p data-testid="diagnosis-selection" className="mb-3 text-xs text-muted-foreground">
-          本次所选 {diagnosisIds.length} 个技能，诊断预估接入中…
-        </p>
+        <SkillDiagnosisDialog ids={diagnosisIds} onClose={() => setDiagnosisIds(null)} />
       )}
       {distributionIds !== null && (
         <p data-testid="distribution-selection" className="mb-3 text-xs text-muted-foreground">

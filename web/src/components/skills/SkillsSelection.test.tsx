@@ -82,6 +82,23 @@ function renderView(): ReturnType<typeof render> {
 beforeEach(() => {
   vi.spyOn(api, 'listSkills').mockResolvedValue(listResult);
   vi.spyOn(api, 'getSkillCatalog').mockResolvedValue(catalog);
+  vi.spyOn(api, 'estimateSkillDiagnosis').mockResolvedValue({
+    total: 2,
+    diagnosable: 2,
+    unDiagnosable: [],
+    cacheHits: 0,
+    willCall: 2,
+    aiConfigured: true,
+    mechanicalOnly: false,
+    overSelectionLimit: false,
+    overCallLimit: false,
+    confirmRequired: false,
+    limits: { maxSelection: 100, confirmThreshold: 50, maxCalls: 200 },
+    targets: [
+      { id: 'demo-a', name: 'demo-a', hubRelativePath: 'skills/demo-a/SKILL.md' },
+      { id: 'demo-b', name: 'demo-b', hubRelativePath: 'skills/demo-b/SKILL.md' },
+    ],
+  });
 });
 
 describe('SkillsView 本次所选（T10）', () => {
@@ -97,7 +114,8 @@ describe('SkillsView 本次所选（T10）', () => {
     expect(distribute).toBeEnabled();
 
     fireEvent.click(diagnose);
-    expect(await screen.findByTestId('diagnosis-selection')).toHaveTextContent('本次所选 2 个技能');
+    expect(await screen.findByRole('heading', { name: /诊断选中 2 个技能/ })).toBeInTheDocument();
+    await waitFor(() => expect(api.estimateSkillDiagnosis).toHaveBeenCalledWith(['demo-a', 'demo-b']));
   });
 
   it('筛选变化清空旧选择，批量条随勾选消失', async () => {
@@ -116,6 +134,6 @@ describe('SkillsView 本次所选（T10）', () => {
     renderView();
     await screen.findByText(/去重后共 2 个技能/);
     fireEvent.click(screen.getAllByRole('button', { name: /诊断本类/ })[0]);
-    expect(await screen.findByTestId('diagnosis-selection')).toHaveTextContent('本次所选 2 个技能');
+    expect(await screen.findByRole('heading', { name: /诊断选中 2 个技能/ })).toBeInTheDocument();
   });
 });
