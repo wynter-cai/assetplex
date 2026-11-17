@@ -9,7 +9,8 @@ import { lineOfMatch } from './diagnosis-evidence.js';
 import type { CheckHit, StaticCheck } from './diagnosis-static.js';
 
 const BACKSLASH_PATH = /[\w.-]+\\[\w.-]+/;
-const ABSOLUTE_PATH = /[A-Za-z]:[\\/]|(?:^|[\s(（"'`])\/(?:Users|home|var|etc|opt|tmp)\//;
+// 盘符必须在词首边界：避免把 https:// 里的 `s:` 当成盘符（baseline 实测 12/13 误报源于此）
+const ABSOLUTE_PATH = /(?:^|[^A-Za-z0-9+.-])[A-Za-z]:[\\/]|(?:^|[\s(（"'`])\/(?:Users|home|var|etc|opt|tmp)\//;
 const RELATIVE_REF = /(?:^|[\s(（"'`])(\.{0,2}\/?)((?:references|scripts|assets)\/[\w./-]+)/;
 const BACKTICK_PATH = /`([\w.-]+(?:\/[\w.-]+)+\.(?:md|mjs|cjs|js|ts|json|ya?ml|sh|ps1|toml))`/g;
 const USER_PATH = /[A-Za-z]:[\\/]Users[\\/]|\/Users\/[\w.-]+|\/home\/[\w.-]+/;

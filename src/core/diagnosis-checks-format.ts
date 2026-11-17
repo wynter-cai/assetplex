@@ -79,7 +79,8 @@ const SK_03: StaticCheck = {
     if (desc.trim() === '') return [{ line, detail: 'description 为空：触发时机是模型选读本资产的第一依据' }];
     if (desc.length > 1024) return [{ line, detail: `description ${desc.length} 字符，超过 1024 上限` }];
     if (/[<>]/.test(desc)) return [{ line, detail: 'description 含尖括号：会被当成标签或被清洗' }];
-    if (!/use when|当用户|适用于|when the user/i.test(desc)) {
+    // 触发子句不限四个字面词：中文「用户提到…时使用」「…时触发」是同样的语义（baseline 实测 16/22 误报源于此）
+    if (!/use when|use this skill when|when the user|当用户|适用于|用户提到|时使用|时触发|触发场景/i.test(desc)) {
       return [{ line, detail: 'description 缺少「Use when / 当用户 / 适用于」触发子句' }];
     }
     if (/^(i can|you can|helps with)/i.test(desc.trim())) {

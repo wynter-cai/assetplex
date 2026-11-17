@@ -127,7 +127,8 @@ const SK_08: StaticCheck = {
     if ((lines > 500 || words > 3000) && !hasReference) {
       return [{ line: ctx.doc.bodyStartLine, detail: `正文 ${lines} 行 / 约 ${words} 词，且没有拆到 references` }];
     }
-    if (lines < 50 && !/^\d+\.\s|^##\s|示例|example/i.test(ctx.doc.body)) {
+    // 需要 m 标志：`^` 必须匹配行首，否则有二级标题的短技能会被误报（baseline 实测）
+    if (lines < 50 && !/^\d+\.\s|^##\s|示例|example/im.test(ctx.doc.body)) {
       return [{ line: ctx.doc.bodyStartLine, detail: `正文仅 ${lines} 行，且无流程、无引用、无示例` }];
     }
     return [];

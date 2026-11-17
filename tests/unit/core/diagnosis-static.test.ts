@@ -183,6 +183,42 @@ describe('引用组', () => {
   });
 });
 
+// ================= 误报回归（B16-03 样本基线修复） =================
+
+describe('误报回归：样本基线暴露的三处硬伤', () => {
+  it('SK-09 不把 https:// 里的 s: 当成盘符', () => {
+    const content = `${GOOD_SKILL}\n\n详见 https://example.com/guide/reference\n`;
+    expect(ids(run('skill', 'skills/demo-skill/SKILL.md', content))).not.toContain('SK-09');
+  });
+
+  it('SK-09 仍能抓到真实盘符（正斜杠与反斜杠两种写法）', () => {
+    const forward = `${GOOD_SKILL}\n\n见 D:/demo/notes.md\n`;
+    const backward = `${GOOD_SKILL}\n\n见 C:\\demo\\notes.md\n`;
+    expect(ids(run('skill', 'skills/demo-skill/SKILL.md', forward))).toContain('SK-09');
+    expect(ids(run('skill', 'skills/demo-skill/SKILL.md', backward))).toContain('SK-09');
+  });
+
+  it('SK-03 认可「用户提到…时使用」这类中文触发子句', () => {
+    const content = '---\nname: demo-skill\ndescription: 用户提到要把 CSV 导出为表格时使用。\n---\n\n## 流程\n1. 读取 CSV\n';
+    expect(ids(run('skill', 'skills/demo-skill/SKILL.md', content))).not.toContain('SK-03');
+  });
+
+  it('SK-03 仍对没有任何触发子句的描述报错', () => {
+    const content = '---\nname: demo-skill\ndescription: 一个导出 CSV 的技能。\n---\n\n## 流程\n1. 读取 CSV\n';
+    expect(ids(run('skill', 'skills/demo-skill/SKILL.md', content))).toContain('SK-03');
+  });
+
+  it('SK-08 不误报带二级标题的短技能', () => {
+    const content = `${GOOD_SKILL}\n\n## 步骤\n1. 读取 CSV\n`;
+    expect(ids(run('skill', 'skills/demo-skill/SKILL.md', content))).not.toContain('SK-08');
+  });
+
+  it('SK-08 仍对既短又无结构、无示例的正文报错', () => {
+    const content = '---\nname: demo-skill\ndescription: Use when 导出 CSV。\n---\n\n正文只有一句话。\n';
+    expect(ids(run('skill', 'skills/demo-skill/SKILL.md', content))).toContain('SK-08');
+  });
+});
+
 // ================= 凭证组 =================
 
 describe('凭证组', () => {
