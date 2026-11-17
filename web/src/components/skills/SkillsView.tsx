@@ -37,6 +37,9 @@ export function SkillsView(): JSX.Element {
   const [curating, setCurating] = useState(false);
   // 环境折叠入口（spec refactor-skill-asset-first-view：环境默认不公示，仅底部一格）
   const [envOpen, setEnvOpen] = useState(false);
+  // 本次所选（T10）：勾选集或某个分组行，与当前筛选可组合；暂存 ids 由预估/影响清单解释
+  const [diagnosisIds, setDiagnosisIds] = useState<string[] | null>(null);
+  const [distributionIds, setDistributionIds] = useState<string[] | null>(null);
 
   /** 新建成功后打开新技能详情 */
   const handleCreated = (skill: SkillInfo): void => setSelected(skill);
@@ -113,6 +116,17 @@ export function SkillsView(): JSX.Element {
     setCheckedIds(new Set(data.items.map((s) => s.id)));
   };
   const clearChecked = (): void => setCheckedIds(new Set());
+
+  /** 发起诊断：不在此层过滤未入库项，由预估逐条说明原因 */
+  const openDiagnosis = (ids: string[]): void => {
+    if (ids.length === 0) return;
+    setDiagnosisIds(ids);
+  };
+  /** 发起分发：未入库/不支持类别由影响清单逐条说明 */
+  const openDistribution = (ids: string[]): void => {
+    if (ids.length === 0) return;
+    setDistributionIds(ids);
+  };
 
   const applyBatch = (): void => {
     if (checkedIds.size === 0 || applying) return;
@@ -222,6 +236,8 @@ export function SkillsView(): JSX.Element {
         {...(catalogError === null ? {} : { error: catalogError })}
         onRetry={() => void refetchCatalog()}
         onOpenSkill={(s) => setSelected(s)}
+        onDiagnoseGroup={(skills) => openDiagnosis(skills.map((s) => s.id))}
+        onDistributeGroup={(skills) => openDistribution(skills.map((s) => s.id))}
       />
       <SkillsToolbar
         dimension={dimension}
@@ -264,7 +280,20 @@ export function SkillsView(): JSX.Element {
           onCurate={applyCurate}
           onBatchFunctionChange={setBatchFunction}
           onApply={applyBatch}
+          onDiagnoseChecked={() => openDiagnosis(Array.from(checkedIds))}
+          onDistributeChecked={() => openDistribution(Array.from(checkedIds))}
         />
+      )}
+
+      {diagnosisIds !== null && (
+        <p data-testid="diagnosis-selection" className="mb-3 text-xs text-muted-foreground">
+          本次所选 {diagnosisIds.length} 个技能，诊断预估接入中…
+        </p>
+      )}
+      {distributionIds !== null && (
+        <p data-testid="distribution-selection" className="mb-3 text-xs text-muted-foreground">
+          本次所选 {distributionIds.length} 个技能，分发影响清单接入中…
+        </p>
       )}
 
       <p className="text-xs text-muted-foreground mb-3">

@@ -1,8 +1,10 @@
 /**
  * 技能批量操作条：全选/清空 + AI 分类 + 收藏到我的库 + 批量职能应用
+ * refactor-skill-catalog T10：新增「诊断选中 N 个」「分发选中 N 个」入口；
+ * 未入库项不在此层拦截——为什么不能诊断/分发由预估与影响清单逐条说明。
  */
 
-import { Bot } from 'lucide-react';
+import { Bot, Stethoscope, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FUNCTION_LABELS, FUNCTION_ORDER } from './skill-labels';
 import type { SkillFunction } from '@/types/api';
@@ -21,6 +23,10 @@ interface SkillsBatchBarProps {
   onCurate: () => void;
   onBatchFunctionChange: (f: SkillFunction) => void;
   onApply: () => void;
+  /** 本次所选诊断（未入库项由预估解释） */
+  onDiagnoseChecked: () => void;
+  /** 本次所选分发（未入库项由影响清单解释） */
+  onDistributeChecked: () => void;
 }
 
 export function SkillsBatchBar({
@@ -36,6 +42,8 @@ export function SkillsBatchBar({
   onCurate,
   onBatchFunctionChange,
   onApply,
+  onDiagnoseChecked,
+  onDistributeChecked,
 }: SkillsBatchBarProps): JSX.Element {
   return (
     <div className="flex flex-wrap items-center gap-2 mb-4 rounded-lg border border-primary/40 bg-primary/5 px-3 py-2">
@@ -57,6 +65,24 @@ export function SkillsBatchBar({
         清空
       </button>
       <div className="flex-1" />
+      <Button
+        size="sm"
+        variant="outline"
+        className="h-8 px-3 text-xs"
+        onClick={onDiagnoseChecked}
+      >
+        <Stethoscope className="h-3.5 w-3.5 mr-1" />
+        诊断选中 {checkedCount} 个
+      </Button>
+      <Button
+        size="sm"
+        variant="outline"
+        className="h-8 px-3 text-xs"
+        onClick={onDistributeChecked}
+      >
+        <Upload className="h-3.5 w-3.5 mr-1" />
+        分发选中 {checkedCount} 个
+      </Button>
       <Button
         size="sm"
         variant="outline"
