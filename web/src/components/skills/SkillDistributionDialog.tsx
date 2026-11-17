@@ -27,7 +27,11 @@ const INELIGIBLE_LABEL: Record<SkillDistributionIneligibleReason, string> = {
   'not-found': '技能已不存在',
 };
 
+/** 单次分发上限（spec R7.4 已批口径：最多 100 个） */
+export const MAX_DISTRIBUTION_SELECTION = 100;
+
 type View =
+  | { kind: 'over-limit'; total: number }
   | { kind: 'loading' }
   | { kind: 'error'; message: string }
   | { kind: 'ready'; preview: SkillDistributionPreview }
@@ -88,8 +92,14 @@ export function SkillDistributionDialog(props: SkillDistributionDialogProps): JS
 
   useEffect(() => {
     let alive = true;
-    setView({ kind: 'loading' });
     setExecError(null);
+    if (props.ids.length > MAX_DISTRIBUTION_SELECTION) {
+      setView({ kind: 'over-limit', total: props.ids.length });
+      return () => {
+        alive = false;
+      };
+    }
+    setView({ kind: 'loading' });
     api
       .previewSkillDistribution(props.ids)
       .then((preview) => {
@@ -143,6 +153,12 @@ export function SkillDistributionDialog(props: SkillDistributionDialogProps): JS
         </DialogHeader>
 
         <div className="space-y-2">
+          {view.kind === 'over-limit' && (
+            <p className="text-xs text-destructive">
+              一次最多 {MAX_DISTRIBUTION_SELECTION} 个，请分批（当前选择 {view.total} 个）；已选集合保留，取消部分后可继续。
+            </p>
+          )}
+
           {view.kind === 'loading' && (
             <p className="flex items-center gap-2 text-xs text-muted-foreground">
               <Loader2 className="h-3.5 w-3.5 animate-spin" />

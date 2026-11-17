@@ -1,7 +1,8 @@
 /**
  * 技能批量操作条：全选/清空 + AI 分类 + 收藏到我的库 + 批量职能应用
  * refactor-skill-catalog T10：新增「诊断选中 N 个」「分发选中 N 个」入口；
- * 未入库项不在此层拦截——为什么不能诊断/分发由预估与影响清单逐条说明。
+ * 勾选全部未入库时两个入口禁用并提示先收藏（spec R7.2）；有已入库项时
+ * 未入库项不在此层剔除——为什么不能诊断/分发由预估与影响清单逐条说明。
  */
 
 import { Bot, Stethoscope, Upload } from 'lucide-react';
@@ -11,6 +12,8 @@ import type { SkillFunction } from '@/types/api';
 
 interface SkillsBatchBarProps {
   checkedCount: number;
+  /** 勾选中已收藏到我的库的数量：为 0 时诊断/分发不可用（R7.2） */
+  inLibraryCheckedCount: number;
   /** 勾选中存在未入库技能时显示收藏入口 */
   showCurate: boolean;
   aiRunning: boolean;
@@ -31,6 +34,7 @@ interface SkillsBatchBarProps {
 
 export function SkillsBatchBar({
   checkedCount,
+  inLibraryCheckedCount,
   showCurate,
   aiRunning,
   applying,
@@ -65,11 +69,17 @@ export function SkillsBatchBar({
         清空
       </button>
       <div className="flex-1" />
+      {inLibraryCheckedCount === 0 && (
+        <span className="text-xs text-muted-foreground" data-testid="curate-first-hint">
+          先收藏到我的库，才能诊断或分发
+        </span>
+      )}
       <Button
         size="sm"
         variant="outline"
         className="h-8 px-3 text-xs"
         onClick={onDiagnoseChecked}
+        disabled={inLibraryCheckedCount === 0}
       >
         <Stethoscope className="h-3.5 w-3.5 mr-1" />
         诊断选中 {checkedCount} 个
@@ -79,6 +89,7 @@ export function SkillsBatchBar({
         variant="outline"
         className="h-8 px-3 text-xs"
         onClick={onDistributeChecked}
+        disabled={inLibraryCheckedCount === 0}
       >
         <Upload className="h-3.5 w-3.5 mr-1" />
         分发选中 {checkedCount} 个

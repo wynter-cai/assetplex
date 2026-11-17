@@ -121,6 +121,10 @@ export function SkillsView(): JSX.Element {
     setCheckedIds(new Set(data.items.map((s) => s.id)));
   };
   const clearChecked = (): void => setCheckedIds(new Set());
+  /** 空态「扫描本机技能」：重跑列表查询即触发后端重新扫描 */
+  const rescanSkills = (): void => {
+    void queryClient.invalidateQueries({ queryKey: ['skills'] });
+  };
 
   /** 发起诊断：不在此层过滤未入库项，由预估逐条说明原因 */
   const openDiagnosis = (ids: string[]): void => {
@@ -235,6 +239,10 @@ export function SkillsView(): JSX.Element {
   }
 
   const showCurate = Boolean(data && data.items.some((s) => checkedIds.has(s.id) && !s.inLibrary));
+  /** 勾选中已入库数量：为 0 时诊断/分发禁用（spec R7.2） */
+  const inLibraryCheckedCount = data
+    ? data.items.filter((s) => checkedIds.has(s.id) && s.inLibrary).length
+    : 0;
 
   return (
     <div className="flex min-w-0 flex-1 gap-4">
@@ -293,6 +301,7 @@ export function SkillsView(): JSX.Element {
       {checkedIds.size > 0 && (
         <SkillsBatchBar
           checkedCount={checkedIds.size}
+          inLibraryCheckedCount={inLibraryCheckedCount}
           showCurate={showCurate}
           aiRunning={ai.running}
           applying={applying}
@@ -349,6 +358,18 @@ export function SkillsView(): JSX.Element {
 
       {!isLoading && data && (
         groups.length === 0 ? (
+          data.total === 0 && !hasActiveFilter && environmentCount === 0 ? (
+            /* Scenario 7.1：本机与我的库都没有任何技能 */
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <Sparkles className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium mb-1">还没有任何技能</h3>
+              <p className="text-sm text-muted-foreground">扫描本机已安装的技能，或直接新建一个。</p>
+              <div className="mt-3 flex items-center gap-2">
+                <Button size="sm" onClick={rescanSkills}>扫描本机技能</Button>
+                <Button variant="outline" size="sm" onClick={() => setCreateOpen(true)}>新建技能</Button>
+              </div>
+            </div>
+          ) : (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <Sparkles className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-medium mb-1">没有匹配的技能</h3>
@@ -361,6 +382,7 @@ export function SkillsView(): JSX.Element {
               展开本机技能环境 {environmentCount}
             </Button>
           </div>
+          )
         ) : (
           <div className="space-y-6">
             {groups.map((group) => (

@@ -65,6 +65,9 @@ function EstimateLines({ estimate }: { estimate: SkillDiagnoseEstimate }): JSX.E
       {estimate.mechanicalOnly && (
         <p className="text-muted-foreground">
           未配置 AI 端点：将只跑机械检查，零模型调用——本次不含语义诊断。
+          <a href="/settings" className="ml-1 text-primary underline-offset-2 hover:underline">
+            去配置 AI 端点
+          </a>
         </p>
       )}
       {!estimate.mechanicalOnly && estimate.willCall > 0 && (
