@@ -44,7 +44,7 @@ T11 API 回环（真实数据，服务重启后实测）：
 | GET /api/skills 全量 | total 442，countByProvenance self 99 / marketplace 292 / plugin 27 / builtin 24，countByStatus in 31 / out 411 | ✅ 一致 |
 | status=out&provenance=marketplace 交集 | items 292（待收藏候选） | ✅ 292 |
 | status=in 视图 | items 31，countByProvenance {self:31, 其余 0}（我的库全自建） | ✅ 一致 |
-| PUT/DELETE 非库技能（12306） | 400 `{"error":"未入库技能只读，请先收藏到我的库"}` | ✅ 逐字一致 |
+| PUT/DELETE 非库技能（12306） | 400 `{"error":"技能未收藏，只读；请先收藏到我的库"}` | ✅ 逐字一致 |
 | provenance=foo 非法值 | 400 `{"error":"无效来源：foo，支持：self, marketplace, plugin, builtin"}` | ✅ 一致 |
 | curate 临时副本回环 | 201 + source 溯源（库内市场技能出处记 marketplace）→ in 32 → DELETE 200 → 回基线 in 31 / total 442 | ✅ 零污染 |
 

@@ -119,7 +119,7 @@ export function buildRemediationPlan(
       skipped.push({
         hubRelativePath: asset.hubRelativePath,
         assetName: asset.name,
-        reason: '环境条目（未入库），不在库内整改范围',
+        reason: '环境条目（未收藏），不在我的库整改范围',
       });
       continue;
     }

@@ -178,10 +178,10 @@ describe('updateVaultSkill 编辑保险箱技能', () => {
     expectWriteError(() => updateVaultSkill('ghost', 'x', makeDeps(fs)), 404, '不存在');
   });
 
-  it('非库技能只读拒绝编辑（契约文案：未入库技能只读）', () => {
+  it('非库技能只读拒绝编辑（契约文案：技能未收藏，只读）', () => {
     const fs = new MemoryWriteFs();
     fs.files.set(`${SOURCES.userSkillsDir}/mine/SKILL.md`, '---\nname: mine\ndescription: 个人技能\n---');
-    expectWriteError(() => updateVaultSkill('mine', 'x', makeDeps(fs)), 400, '未入库技能只读，请先收藏到我的库');
+    expectWriteError(() => updateVaultSkill('mine', 'x', makeDeps(fs)), 400, '技能未收藏，只读；请先收藏到我的库');
   });
 });
 
@@ -217,9 +217,9 @@ describe('deleteVaultSkill 删除保险箱技能', () => {
     expectWriteError(() => deleteVaultSkill('ghost', makeDeps(fs)), 404, '不存在');
   });
 
-  it('非库技能只读拒绝删除（契约文案：未入库技能只读）', () => {
+  it('非库技能只读拒绝删除（契约文案：技能未收藏，只读）', () => {
     const fs = new MemoryWriteFs();
     fs.files.set(`${SOURCES.userSkillsDir}/mine/SKILL.md`, '---\nname: mine\ndescription: 个人技能\n---');
-    expectWriteError(() => deleteVaultSkill('mine', makeDeps(fs)), 400, '未入库技能只读，请先收藏到我的库');
+    expectWriteError(() => deleteVaultSkill('mine', makeDeps(fs)), 400, '技能未收藏，只读；请先收藏到我的库');
   });
 });

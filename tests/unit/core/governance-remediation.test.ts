@@ -82,7 +82,7 @@ describe('buildRemediationPlan — Scenario 7：先出计划', () => {
     ]);
   });
 
-  it('环境条目（未入库）不进入整改计划', () => {
+  it('环境条目（未收藏）不进入整改计划', () => {
     const plan = buildRemediationPlan([asset({ path: '../outside/demo.md', external: true })]);
     expect(plan.items).toHaveLength(0);
     expect(plan.skipped[0].reason).toContain('环境条目');

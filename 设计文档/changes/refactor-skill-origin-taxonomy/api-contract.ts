@@ -78,7 +78,7 @@ export interface SkillListResult {
 /**
  * 写接口（POST/PUT/DELETE /api/skills）作用域判定：
  * 原「仅 origin=vault 可写」→ 现「仅 inLibrary=true 可写」，错误体与状态码不变
- * （404 技能不存在 / 400 非库技能只读时 {error: '未入库技能只读，请先收藏到我的库'}）
+ * （404 技能不存在 / 400 非库技能只读时 {error: '技能未收藏，只读；请先收藏到我的库'}）
  */
 
 /** 沉淀接口（POST /api/skills/curate）行为不变：复制非库技能到库目录 + source 溯源 */

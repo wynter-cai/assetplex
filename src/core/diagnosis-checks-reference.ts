@@ -124,7 +124,7 @@ const MEM_05: StaticCheck = {
     const userPath = lineOfMatch(ctx.doc.lines, USER_PATH);
     if (userPath !== null) hits.push({ line: userPath, detail: '记忆正文含本机用户名路径：应改为占位符并加入忽略清单' });
     const privateIp = lineOfMatch(ctx.doc.lines, PRIVATE_IP);
-    if (privateIp !== null) hits.push({ line: privateIp, detail: '记忆正文含内网地址：不应入库' });
+    if (privateIp !== null) hits.push({ line: privateIp, detail: '记忆正文含内网地址：不应放进我的库' });
     return hits;
   },
 };

@@ -463,7 +463,7 @@ describe('PUT /api/skills/:id 编辑保险箱技能', () => {
     });
     expect(res.status).toBe(400);
     const body = await res.json();
-    expect(body.error).toBe('未入库技能只读，请先收藏到我的库');
+    expect(body.error).toBe('技能未收藏，只读；请先收藏到我的库');
   });
 
   it('400 content 缺失或非字符串', async () => {
@@ -501,7 +501,7 @@ describe('DELETE /api/skills/:id 删除保险箱技能', () => {
     const res = await buildApp(fs).request('/api/skills/mine', { method: 'DELETE' });
     expect(res.status).toBe(400);
     const body = await res.json();
-    expect(body.error).toBe('未入库技能只读，请先收藏到我的库');
+    expect(body.error).toBe('技能未收藏，只读；请先收藏到我的库');
   });
 });
 

@@ -13,7 +13,7 @@ const SECRET_PATTERNS: Array<{ pattern: RegExp; detail: string }> = [
   { pattern: /\bghp_[A-Za-z0-9]{20,}/, detail: '命中 GitHub token 前缀 ghp_' },
   { pattern: /\bAKIA[0-9A-Z]{12,}/, detail: '命中 AWS access key 前缀 AKIA' },
   { pattern: /\bxoxb-[A-Za-z0-9-]{10,}/, detail: '命中 Slack token 前缀 xoxb-' },
-  { pattern: /-----BEGIN [A-Z ]*PRIVATE KEY-----/, detail: '命中私钥头：私钥不得入库' },
+  { pattern: /-----BEGIN [A-Z ]*PRIVATE KEY-----/, detail: '命中私钥头：私钥不得放进我的库' },
   {
     pattern: /(?:api[_-]?key|access[_-]?token|secret|password)\s*[:=]\s*["']?[A-Za-z0-9_\-]{16,}/i,
     detail: '配置里写的是实值而不是环境变量引用',
