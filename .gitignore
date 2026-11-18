@@ -68,3 +68,12 @@ HANDOFF.md
 
 # 隐私终检关键词清单（含真实隐私词，仅本机留存，绝不入库）
 .privacy-keywords.local
+
+# 本地走查截图与素材（可能含本机真实资产名，不入库）
+设计文档/assets/
+
+# 已废弃的导航改造草稿（未实施、无对应代码，仅本机留存）
+设计文档/changes/simplify-navigation-ia/
+
+# HTML 分享包（本地导出临时产物）
+.trae-html-share-packages/
