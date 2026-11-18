@@ -156,6 +156,7 @@
 
 - 接手基线：后端 1373 passed + 1 skipped；前端 649 passed；双端 tsc 0；双构建成功；隐私终检 0 命中
 - T13-T16 完成后（T17 收口实测）：后端 **1380 passed + 1 skipped**；前端 **662 passed**；双端 tsc 0；tsup + vite 构建成功；`privacy-check.mjs` 0 命中（扫 282 个 commit）
+- R7.5 组合场景补齐后（2026-11-18 实测）：后端 **1382 passed + 1 skipped**；前端 **664 passed**；双端 tsc 0；双构建成功；`privacy-check.mjs` 0 命中（扫 286 个 commit）
 
 ## 验收记录
 
@@ -169,7 +170,7 @@
 | R4 单个与子集诊断（4.1-4.6） | 通过 | `skills-batch-diagnosis.test.ts`、`SkillDiagnosisDialog.test.tsx`（预估、机械降级、二次确认、超限） |
 | R5 结果聚合（5.1-5.4） | 通过 | `SkillDiagnosisResults.test.tsx`（排序、失败重试、口径披露）、摘要回写用例 |
 | R6 批量分发（6.1-6.5） | 通过 | `skill-distribution.test.ts`、`skill-distribution-execute.test.ts`（零写入、冲突跳过、409、回滚映射）、`SkillDistributionDialog.test.tsx` |
-| R7 降级与空态（7.1-7.6） | 通过（7.5 组合场景人工待补） | `SkillsDegradation.test.tsx`（7.1-7.4）、看板/预估/预览各自失败用例（7.5）、`SkillDistributionImpactTable` statusUnknown（7.6） |
+| R7 降级与空态（7.1-7.6） | 通过 | `SkillsDegradation.test.tsx`（7.1-7.4；7.5 三处接口同时失败互不牵连）、看板/预估/预览各自失败用例（7.5）、`SkillDistributionImpactTable` statusUnknown（7.6） |
 
 ### 与 tasks.md 的已知偏差
 

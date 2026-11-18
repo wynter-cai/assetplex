@@ -18,10 +18,10 @@
 
 ## T1【P0】上次运行记录（core 纯逻辑 + 诊断写入点）
 
-- [ ] `src/core/doctor-cache.ts`：新增 `DoctorLastRunRecord` / `DoctorLastRunSummary` 类型、按 `kind + hubRelativePath` 的读写与 `sanitizeDoctorLastRuns`（闭集校验、脏条目丢弃不抛错）
-- [ ] 新增纯函数 `diffLastRunInputs(stored, current): Array<'content'|'criteria'|'model'>`，与缓存 key 同源（同一套内容哈希、准则集哈希、模型名）
-- [ ] `src/core/doctor.ts`：`diagnoseAsset` 成功返回前写入记录（**唯一写入点**；mechanicalOnly 也写，标记 `mechanicalOnly=true`）
-- [ ] 端口注入：core 不直接读写文件，通过 `lastRunStore` 依赖传入（缺省不写，保持既有测试零改动）
+- [x] `src/core/doctor-cache.ts`：新增 `DoctorLastRunRecord` / `DoctorLastRunSummary` 类型、按 `kind + hubRelativePath` 的读写与 `sanitizeDoctorLastRuns`（闭集校验、脏条目丢弃不抛错）
+- [x] 新增纯函数 `diffLastRunInputs(stored, current): Array<'content'|'criteria'|'model'>`，与缓存 key 同源（同一套内容哈希、准则集哈希、模型名）
+- [x] `src/core/doctor.ts`：`diagnoseAsset` 成功返回前写入记录（**唯一写入点**；mechanicalOnly 也写，标记 `mechanicalOnly=true`）
+- [x] 端口注入：core 不直接读写文件，通过 `lastRunStore` 依赖传入（缺省不写，保持既有测试零改动）
 - **测试**：`tests/unit/core/doctor-last.test.ts`
   - 首次诊断写入 / 同内容再诊断覆盖时间戳 / 正文变 / 准则变 / 模型变 四种 `staleReasons`
   - 脏 JSON（缺字段、overall 非法、路径空）被丢弃且不影响其他条目
@@ -30,8 +30,8 @@
 
 ## T2【P0】`GET /api/doctor/summary` 路由 + Node 存储
 
-- [ ] `src/server/lib/node-ai-classify-store.ts`：`createNodeDoctorLastRunStore()` → `~/.assetplex/doctor-last.json`（与 reports / drafts 分文件）
-- [ ] `src/server/routes/doctor.ts`：新增 `GET /summary`
+- [x] `src/server/lib/node-ai-classify-store.ts`：`createNodeDoctorLastRunStore()` → `~/.assetplex/doctor-last.json`（与 reports / drafts 分文件）
+- [x] `src/server/routes/doctor.ts`：新增 `GET /summary`
   - 参数校验复用 `parseEstimateCategory` 风格的闭集校验 + `isHubInternalPath` 守卫（非库内 403）
   - 读取正文与当前准则集/模型，计算当前缓存键；命中则 `state='valid'` 且 `willCallModel=false`
   - 有记录但三要素有变 → `state='stale'` + `staleReasons`
@@ -42,8 +42,8 @@
 
 ## T3【P0】前端类型与请求方法
 
-- [ ] `web/src/types/api.ts`：`DoctorSummaryResponse`、`DoctorLastRunSummary`；`DiagnosisReport` 补 `findings` / `coverage` / `rulesVersion` / `rejected` / `aiEvaluated`（与 api-contract 逐字段一致）
-- [ ] `web/src/lib/api.ts`：`getDoctorSummary({ kind, hubRelativePath })`
+- [x] `web/src/types/api.ts`：`DoctorSummaryResponse`、`DoctorLastRunSummary`；`DiagnosisReport` 补 `findings` / `coverage` / `rulesVersion` / `rejected` / `aiEvaluated`（与 api-contract 逐字段一致）
+- [x] `web/src/lib/api.ts`：`getDoctorSummary({ kind, hubRelativePath })`
 - **验证**：`node node_modules/typescript/bin/tsc -b`（在 `web/` 下）0 错
 
 ---
@@ -52,30 +52,30 @@
 
 ## T4【P0】资产库三套布局
 
-- [ ] `web/src/pages/Vault.tsx`：按 `assets.length` 分支
+- [x] `web/src/pages/Vault.tsx`：按 `assets.length` 分支
   - 0：居中空态 + 单一主操作（复用现有空态文案与出口），不渲染筛选 / 分页 / 详情栏
   - 1：自动展开该资产详情（仅一次，`useRef` 防重复；用户关闭后本次停留不再重开）；列表保留单卡选中态，不拉伸整行
   - ≥2：维持自适应网格 + 详情栏
-- [ ] `web/src/components/vault/AssetListPanel.tsx`：单资产时隐藏分页；保留「共 N 项」计数
-- [ ] 类别切换时重置详情、搜索、筛选与滚动位置
+- [x] `web/src/components/vault/AssetListPanel.tsx`：单资产时隐藏分页；保留「共 N 项」计数
+- [x] 类别切换时重置详情、搜索、筛选与滚动位置
 - **测试**：`web/src/pages/Vault.test.tsx` 增补（空态无网格 / 单资产自动展开且只一次 / 关闭后出现「展开详情」且不再自动开 / 多资产网格 / 切换类别清理）
 - **验证**：`npx vitest run src/pages/Vault.test.tsx` 全绿
 
 ## T5【P0】单资产深链与来源回退
 
-- [ ] `web/src/pages/Vault.tsx`：以 `?asset=<库内相对路径>` 为详情打开的唯一真源
+- [x] `web/src/pages/Vault.tsx`：以 `?asset=<库内相对路径>` 为详情打开的唯一真源
   - 直接打开：按路径在已取回列表中定位；未命中时等列表落地后再判定
   - 关闭详情：`setSearchParams` 移除参数并使用 `replace`（不新增历史记录）
   - 路径不存在：落类别列表 + 提示「资产不存在或已被移动」，且**不发起诊断**
-- [ ] 返回来源：优先浏览器后退语义；不为来源页硬编码跳转
-- [ ] 深链命中后自动展开的详情不重复触发诊断（只读摘要）
+- [x] 返回来源：优先浏览器后退语义；不为来源页硬编码跳转
+- [x] 深链命中后自动展开的详情不重复触发诊断（只读摘要）
 - **测试**：`Vault.test.tsx` 增补（打开 / 关闭改地址且不新增历史 / 不存在提示且无诊断请求 / 与单资产自动展开互不重复）
 - **验证**：`npx vitest run src/pages/Vault.test.tsx` 全绿
 
 ## T6【P1】其它入口改为深链
 
-- [ ] `web/src/lib/use-home-dashboard.ts`：`homeFixTargetPath` 返回 `/vault/<kind>?asset=<encodeURIComponent(hubPath)>`（保持纯函数可测；未知类别回退 `/vault`）
-- [ ] 首页待办 / 质量中心问题行：新增「在资产库中打开」深链（质量中心不就地展开资产问题报告）
+- [x] `web/src/lib/use-home-dashboard.ts`：`homeFixTargetPath` 返回 `/vault/<kind>?asset=<encodeURIComponent(hubPath)>`（保持纯函数可测；未知类别回退 `/vault`）
+- [x] 首页待办 / 质量中心问题行：新增「在资产库中打开」深链（质量中心不就地展开资产问题报告）
 - **测试**：`web/src/components/home/TodayQueue.test.tsx`、`web/src/pages/Governance.test.tsx` 增补 href 断言；`use-home-dashboard` 单测覆盖编码
 - **验证**：`npx vitest run src/components/home src/pages/Governance.test.tsx` 全绿
 
@@ -85,18 +85,18 @@
 
 ## T7【P0】诊断摘要栏
 
-- [ ] 新增 `web/src/components/doctor/DiagnosisSummaryBar.tsx`（≤200 行，纯展示）
+- [x] 新增 `web/src/components/doctor/DiagnosisSummaryBar.tsx`（≤200 行，纯展示）
   - 四态：`never` / `valid` / `stale` / `available=false`
   - 文案：结论徽标、问题数（含高严重度）、可修复数、上次时间、「结果有效（不会调用模型）」/「上次结果，已过期（正文已变更 / 准则集已更新 / 模型已更换）」
   - `willCallModel=true` 时旁注「本次将调用 1 次模型」；`aiConfigured=false` 时旁注「语义未评估」+ 配置入口
   - 主按钮文案随状态变化（开始诊断 / 重新诊断 / 运行检查）
-- [ ] `web/src/components/vault/AssetEditor.tsx`：只读视图顶部挂摘要栏（替换「正文上方只有一个按钮」的现状）
+- [x] `web/src/components/vault/AssetEditor.tsx`：只读视图顶部挂摘要栏（替换「正文上方只有一个按钮」的现状）
 - **测试**：`DiagnosisSummaryBar.test.tsx`（四态文案 / 成本提示 / 未配置 AI / 可访问名称）；`AssetEditor` 用例补「打开即有摘要，不点按钮」
 - **验证**：`npx vitest run src/components/doctor src/components/vault` 全绿
 
 ## T8【P0】问题行：证据、依据、置信度
 
-- [ ] 拆出 `web/src/components/doctor/IssueList.tsx`（单条问题可展开；`DiagnosisPanel` 保留编排，守住 300 行）
+- [x] 拆出 `web/src/components/doctor/IssueList.tsx`（单条问题可展开；`DiagnosisPanel` 保留编排，守住 300 行）
   - 展示：规则编号 + 名称、严重度、置信度、来源（机械 / 静态 / AI）、证据（库内相对路径 + 行号 + 片段）、建议
   - 证据不足：固定文案「证据不足，无法确定」，不可修复、不进入可修复计数
   - 忽略项：显示「已忽略 N 条」与恢复入口（若无恢复接口则只披露条数，不提供假按钮）
@@ -106,22 +106,22 @@
 
 ## T9【P0】就地修复 + 自动复检 + 撤销
 
-- [ ] `FixFlow` 接入详情：确认屏增加「保存后将自动复检（将调用 1 次模型）」固定说明
-- [ ] apply 成功后自动触发一次复检（显式 loading；结果就地替换摘要与问题列表；给出「已修复 X 项，剩余 Y 项」）
-- [ ] 复检失败：保留写库成功事实 +「复检失败：<原因>」+「重试复检」
-- [ ] `undo` 成功后：摘要置为 `stale`（原因「已撤销」）且**不自动复检、不调用模型**；结果区给「已撤销」与逐工具回滚入口
-- [ ] 写库失败：保留草案与勾选，可返回确认屏重试
+- [x] `FixFlow` 接入详情：确认屏增加「保存后将自动复检（将调用 1 次模型）」固定说明
+- [x] apply 成功后自动触发一次复检（显式 loading；结果就地替换摘要与问题列表；给出「已修复 X 项，剩余 Y 项」）
+- [x] 复检失败：保留写库成功事实 +「复检失败：<原因>」+「重试复检」
+- [x] `undo` 成功后：摘要置为 `stale`（原因「已撤销」）且**不自动复检、不调用模型**；结果区给「已撤销」与逐工具回滚入口
+- [x] 写库失败：保留草案与勾选，可返回确认屏重试
 - **测试**：`FixFlow.test.tsx` / `DiagnosisPanel.test.tsx` 增补（复检触发一次 / 复检失败保留写库事实 / 撤销不触发诊断 / 写库失败可重试）
 - **验证**：`npx vitest run src/components/doctor` 全绿；确认无新增模型调用路径的隐式触发
 
 ## T10【P0】分发衔接
 
-- [ ] 复检通过（无 high/medium，或只剩 low/建议项）→ 详情内出现主按钮「分发到工具」；未通过则为主入口隐藏 + 次要「仍要分发」+ 风险说明
-- [ ] 复用同步管理对话框：工具清单、安装状态、类别支持原因、当前同步状态、默认勾选规则
-- [ ] 执行走 `runSync(targets, false, { backup: true })`；结果就地展示（写入 / 跳过 / 失败 + 原因）
-- [ ] 「重试失败项」只重发失败工具；成功后 `invalidateQueries(['distributions'])` 刷新列表徽标
-- [ ] 确认屏已勾选分发时直接展示结果，不再二次询问
-- [ ] 无可用目标：按钮禁用 + 具体原因 +「去连接工具」
+- [x] 复检通过（无 high/medium，或只剩 low/建议项）→ 详情内出现主按钮「分发到工具」；未通过则为主入口隐藏 + 次要「仍要分发」+ 风险说明
+- [x] 复用同步管理对话框：工具清单、安装状态、类别支持原因、当前同步状态、默认勾选规则
+- [x] 执行走 `runSync(targets, false, { backup: true })`；结果就地展示（写入 / 跳过 / 失败 + 原因）
+- [x] 「重试失败项」只重发失败工具；成功后 `invalidateQueries(['distributions'])` 刷新列表徽标
+- [x] 确认屏已勾选分发时直接展示结果，不再二次询问
+- [x] 无可用目标：按钮禁用 + 具体原因 +「去连接工具」
 - **测试**：分发区块组件测试（入口出现条件 / 不支持说明 / 就地结果 / 失败重试只含失败工具 / 状态失效刷新 / 无目标禁用）
 - **验证**：`npx vitest run src/components/vault src/components/doctor` 全绿
 
@@ -131,17 +131,17 @@
 
 ## T11【P1】降级与空态全覆盖
 
-- [ ] 逐条对齐 spec Requirement 6：无 Key / 从未诊断 / 诊断失败（保留上次结果）/ 分发不可用 / 非库内条目 / 文件已消失 / 摘要读取失败
-- [ ] 旧文案修正：降级配置入口不得再指向技能页；指纹/摘要读取失败不影响正文
+- [x] 逐条对齐 spec Requirement 6：无 Key / 从未诊断 / 诊断失败（保留上次结果）/ 分发不可用 / 非库内条目 / 文件已消失 / 摘要读取失败
+- [x] 旧文案修正：降级配置入口不得再指向技能页；指纹/摘要读取失败不影响正文
 - **测试**：`DiagnosisPanel` / `AssetEditor` / `Observation` 相关用例逐条覆盖；断言"未配置 AI 时不出现调用次数"与"摘要失败不空屏"
 - **验证**：`npx vitest run src/components/doctor src/components/vault` 全绿
 
 ## T12【P1】宽窄屏与键盘
 
-- [ ] `Vault` 详情容器：≥1280 双栏固定宽度区间；1024–1279 证据与结果默认折叠；<1024 全屏覆盖 + 返回
-- [ ] 键盘：卡片 Enter/Space 打开；详情内 Tab 顺序合理；Esc 关闭并归还焦点；确认类操作可键盘触发
-- [ ] 结果区 `role="status"` + `aria-live="polite"` 播报「诊断完成：N 个问题」「已修复 X 项」「分发完成：M 个工具」
-- [ ] 区域可读名称：体检报告 / 修复流 / 分发结果
+- [x] `Vault` 详情容器：≥1280 双栏固定宽度区间；1024–1279 证据与结果默认折叠；<1024 全屏覆盖 + 返回
+- [x] 键盘：卡片 Enter/Space 打开；详情内 Tab 顺序合理；Esc 关闭并归还焦点；确认类操作可键盘触发
+- [x] 结果区 `role="status"` + `aria-live="polite"` 播报「诊断完成：N 个问题」「已修复 X 项」「分发完成：M 个工具」
+- [x] 区域可读名称：体检报告 / 修复流 / 分发结果
 - **测试**：键盘与 aria 断言用例（焦点归还 / 播报文案 / region 名称）
 - **验证**：`npx vitest run src/pages/Vault.test.tsx src/components/doctor` 全绿
 
@@ -151,8 +151,8 @@
 
 ## T13【P0】全量回归与手工走查
 
-- [ ] 后端：`npm test`、`npm run typecheck`、`npm run build` 全绿
-- [ ] 前端（`web/`）：`npx vitest run`、`node node_modules/typescript/bin/tsc -b`、`node node_modules/vite/bin/vite.js build` 全绿
+- [x] 后端：`npm test`、`npm run typecheck`、`npm run build` 全绿
+- [x] 前端（`web/`）：`npx vitest run`、`node node_modules/typescript/bin/tsc -b`、`node node_modules/vite/bin/vite.js build` 全绿
 - [ ] 手工走查三档视口（1440 / 1180 / 800）与全键盘：
   1. 单资产类别进入即见正文；关闭后不重开
   2. 摘要四态（从未 / 有效 / 过期 / 不可用）文案正确，成本提示与文字一致
@@ -164,10 +164,10 @@
 
 ## T14【P1】文档回写与提交
 
-- [ ] 若本变更定稿：在 `设计文档/changes/add-asset-governance/proposal.md` 与 `add-asset-doctor/proposal.md` 各加一行「单资产入口已由 refactor-asset-pipeline 收敛到资产详情」，不改其规格正文
-- [ ] `HANDOFF.md` 进度表补一行（本机私有，不入库）
-- [ ] 每个任务单独提交，提交信息格式：`<type>: <中文描述>（refactor-asset-pipeline T<n>）`
-- [ ] 提交前 `node scripts/privacy-check.mjs` 退出码 0
+- [x] 若本变更定稿：在 `设计文档/changes/add-asset-governance/proposal.md` 与 `add-asset-doctor/proposal.md` 各加一行「单资产入口已由 refactor-asset-pipeline 收敛到资产详情」，不改其规格正文
+- [x] `HANDOFF.md` 进度表补一行（本机私有，不入库）
+- [x] 每个任务单独提交，提交信息格式：`<type>: <中文描述>（refactor-asset-pipeline T<n>）`
+- [x] 提交前 `node scripts/privacy-check.mjs` 退出码 0
 - **验证**：`git log --oneline -5` + `git status` 自证；隐私终检 0 命中
 
 ---
@@ -196,3 +196,12 @@ T5 ┤→ T6                              │
 - 不给 mcp 增加语义诊断
 - 不新增页面、顶层路由、分发通道或写接口
 - 不在本变更内收窄诊断发送面（只保证不扩大，文案与实际一致）
+
+---
+
+## 回填说明（2026-11-18）
+
+- 本轮逐项核对代码与用例后回填 T1–T12、T13 自动化回归两项、T14 四项；**T13 手工走查两项保持未勾**（三档视口真机走查仍未执行，见 `ACCEPTANCE.md`「待人工补验」）。
+- T6 测试路径原写 `web/src/pages/Governance.test.tsx`，实际质量中心页为 `QualityCenter`；深链断言落在 `TodayQueue.test.tsx`、`QualityCenter.test.tsx` 与 `ClusterList`/`BatchDiagnosisResults` 用例中。
+- T7 摘要栏实际挂在 `DiagnosisPanel` 顶部（`AssetEditor` 内渲染该面板），效果与「只读视图顶部挂摘要栏」一致。
+- 本轮验证：后端 1382 passed + 1 skipped；前端 664 passed；双端 `tsc -b` 0 错；tsup + vite 构建成功；`privacy-check.mjs` 0 命中（286 commit）。
