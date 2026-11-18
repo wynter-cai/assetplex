@@ -97,6 +97,7 @@ function overview(clusters: QualityIssueCluster[] = []): QualityOverview {
       skippedRules: 0,
       skippedReasons: [],
       noChannelRules: 0,
+      aiConfigured: false,
       semanticEvaluated: false,
       ignoredCount: 0,
     },

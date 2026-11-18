@@ -61,7 +61,9 @@ function CoverageNote({ coverage }: { coverage: QualityCoverage }): JSX.Element 
         )}
         {!coverage.semanticEvaluated && (
           <p className="w-full">
-            语义规则本轮未评估，静态检查结果不代表通过；配置 AI 端点后可补充语义检查。
+            {coverage.aiConfigured
+              ? '语义规则尚未评估，静态检查结果不代表通过；在资产详情运行一次体检即可补充语义检查。'
+              : '语义规则本轮未评估，静态检查结果不代表通过；配置 AI 端点后可补充语义检查。'}
           </p>
         )}
         {coverage.ignoredCount > 0 && (

@@ -148,6 +148,7 @@ function overview(overrides: Partial<QualityOverview> = {}): QualityOverview {
       skippedReasons: [],
       noChannelRules: 2,
       ignoredCount: 0,
+      aiConfigured: true,
       semanticEvaluated: true,
     },
     generatedAt: '2026-11-08T00:00:00.000Z',
@@ -315,6 +316,7 @@ describe('QualityCenter 全局体检报告', () => {
           skippedReasons: [{ reason: 'semantic-disabled', count: 12 }],
           noChannelRules: 2,
           ignoredCount: 0,
+          aiConfigured: false,
           semanticEvaluated: false,
         },
       }),
@@ -323,6 +325,27 @@ describe('QualityCenter 全局体检报告', () => {
     expect(await screen.findByText('语义未评估')).toBeInTheDocument();
     expect(screen.getByText(/语义规则本轮未评估/)).toBeInTheDocument();
     expect(screen.queryByText(/全部健康/)).toBeNull();
+  });
+
+  it('AI 已配置但尚未语义评估：不再提示去配置，改指资产详情（T11）', async () => {
+    vi.spyOn(api, 'getQualityOverview').mockResolvedValue(
+      overview({
+        coverage: {
+          rulesVersion: '2026.11.0',
+          evaluatedRules: 45,
+          skippedRules: 0,
+          skippedReasons: [],
+          noChannelRules: 2,
+          ignoredCount: 0,
+          aiConfigured: true,
+          semanticEvaluated: false,
+        },
+      }),
+    );
+    renderPage();
+    expect(await screen.findByText('语义未评估')).toBeInTheDocument();
+    expect(screen.getByText(/在资产详情运行一次体检即可补充语义检查/)).toBeInTheDocument();
+    expect(screen.queryByText(/配置 AI 端点后可补充语义检查/)).toBeNull();
   });
 
   it('覆盖度披露：已忽略条目单列，不算作健康', async () => {
@@ -335,6 +358,7 @@ describe('QualityCenter 全局体检报告', () => {
           skippedReasons: [],
           noChannelRules: 2,
           ignoredCount: 3,
+          aiConfigured: true,
           semanticEvaluated: true,
         },
       }),

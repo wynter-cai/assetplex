@@ -132,6 +132,8 @@ export interface QualityCoverage {
   /** MCP 等有规则但一期无诊断执行通道的条数，必须如实披露 */
   noChannelRules: number;
   ignoredCount: number;
+  /** 当前是否配置了可用 AI 端点（与批量预估同源；不等于已做语义评估） */
+  aiConfigured: boolean;
   semanticEvaluated: boolean;
 }
 

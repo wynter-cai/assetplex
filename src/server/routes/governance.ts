@@ -131,6 +131,7 @@ function overviewCoverage(
     skippedReasons: skippedRules > 0 ? [{ reason: 'no-ai-config', count: skippedRules }] : [],
     noChannelRules,
     ignoredCount,
+    aiConfigured,
     semanticEvaluated: aiConfigured && assets.some((asset) => asset.semanticEvaluated),
   };
 }
@@ -184,6 +185,17 @@ export function createGovernanceRoutes(deps: GovernanceRouteDeps = {}): Hono {
   const snapshot = createGovernanceSnapshot(deps);
   const load = snapshot.load;
 
+  /**
+   * 当前是否配置了可用的 AI 端点。
+   * 不能用 `health.qualityMode` 反推：它还要求「已有资产完成语义评估」，
+   * 用户配好 Key 但没跑过语义体检时会被误判成「AI 未配置」（T11）。
+   */
+  function aiConfiguredNow(): boolean {
+    if (deps.aiConfigured !== undefined) return deps.aiConfigured();
+    const config = loadAiClassifyConfig(deps.aiConfigStore ?? nodeAiConfigStore);
+    return isAiConfigComplete(config);
+  }
+
   /** 本机确定性扫描一次重复分组（只读、零模型），用于首页建议 */
   function computeDuplicateSummary(): DuplicateSummaryForSuggestion {
     const list = deps.listAssets ?? defaultListAssets;
@@ -212,7 +224,7 @@ export function createGovernanceRoutes(deps: GovernanceRouteDeps = {}): Hono {
     const result: GovernanceSuggestionResult = buildGovernanceSuggestions({
       health,
       duplicates: summary,
-      aiConfigured: health.qualityMode === 'mechanical+ai',
+      aiConfigured: aiConfiguredNow(),
       scanned: health.totalAssets > 0,
       coverage: null,
     });
@@ -239,7 +251,7 @@ export function createGovernanceRoutes(deps: GovernanceRouteDeps = {}): Hono {
     }
     const snapshot = await load(refresh === '1');
     const queue = collectGovernanceQueue(snapshot.assets, snapshot.groups, Number.MAX_SAFE_INTEGER);
-    const aiConfigured = snapshot.health.qualityMode === 'mechanical+ai';
+    const aiConfigured = aiConfiguredNow();
     const ignoredCount =
       deps.ignoreStore === undefined
         ? 0

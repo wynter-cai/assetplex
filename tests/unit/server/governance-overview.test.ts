@@ -13,7 +13,13 @@ const GOOD = '---\nname: demo\nversion: "1"\ndescription: 演示用\n---\n正文
 const EMPTY_DESC = '---\nname: demo\nversion: "1"\ndescription: ""\n---\n正文\n';
 
 function harness(
-  opts: { files?: Record<string, string>; aiConfigured?: boolean; ignoreStore?: DiagnosisIgnoreStore } = {},
+  opts: {
+    files?: Record<string, string>;
+    aiConfigured?: boolean;
+    /** 语义评估结果：默认 true；false 模拟「已配置 AI 但尚未跑过语义体检」 */
+    evaluated?: boolean;
+    ignoreStore?: DiagnosisIgnoreStore;
+  } = {},
 ) {
   const files = opts.files ?? {};
   const semantic = new Map<string, DiagnosisIssue[]>();
@@ -27,7 +33,7 @@ function harness(
       ? {
           semantic: (input: { hubRelativePath: string }) => ({
             semanticIssues: semantic.get(input.hubRelativePath) ?? [],
-            evaluated: true,
+            evaluated: opts.evaluated ?? true,
           }),
         }
       : {}),
@@ -58,7 +64,14 @@ interface OverviewBody {
   }>;
   pendingTotal: number;
   sortRule: string;
-  coverage: { rulesVersion: string; semanticEvaluated: boolean; ignoredCount: number };
+  coverage: {
+    rulesVersion: string;
+    semanticEvaluated: boolean;
+    ignoredCount: number;
+    aiConfigured: boolean;
+    skippedRules: number;
+    skippedReasons: Array<{ reason: string; count: number }>;
+  };
   generatedAt: string;
   cached: boolean;
 }
@@ -111,6 +124,29 @@ describe('GET /api/governance/overview', () => {
     expect(overview.pendingTotal).toBe(0);
     expect(overview.coverage.semanticEvaluated).toBe(false);
     expect(overview.coverage.ignoredCount).toBe(0);
+  });
+
+  it('AI 已配置但尚无资产完成语义评估：不把跳过原因标成 no-ai-config（T11）', async () => {
+    const { get } = harness({
+      files: { 'skills/demo-a/SKILL.md': GOOD },
+      aiConfigured: true,
+      evaluated: false,
+    });
+    const overview = (await get('/overview')).body as unknown as OverviewBody;
+    expect(overview.coverage.semanticEvaluated).toBe(false);
+    expect(overview.coverage.aiConfigured).toBe(true);
+    expect(overview.coverage.skippedRules).toBe(0);
+    expect(overview.coverage.skippedReasons).toEqual([]);
+  });
+
+  it('AI 未配置：跳过原因仍如实标成 no-ai-config（现有行为不回退）', async () => {
+    const { get } = harness({ files: { 'skills/demo-a/SKILL.md': GOOD } });
+    const overview = (await get('/overview')).body as unknown as OverviewBody;
+    expect(overview.coverage.aiConfigured).toBe(false);
+    expect(overview.coverage.skippedRules).toBeGreaterThan(0);
+    expect(overview.coverage.skippedReasons).toEqual([
+      { reason: 'no-ai-config', count: overview.coverage.skippedRules },
+    ]);
   });
 
   it('refresh 参数非法 → 400', async () => {

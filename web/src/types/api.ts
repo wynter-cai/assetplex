@@ -1334,6 +1334,8 @@ export interface QualityCoverage {
   skippedReasons: Array<{ reason: string; count: number }>;
   noChannelRules: number;
   ignoredCount: number;
+  /** 当前是否配置了可用的 AI 端点（不等于已做过语义评估） */
+  aiConfigured: boolean;
   semanticEvaluated: boolean;
 }
 

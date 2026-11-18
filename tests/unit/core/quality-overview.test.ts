@@ -47,6 +47,7 @@ function input(items: HealthIssueRef[], total = items.length): QualityOverviewIn
       skippedReasons: [],
       noChannelRules: 11,
       ignoredCount: 0,
+      aiConfigured: false,
       semanticEvaluated: false,
     },
     now: () => '2026-11-15T01:00:00.000Z',

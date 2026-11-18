@@ -53,6 +53,8 @@ export interface QualityCoverage {
   }>;
   noChannelRules: number;
   ignoredCount: number;
+  /** 当前是否配置了可用的 AI 端点（与预估接口同源，不由健康分 qualityMode 反推） */
+  aiConfigured: boolean;
   semanticEvaluated: boolean;
 }
 

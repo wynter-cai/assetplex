@@ -93,6 +93,33 @@
 
 ---
 
+## T11 [C] 缺陷修复：概览误报「AI 未配置」
+
+> 2026-11-18 真实数据验收时发现：AI 端点已配置（`/api/skills/ai-classify/config` 返回 `hasApiKey:true`），
+> 但 `/api/governance/overview` 的 coverage 仍报「跳过 18 条 · 原因 no-ai-config」，与
+> `/api/governance/diagnose/estimate`（`willCall=48`、`semanticSkipped=0`）自相矛盾，违反 spec 2.5「语义未评估如实披露」。
+
+**根因**：`routes/governance.ts` 的 overview 用 `health.qualityMode === 'mechanical+ai'` 推断 AI 是否配置；
+而 `qualityMode` 还要求「已有资产做过语义评估」（`governance-health.ts` 的 `usesAi`），
+用户配好 Key 但还没跑过语义体检时恒为 `mechanical-only`，于是被误判成「未配置」。
+
+**行为（Given-When-Then）**
+- Given AI 端点已配置但尚无资产完成语义评估
+- When 打开质量中心概览
+- Then 不出现「原因 no-ai-config」；`skippedRules=0`、`skippedReasons=[]`，仍显示「语义未评估」徽标
+- And 覆盖度说明改为「语义规则尚未评估…在资产详情运行一次体检可补充语义检查」，不再让用户去重复配置 AI
+- Given AI 端点确实未配置
+- When 打开概览
+- Then 跳过原因仍为 `no-ai-config`，说明文案仍指向配置入口（现有行为不回退）
+
+**改动文件**
+- `src/server/routes/governance.ts`：新增 `aiConfiguredNow()`（`deps.aiConfigured` 优先，缺省读 `aiConfigStore` + `isAiConfigComplete`）；`/overview` 与 `/suggestions` 改用它
+- `src/core/quality-overview.ts`：`QualityCoverage` 增 `aiConfigured: boolean`
+- `web/src/types/api.ts`：同步增字段；`web/src/components/quality/ClusterList.tsx` 按 `coverage.aiConfigured` 分支文案
+- 测试：`tests/unit/server/governance-overview.test.ts` 补「AI 已配置但未评估」用例（harness 增 `evaluated` 开关）；`web/src/pages/QualityCenter.test.tsx` 补对应文案断言并更新既有 fixture
+
+**验证**：定向用例绿 → 双端 `tsc -b` 0 → 后端 tsup / 前端 vite build 成功 → `privacy-check.mjs` 0 命中。
+
 ## 手工回归清单（验收时逐条勾）
 
 1. 旧 `/governance`、`/vault/criteria` 两个地址可达且不被返回弹回。
