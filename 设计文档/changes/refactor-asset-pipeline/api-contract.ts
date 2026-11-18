@@ -120,7 +120,7 @@ export interface DiagnosisReport {
 export interface DoctorSummaryResponse {
   kind: DoctorAssetKind;
   hubRelativePath: string;
-  /** false = 本机记录或资产内容读取失败；此时其余字段按未诊断处理 */
+  /** false = 本机记录损坏或资产内容读取失败；没有记录（从未诊断）仍为 true，其余字段按未诊断处理 */
   available: boolean;
   state: 'never' | 'valid' | 'stale';
   lastRun: DoctorLastRunSummary | null;

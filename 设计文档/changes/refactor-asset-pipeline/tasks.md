@@ -35,7 +35,7 @@
   - 参数校验复用 `parseEstimateCategory` 风格的闭集校验 + `isHubInternalPath` 守卫（非库内 403）
   - 读取正文与当前准则集/模型，计算当前缓存键；命中则 `state='valid'` 且 `willCallModel=false`
   - 有记录但三要素有变 → `state='stale'` + `staleReasons`
-  - 无记录 / 读不到正文 / 记录损坏 → `available=false` + `state='never'`（不返回 500）
+  - 无记录 → `available=true` + `state='never'`（正常的新资产，不是失败）；读不到正文 / 记录损坏 → `available=false` + `state='never'`（不返回 500）
   - **断言：任何分支都不创建 LlmClient、不调用 `llm.chat`**
 - **测试**：`tests/server/doctor-summary.test.ts`（never / valid / stale×3 / 未配置 AI 时 willCallModel 恒 false / 403 越界 / 文件不存在 / 记录损坏降级 / 零调用断言）
 - **验证**：`npx vitest run tests/server/doctor-summary.test.ts` 全绿；`npm run build` 成功；既有 `tests/server/doctor*.test.ts` 不回归
@@ -154,12 +154,12 @@
 - [x] 后端：`npm test`、`npm run typecheck`、`npm run build` 全绿
 - [x] 前端（`web/`）：`npx vitest run`、`node node_modules/typescript/bin/tsc -b`、`node node_modules/vite/bin/vite.js build` 全绿
 - [ ] 手工走查三档视口（1440 / 1180 / 800）与全键盘：
-  1. 单资产类别进入即见正文；关闭后不重开
-  2. 摘要四态（从未 / 有效 / 过期 / 不可用）文案正确，成本提示与文字一致
-  3. 诊断 → 展开证据 → 草案 → 应用 → 自动复检 → 分发 → 失败重试 → 撤销
-  4. 从治理页 / 首页待办直达详情并返回
-  5. 无 Key / 分发不可用 / 文件被删三种降级
-- [ ] 走查记录写入本目录 `ACCEPTANCE.md`（中性示例名，无真实资产名与绝对路径）
+  1. [x] 单资产类别进入即见正文；关闭后不重开 —— 2026-11-18 夜班三档 PASS
+  2. [x] 摘要四态文案与成本提示 —— never / valid 真机 PASS（valid 由真实诊断产生）；stale / 不可用 仅单测，未造真机
+  3. [ ] 诊断 → 证据 → 草案 → 应用 → 自动复检 → 分发 → 失败重试 → 撤销 —— 只走到「诊断 → 证据」；应用及之后会写真实资产，未执行，由 FixFlow / DistributionDialog 单测覆盖
+  4. [ ] 治理页 / 首页待办深链直达并返回 —— 未执行（深链已有单测与白班走查）
+  5. [ ] 无 Key / 分发不可用 / 文件被删三种降级 —— 未执行（需改本机配置或磁盘文件）
+- [x] 走查记录写入本目录 `ACCEPTANCE.md`（中性示例名，无真实资产名与绝对路径）
 - **验证**：命令退出码 0；对照 spec 全部 Scenario 勾选
 
 ## T14【P1】文档回写与提交
