@@ -163,6 +163,48 @@ describe('R7.4 批量超限', () => {
   });
 });
 
+describe('R7.5 看板 / 预估 / 预览同时失败', () => {
+  it('三处接口同时失败时各自降级，列表与页面互不牵连', async () => {
+    const inLibraryItems: SkillInfo[] = [
+      skill({ id: 'demo-a', name: 'demo-a', inLibrary: true }),
+      skill({ id: 'demo-b', name: 'demo-b', inLibrary: true }),
+    ];
+    vi.spyOn(api, 'listSkills').mockResolvedValue(listResultOf(inLibraryItems));
+    vi.spyOn(api, 'getSkillCatalog').mockRejectedValue(new Error('catalog down'));
+    vi.spyOn(api, 'estimateSkillDiagnosis').mockRejectedValue(new Error('estimate down'));
+    vi.spyOn(api, 'previewSkillDistribution').mockRejectedValue(new Error('preview down'));
+
+    renderView();
+
+    // 看板降级，技能列表照常渲染
+    expect(await screen.findByText('统计暂不可用，下方技能列表不受影响')).toBeInTheDocument();
+    expect((await screen.findAllByText('demo-a')).length).toBeGreaterThan(0);
+
+    // 预估失败只影响到诊断对话框
+    fireEvent.click(screen.getByRole('checkbox', { name: '选择技能 demo-a' }));
+    fireEvent.click(await screen.findByRole('button', { name: /诊断选中 1 个/ }));
+    expect(await screen.findByText(/无法估算成本，暂不能发起：estimate down/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '取消' }));
+    await waitFor(() =>
+      expect(screen.queryByText(/无法估算成本/)).not.toBeInTheDocument(),
+    );
+    expect(screen.getByText('统计暂不可用，下方技能列表不受影响')).toBeInTheDocument();
+    expect(screen.getAllByText('demo-a').length).toBeGreaterThan(0);
+
+    // 预览失败只影响到分发对话框；关闭后列表、勾选与看板降级均保持
+    fireEvent.click(screen.getByRole('button', { name: /分发选中 1 个/ }));
+    expect(
+      await screen.findByText(/无法生成影响清单，暂不能分发：preview down/),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '取消' }));
+    await waitFor(() =>
+      expect(screen.queryByText(/无法生成影响清单/)).not.toBeInTheDocument(),
+    );
+    expect(screen.getByText('统计暂不可用，下方技能列表不受影响')).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: '选择技能 demo-a' })).toBeChecked();
+  });
+});
+
 describe('R7.3 未配置 AI 端点', () => {
   it('诊断预估标注仅机械检查，并提供 AI 配置入口', async () => {
     vi.spyOn(api, 'estimateSkillDiagnosis').mockResolvedValue({
