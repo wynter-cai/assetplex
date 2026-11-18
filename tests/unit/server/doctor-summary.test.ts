@@ -134,7 +134,7 @@ function harness(opts: HarnessOptions = {}) {
 const SUMMARY = `/summary?kind=skill&hubRelativePath=${encodeURIComponent(SKILL_PATH)}`;
 
 describe('GET /api/doctor/summary', () => {
-  it('无记录 → 200 available=false / state=never，AI 已配置时提示将调用一次模型（Scenario 6.2）', async () => {
+  it('无记录 → 200 available=true / state=never（没有记录不等于读取失败），AI 已配置时提示将调用一次模型（Scenario 6.2）', async () => {
     const h = harness();
     const res = await h.get(SUMMARY);
     expect(res.status).toBe(200);
@@ -142,7 +142,7 @@ describe('GET /api/doctor/summary', () => {
     expect(body).toEqual({
       kind: 'skill',
       hubRelativePath: SKILL_PATH,
-      available: false,
+      available: true,
       state: 'never',
       lastRun: null,
       staleReasons: [],

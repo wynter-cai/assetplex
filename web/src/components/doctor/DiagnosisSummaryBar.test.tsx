@@ -39,9 +39,10 @@ function renderBar(value: DoctorSummaryResponse | null, loading = false): { onDi
 }
 
 describe('DiagnosisSummaryBar', () => {
-  it('never：说清没诊断过 + 主按钮叫「开始诊断」', () => {
+  it('never：说清没诊断过 + 主按钮叫「开始诊断」，不误报「摘要不可用」', () => {
     const { onDiagnose } = renderBar(summary());
     expect(screen.getByText('还没有诊断过这个资产')).toBeInTheDocument();
+    expect(screen.queryByText(/摘要暂不可用/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '开始诊断' }));
     expect(onDiagnose).toHaveBeenCalledTimes(1);
   });
@@ -91,9 +92,10 @@ describe('DiagnosisSummaryBar', () => {
     expect(screen.getByText('健康')).toBeInTheDocument();
   });
 
-  it('读取失败：摘要不可用不影响正文，按未诊断展示', () => {
+  it('读取失败：只报「摘要暂时不可用」，不同时说「没诊断过」', () => {
     renderBar(summary({ available: false }));
     expect(screen.getByText(/摘要暂不可用/)).toBeInTheDocument();
+    expect(screen.queryByText('还没有诊断过这个资产')).not.toBeInTheDocument();
   });
 
   it('将调用模型时明示成本；未配置 AI 时说明只跑机械与静态规则', () => {

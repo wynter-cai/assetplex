@@ -4,7 +4,7 @@
  * 纯展示：打开详情即说明「上次什么时候查的、还算不算数、现在点一次会不会花钱」。
  * 数据来自 GET /api/doctor/summary（零模型），组件自身不发请求、不推断成本。
  *
- * 四态：never / valid / stale / available=false（读取失败按未诊断处理）。
+ * 四态：never / valid / stale / available=false（读取失败，此时不再说「没诊断过」）。
  */
 
 import { AlertCircle, Loader2, Stethoscope } from 'lucide-react';
@@ -101,7 +101,7 @@ export function DiagnosisSummaryBar(props: DiagnosisSummaryBarProps): JSX.Elemen
           </>
         )}
 
-        {!loading && (summary === null || summary.state === 'never') && (
+        {!loading && (summary === null || (summary.state === 'never' && summary.available)) && (
           <span className="text-xs text-muted-foreground">还没有诊断过这个资产</span>
         )}
       </div>
