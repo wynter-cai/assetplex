@@ -16,6 +16,25 @@
 
 ---
 
+## 验收状态（2026-11-18 收口）
+
+**结论**：T1-T11 全部完成，质量中心从 `/governance` 迁移到 `/quality` 并落地全局体检报告、跨类别批量诊断/修复、规则与忽略管理、裁决准则迁入；B18 同步满足。
+
+**提交清单**：T1 `91c26ec`、T2 `6570353`、T3 `2adcb7b`、T9 文档回写 `f51bc5a`、T0 规则化语义链路 `ff7e3fe`、T4 `f56272c`、T5 `61e9361`、T6 `fcffc42`、T7 `634625c`、T8-T10 `8ff3ccb`、T11 `f32a220`。
+
+**真实数据验收（2026-11-18，本机 Hub 只读）**
+- 三处同源：首页 `issues.total=17` = 质量中心 `pendingTotal=17` = 侧栏徽标来源同一快照。
+- 聚类：12 条，首条「frontmatter 缺失必填字段：name」，影响 6 个资产 / 命中 6 次 / 高 6，聚合依据 `title`，影响面 18。
+- 批量预估：`willCall=48`、`cacheHits=0`、`semanticSkipped=0`、按类别规则覆盖度 22/16/15，超限与二次确认口径由组件测试覆盖。
+- 规则页：版本 1.0.0、71 条（静态 45 / AI 26）、跨资产通用 8 条单列、用户 0 条。
+- 旧地址：`/governance` 浏览器访问替换式落到 `/quality`；`/vault/criteria` 由路由测试覆盖。
+- 页面边界：真实页面无「应用修复」「重新诊断」；聚类展开后的「在资产库中打开」深链由 `QualityCenter.test.tsx` 断言。
+- 视口：1440×900 / 800×900 两档 PASS（`.trae/schedule/reports/2026-11-18-白班-C4.md`）。
+
+**未在真实库执行（避免写真实资产）**：手工清单第 5 条「批量修复 + 整批撤销」需隔离 Hub；第 7 条「无 AI Key」由 `governance-batch-estimate` / `QualityBatch.test` 覆盖。
+
+**收口基线**：后端 **1382 passed + 1 skipped**、前端 **663 passed**、双端 `tsc -b` 0、tsup + vite 构建成功、`privacy-check.mjs` 0 命中。
+
 ## T1 [P0] 命名与路由迁移（纯前端）
 
 - 新增 `/quality`、`/quality/batch`、`/quality/rules`、`/quality/criteria` 路由；`/governance*` → `/quality*`、`/vault/criteria` → `/quality/criteria` 全部替换式重定向。
