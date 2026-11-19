@@ -139,54 +139,66 @@ assetplex ui
 Run `assetplex ui`, then open `http://127.0.0.1:17521`:
 
 ```
-┌──────────────────────────────────────────────────────────┐
-│  🏠 AssetPlex                                    v0.1.1   │
-├──────────┬───────────────────────────────────────────────┤
-│  📊 Overview │  ┌─────────┐ ┌─────────┐ ┌─────────┐    │
-│  🔧 Tools    │  │Installed│ │Hub files│ │Last sync│    │
-│  🔄 Sync     │  └─────────┘ └─────────┘ └─────────┘    │
-│  📥 Import   │                                          │
-│  👤 Identity │  ┌─ Tool status ─────────────────────┐  │
-│  📦 Skills   │  │ TRAE CN  ✅ installed  ~/.trae-cn/ │  │
-│  📋 Rules    │  │ Claude Code  ❌ not installed     │  │
-│  🔌 MCP      │  └───────────────────────────────────┘  │
-│  ⚙️ Settings │                                          │
-└──────────┴──────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────┐
+│  AssetPlex                                          v0.2.0 │
+├──────────────┬─────────────────────────────────────────────┤
+│ Overview     │  Health 89          Pending governance 18   │
+│              │  ┌─ Today ─────────────────────────────────┐ │
+│ Vault        │  │ 3 assets drift from their tool copies   │ │
+│  Identity    │  │ 2 skills have no description            │ │
+│  Skills      │  └─────────────────────────────────────────┘ │
+│  Rules       │  ┌─ Tools & sync ──────────────────────────┐ │
+│  MCP         │  │ TRAE CN synced · Claude Code synced ·   │ │
+│  Agents      │  │ Codex not installed                     │ │
+│  Memory      │  └─────────────────────────────────────────┘ │
+│  Discover    │  ┌─ Recent changes ────────────────────────┐ │
+│              │  │ skill:night-shift synced to 2 tools     │ │
+│ Quality      │  └─────────────────────────────────────────┘ │
+│ Connections  │                                             │
+│ Activity     │                                             │
+│ Settings     │                                             │
+└──────────────┴─────────────────────────────────────────────┘
 ```
+
+- **Overview** — health score, today's queue, per-tool sync matrix and recent changes.
+- **Vault** — six asset categories (identity, skills, rules, MCP, agents, memory). Open any asset and you get the full pipeline inline: read summary → diagnose → evidence → fix draft → apply → automatic re-check → distribute → undo.
+- **Quality Center** — cross-category checkup, batch operations, 71 built-in rules (45 static + 26 AI-assisted, your own endpoint), ignore list, duplicate cleanup and arbitration criteria.
+- **Connections & Sync** — detect installed tools, choose what each one receives, manage project workspaces.
+- **Activity** — append-only local event log of every sync, import and write.
+- **Discover** — pull skills from a GitHub repo you name; nothing is added until you confirm.
 
 ## Hub Layout
 
 ```
 ~/.assetplex/
 ├── identity/                  # your profile
-│   ├── profile.md
-│   ├── communication-style.md
-│   ├── tech-stack.md
-│   └── env.md
 ├── skills/                    # cross-tool skill library
 │   └── <skill-name>/SKILL.md
-├── rules/                     # rules
-│   ├── always/global.md
-│   ├── by-glob/*.md
-│   └── by-project/*.md
-├── preferences/               # personal preferences
+├── rules/                     # global / by-glob / by-project rules
 ├── mcp/mcp.sources.json       # MCP server configs
-├── commands/                  # custom slash commands
 ├── agents/                    # sub-agent definitions
+├── memory/                    # long-lived facts, decisions, preferences
+├── criteria/                  # arbitration & diagnosis criteria
+├── governance/activity/       # append-only local event log
 ├── hub.toml                   # main hub config
 └── .backups/                  # automatic backups
 ```
 
+Files in a legacy `preferences/` directory are still read and shown under **Memory**; new writes always go to `memory/`.
+
 ## Roadmap
 
-**In development** 🚧
-- Smart import wizard (4-step: detect → scan → resolve conflicts → import)
-- Smart merge (Markdown / JSON / TOML conflict resolution)
+**Shipped** ✅
+- Unified vault for identity, skills, rules, MCP, agents and memory
+- Single-asset pipeline: diagnose → evidence → fix draft → apply → auto re-check → distribute → undo
+- Quality Center: cross-category checkup, batch fixes, 71 built-in rules, ignore list, duplicate cleanup
+- 4-step import wizard with conflict resolution (Markdown / JSON / TOML)
+- Skill discovery from a GitHub repo you name
+- Activity log and a local MCP endpoint for agents
 
 **Planned** 📋
 - Auto-learned profile from your coding behavior (`profile.auto.md`)
-- Skill marketplace (aggregating claudeskills.info, agentskills.io)
-- Drift detection & auto-repair
+- Skill marketplace aggregation (claudeskills.info, agentskills.io)
 - `--watch` mode for live re-sync
 
 ## Contributing
