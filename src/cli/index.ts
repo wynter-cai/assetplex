@@ -5,6 +5,7 @@
  */
 
 import { Command } from 'commander';
+import { createRequire } from 'node:module';
 import { log, setLogLevel } from '../utils/logger.js';
 import { initCommand } from './commands/init.js';
 import { doctorCommand } from './commands/doctor.js';
@@ -14,12 +15,15 @@ import { readOnboardingState } from '../core/onboarding-state.js';
 import { ensureHubSkeleton } from '../core/hub-skeleton.js';
 import { getHubRoot } from '../utils/paths.js';
 
+// 版本号唯一来源是 package.json（dist/index.js 与 package.json 同级）
+const pkg = createRequire(import.meta.url)('../package.json') as { version: string };
+
 const program = new Command();
 
 program
   .name('assetplex')
   .description('One identity, every AI agent — built for the China stack and beyond.')
-  .version('0.1.0')
+  .version(pkg.version)
   .option('-v, --verbose', '启用详细日志输出', () => setLogLevel('debug'))
   .option('-q, --quiet', '静默模式（仅输出错误）', () => setLogLevel('error'));
 
